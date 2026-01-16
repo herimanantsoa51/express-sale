@@ -1,0 +1,121 @@
+/* ============================================
+   Sidebar.css - Apple-inspired Design
+   ============================================ */
+
+   .sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-color);
+    height: calc(100vh - var(--header-height));
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* === CUSTOM SCROLLBAR === */
+  .sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--border-color);
+  }
+  
+  /* === NAVIGATION === */
+  .sidebar-nav {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  /* === LINKS === */
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    letter-spacing: -0.01em;
+  }
+  
+  .sidebar-link:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+  
+  .sidebar-link-active {
+    background: var(--bg-secondary);
+    color: var(--primary);
+    font-weight: 500;
+  }
+  
+  .sidebar-link-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: var(--primary);
+    border-radius: 0 3px 3px 0;
+  }
+  
+  /* === ICON === */
+  .sidebar-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .sidebar-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* === LABEL === */
+  .sidebar-label {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      z-index: var(--z-fixed);
+    }
+  
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+    }
+  
+    [data-theme="dark"] .sidebar.open {
+      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.4);
+    }
+  }

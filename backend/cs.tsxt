@@ -1,0 +1,515 @@
+
+
+## **Rôle**
+Tu es un **Senior Frontend Engineer + Apple Design System thinker**.  
+Tu maîtrises parfaitement **React JSX moderne**, l’architecture de composants, l’UX premium, les micro-interactions, les transitions douces et les layouts clairs/sombres inspirés d’Apple (Human Interface Guidelines), **sans jamais copier Apple**, mais en s’en inspirant intelligemment.
+
+---
+
+### 🎯 OBJECTIF GÉNÉRAL
+
+Je veux une **interface frontend React JSX premium**, **très élégante**, **jamais vue**, inspirée du **style Apple** pour une **application de gestion de crédits** :
+
+* minimaliste
+* fluide
+* lisible
+* moderne
+* haut de gamme
+
+---
+
+### 🧩 CONTRAINTES TECHNIQUES (OBLIGATOIRES)
+
+1. **React JSX uniquement** (pas TS)
+2. **Séparation stricte**
+   * `pages/`
+   * `components/`
+   * `services/`
+   * `hooks/`
+   * `styles/`
+3. **Styles séparés du JSX**
+   * Pas de inline style
+   * CSS Modules ou fichiers `.css` par composant
+4. **Je possède déjà** :
+   * `reset.css`
+   * `global.css`
+   * `variables.css`
+     👉 Tu dois **t'y adapter**, pas les recréer
+
+---
+
+### 🎨 DESIGN & UX (TRÈS IMPORTANT)
+
+* Inspiré Apple **sans clonage**
+* Beaucoup d'espace blanc (ou noir en dark mode)
+* Typographie claire
+* Hiérarchie visuelle nette
+* Animations :
+  * hover subtil
+  * transition douce
+  * apparition progressive (fade / slide)
+* Support **Light / Dark mode**
+* Design **responsive**
+* Icônes fines (style SF / Lucide / Heroicons-like)
+
+⚠️ **Aucune UI banale**  
+⚠️ **Pas de Bootstrap / MUI / Ant Design**  
+⚠️ **Pas de design "admin moche"**
+
+---
+
+### 📄 ÉCRANS À CRÉER
+
+#### 1️⃣ Page : Liste des crédits
+
+* Tableau moderne (pas classique)
+* Colonnes :
+  * Crédit N° (sale_number)
+  * Client (customer.name)
+  * Montant total (total_amount)
+  * Montant dû (amount_due)
+  * Date d'échéance (due_date)
+  * Statut (status)
+  * % Payé (payment_percentage)
+* Recherche fluide
+* Filtres :
+  * statut (active, partial_paid, etc.)
+  * créateur (created_by)
+  * période (date range)
+  * échéance proche (due_soon_days)
+* Pagination élégante
+* Click → page détail crédit
+
+#### 2️⃣ Page : Détail d'un crédit
+
+* Header épuré (sale_number, date, montants)
+* Section client (compacte)
+* Section informations crédit (notes, échéance)
+* Liste des échéances (installments) avec :
+  * numéro d'échéance
+  * date d'échéance
+  * montant dû
+  * montant payé
+  * statut
+  * bouton "Payer" pour les échéances en cours
+* Historique des transactions par échéance
+* Layout clair, respirant, premium
+* Modal élégant pour effectuer un paiement
+
+---
+
+### 🔌 API & DATA (Adapté au contexte fourni)
+
+#### Endpoints disponibles :
+
+1. **GET /credits** - Liste des crédits avec filtres
+   ```javascript
+   // Exemple de filtres
+   ?search=CL&status=active&active_only=true&overdue_only=false
+   &due_soon_days=30&sort_by=due_date&sort_order=asc&per_page=20&page=1
+   ```
+
+2. **GET /credits/{id}** - Détail d'un crédit avec échéances
+
+3. **POST /credits/{idCredit}/installments/{id_installment}/pay** - Payer une échéance
+   ```json
+   {
+     "amount": 10000,
+     "account_id": 3,
+     "notes": "notes de paiement"
+   }
+   ```
+
+4. **GET /accounts/cash-mobile-money** - Liste des comptes de paiement
+
+5. **GET /users** - Liste des utilisateurs (pour filtre created_by)
+
+---
+
+### 📦 EXEMPLE DE SERVICES (À RESPECTER)
+
+```js
+// creditService.js
+import api from './api';
+
+const creditService = {
+  getCredits: async (params = {}) => {
+    const response = await api.get('/credits', { params });
+    return response.data;
+  },
+
+  getCreditDetail: async (id) => {
+    const response = await api.get(`/credits/${id}`);
+    return response.data;
+  },
+
+  payInstallment: async (creditId, installmentId, data) => {
+    const response = await api.post(
+      `/credits/${creditId}/installments/${installmentId}/pay`, 
+      data
+    );
+    return response.data;
+  }
+};
+
+export default creditService;
+```
+
+```js
+// accountService.js
+import api from './api';
+
+const accountService = {
+  getCashAccounts: async () => {
+    const response = await api.get('/accounts/cash-mobile-money');
+    return response.data;
+  }
+};
+
+export default accountService;
+```
+
+```js
+// userService.js
+import api from './api';
+
+const userService = {
+  getUsers: async () => {
+    const response = await api.get('/users');
+    return response.data;
+  }
+};
+
+export default userService;
+```
+
+---
+
+### 🧠 ARCHITECTURE ATTENDUE
+
+* `CreditListPage.jsx`
+* `CreditDetailPage.jsx`
+* `CreditTable.jsx`
+* `CreditRow.jsx`
+* `InstallmentCard.jsx`
+* `TransactionCard.jsx`
+* `CustomerMiniCard.jsx`
+* `PaymentModal.jsx`
+* `FilterPanel.jsx`
+* `creditService.js`
+* `accountService.js`
+* `userService.js`
+* `useCredits.js`
+* `useCreditDetail.js`
+* fichiers CSS dédiés
+
+---
+
+### ✅ CE QUE TU DOIS PRODUIRE
+
+1. Code **complet** adapté aux APIs fournies
+2. Code **lisible** avec gestion d'erreur
+3. Code **maintenable** avec séparation claire
+4. Code **élégant** avec UX premium
+5. Composants bien découpés
+6. UX pensée **comme un produit Apple**
+7. Gestion des états de chargement et erreurs
+8. Formatage des montants (devise, séparateurs)
+
+---
+
+### 🚫 INTERDIT
+
+* UI générique
+* Copie de design existant
+* Inline CSS
+* Logique métier dans le JSX
+* Mélange service / UI
+* Composants trop gros
+* Appels API directs dans les composants
+
+---
+
+### 🏁 LIVRABLE FINAL
+
+Donne :
+
+* L'arborescence des fichiers adaptée au contexte crédit
+* Les composants JSX avec intégration des données API
+* Les fichiers CSS premium
+* Les services pour toutes les APIs fournies
+* Les hooks customisés
+* Les commentaires utiles pour la logique métier crédit
+* Le formatage des dates et montants
+* La gestion des filtres et recherche
+* Le modal de paiement avec sélection de compte
+
+---
+
+### 📊 DONNÉES SPÉCIFIQUES À GÉRER
+
+* **Statuts des crédits** : active, partial_paid, etc.
+* **Statuts des échéances** : pending, partial, paid
+* **Types de comptes** : cash, mobile_money
+* **Formatage des montants** (ex: "10 000,00 Ar")
+* **Calcul des jours restants** (days_until_due)
+* **Indicateurs visuels** : is_overdue, payment_percentage
+
+---
+
+### 🎛️ FONCTIONNALITÉS CLAVES
+
+1. **Tableau des crédits** avec :
+   - Tri par colonnes
+   - Filtres multiples
+   - Recherche textuelle
+   - Pagination
+
+2. **Détail crédit** avec :
+   - Visualisation des échéances
+   - Historique des transactions
+   - Bouton de paiement par échéance
+   - Modal de paiement avec validation
+
+3. **UX premium** avec :
+   - Feedback visuel lors des actions
+   - États de chargement élégants
+   - Transitions douces
+   - Design responsive
+
+---
+Vous avez raison ! Je vais structurer clairement toutes les APIs avec leurs inputs/outputs :
+
+## **📋 APIS DISPONIBLES**
+
+### **1. GET /credits** - Liste des crédits
+**URL**: `http://localhost:8000/api/credits`
+**Méthode**: GET
+**Query params**:
+- `search` (string) - Recherche texte
+- `status` (string) - Statut du crédit
+- `active_only` (boolean)
+- `overdue_only` (boolean)
+- `due_soon_days` (number)
+- `sort_by` (string) - Ex: "due_date"
+- `sort_order` (string) - "asc" ou "desc"
+- `per_page` (number)
+- `page` (number)
+
+**Response**:
+```json
+{
+    "data": [
+        {
+            "id": 6,
+            "sale_number": "VNT-20260107-0010",
+            "total_amount": 89900122,
+            "amount_paid": 0,
+            "amount_due": 89900122,
+            "credit_date": "2026-01-07T00:00:00.000000Z",
+            "due_date": "2026-01-31T00:00:00.000000Z",
+            "last_payment_date": null,
+            "status": "active",
+            "payment_percentage": 0,
+            "is_overdue": false,
+            "days_overdue": 0,
+            "remaining_installments": 1,
+            "customer": {
+                "id": 4,
+                "customer_number": "CL-20260107-0003",
+                "name": "HAFA EH"
+            }
+        }
+    ],
+    "meta": {
+        "current_page": 1,
+        "last_page": 1,
+        "per_page": 20,
+        "total": 3
+    }
+}
+```
+
+---
+
+### **2. GET /credits/{id}** - Détail d'un crédit
+**URL**: `http://localhost:8000/api/credits/4`
+**Méthode**: GET
+
+**Response**:
+```json
+{
+    "data": {
+        "id": 4,
+        "sale_number": "VNT-20260106-0002",
+        "total_amount": 18209000,
+        "amount_paid": 144000,
+        "amount_due": 18065000,
+        "credit_date": "2026-01-06T00:00:00.000000Z",
+        "due_date": "2026-04-06T00:00:00.000000Z",
+        "last_payment_date": "2026-01-08T00:00:00.000000Z",
+        "status": "partial_paid",
+        "notes": "Crédit sur 3 mois - Paiement mensuel",
+        "updated_at": "2026-01-08T21:11:50.000000Z",
+        "payment_percentage": 0.79,
+        "is_overdue": false,
+        "days_overdue": 0,
+        "remaining_installments": 1,
+        "customer": {
+            "id": 1,
+            "name": "Jean Bosco",
+            "phone": "03412221162"
+        },
+        "installments": [
+            {
+                "id": 3,
+                "installment_number": 3,
+                "due_date": "2026-04-06T00:00:00.000000Z",
+                "amount_due": 18000000,
+                "amount_paid": 0,
+                "remaining_amount": 18000000,
+                "status": "pending",
+                "status_description": "Échéance dans 87 jours",
+                "payment_percentage": 0,
+                "is_overdue": false,
+                "days_overdue": 0,
+                "days_until_due": 87,
+                "transactions": []
+            },
+            {
+                "id": 1,
+                "installment_number": 1,
+                "due_date": "2026-02-06T00:00:00.000000Z",
+                "amount_due": 200000,
+                "amount_paid": 135000,
+                "remaining_amount": 65000,
+                "status": "partial",
+                "status_description": "Partiellement payée (68%)",
+                "payment_percentage": 67.5,
+                "is_overdue": false,
+                "days_overdue": 0,
+                "days_until_due": 28,
+                "transactions": [
+                    {
+                        "id": 69,
+                        "amount": 10000,
+                        "formatted_amount": "10 000,00 Ar",
+                        "balance_before": 46983380,
+                        "balance_after": 46993380,
+                        "transaction_date": "2026-01-06T18:22:09.000000Z",
+                        "notes": null,
+                        "account": {
+                            "id": 2,
+                            "name": "Caisse Principale",
+                            "type": "Espèces"
+                        },
+                        "transaction_type": {
+                            "id": 16,
+                            "name": "income",
+                            "category": "income"
+                        },
+                        "created_by": {
+                            "id": 4,
+                            "name": "Administrateur"
+                        }
+                    }
+                ]
+            }
+        ],
+        "next_installment": {
+            "id": 3,
+            "installment_number": 3,
+            "due_date": "2026-04-06T00:00:00.000000Z",
+            "amount_due": 18000000,
+            "amount_paid": 0,
+            "remaining_amount": 18000000,
+            "status": "pending",
+            "status_description": "Échéance dans 87 jours",
+            "payment_percentage": 0,
+            "is_overdue": false,
+            "days_overdue": 0,
+            "days_until_due": 87
+        }
+    }
+}
+```
+
+---
+
+### **3. POST /credits/{idCredit}/installments/{id_installment}/pay** - Payer une échéance
+**URL**: `http://localhost:8000/api/credits/{creditId}/installments/{installmentId}/pay`
+**Méthode**: POST
+
+**Request body**:
+```json
+{
+    "amount": 10000,
+    "account_id": 3,
+    "notes": "a vous"
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Paiement enregistré avec succès",
+    "data": {
+        "id": 2,
+        "installment_number": 2,
+        "due_date": "2026-03-06T00:00:00.000000Z",
+        "amount_due": 9000,
+        "amount_paid": 9000,
+        "remaining_amount": 0,
+        "status": "paid",
+        "status_description": "Payée le 08/01/2026",
+        "payment_percentage": 100,
+        "is_overdue": false,
+        "days_overdue": 0,
+        "days_until_due": 0
+    }
+}
+```
+
+---
+
+### **4. GET /accounts/cash-mobile-money** - Liste des comptes
+**URL**: `http://localhost:8000/api/accounts/cash-mobile-money`
+**Méthode**: GET
+
+**Response**:
+```json
+{
+    "data": [
+        {
+            "id": 2,
+            "name": "Caisse Principale",
+            "account_number": null,
+            "type": "cash"
+        },
+        {
+            "id": 3,
+            "name": "MVola Principal",
+            "account_number": "034 12 345 67",
+            "type": "mobile_money"
+        }
+    ]
+}
+```
+
+---
+
+### **5. GET /users** - Liste des utilisateurs
+**URL**: `http://localhost:8000/api/users`
+**Méthode**: GET
+
+**Response**:
+```json
+[
+    {
+        "id": 1,
+        "name": "hello"
+    }
+]
+```
+séparé completement le styles dans un autre fichier, ne mets pas de composant de base, juste apple dark sombre avec theme que j ai deja donné, c est tout, séparé en fichier comme j ai dit. api est deja dispo dans les services par import api from './api' dans le mm dossier que les services
+  "credits_status_check" CHECK (status::text = ANY (ARRAY['active'::character varying, 'partial_paid'::character varying, 'completed'::character varying, 'overdue'::character varying, 'defaulted'::character varying, 'recovered'::character varying]::text[]))

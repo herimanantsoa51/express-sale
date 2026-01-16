@@ -1,0 +1,162 @@
+/* ============================================
+   CreditProductCard.css
+   Styles pour les cartes produits (comme PDP)
+   ============================================ */
+
+.credit-product-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed) var(--transition-timing);
+}
+
+.credit-product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.credit-product-image {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.credit-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.credit-product-placeholder {
+  color: var(--text-tertiary);
+}
+
+.credit-product-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.credit-product-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.credit-product-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.credit-product-name:hover {
+  color: var(--primary);
+}
+
+.credit-product-attributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.credit-product-attribute {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+}
+
+.attr-type {
+  color: var(--text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.attr-value {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.credit-product-sku {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-bottom: var(--spacing-sm);
+}
+
+.credit-product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.credit-product-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.detail-label {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.detail-value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.detail-value.quantity {
+  color: var(--primary);
+}
+
+.total-row {
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--border-color);
+}
+
+.total-row .detail-label {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.total-value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .credit-product-card {
+    flex-direction: column;
+  }
+
+  .credit-product-image {
+    width: 100%;
+    height: 120px;
+  }
+}

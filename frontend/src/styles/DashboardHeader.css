@@ -1,0 +1,110 @@
+/* ============================================
+   DashboardHeader.css
+   ============================================ */
+
+   .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-2xl);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+  }
+  
+  .header__date-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  
+  .header__nav-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    color: var(--text-primary);
+  }
+  
+  .header__nav-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    transform: scale(1.05);
+  }
+  
+  .header__nav-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    background: transparent;
+    color: var(--text-tertiary);
+  }
+  
+  .header__date-display {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    min-width: 200px;
+    text-align: center;
+    letter-spacing: -0.022em;
+  }
+  
+  .header__period-selector {
+    display: flex;
+    gap: var(--spacing-xs);
+    background: var(--bg-secondary);
+    padding: 4px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+  }
+  
+  .header__period-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: calc(var(--border-radius) - 2px);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-smooth);
+  }
+  
+  .header__period-btn--active {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-medium);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 992px) {
+    .header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .header__date-nav {
+      justify-content: center;
+    }
+    
+    .header__period-selector {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .header__date-display {
+      font-size: var(--font-size-md);
+      min-width: 160px;
+    }
+    
+    .header__period-btn {
+      padding: 6px 12px;
+      font-size: var(--font-size-xs);
+    }
+  }

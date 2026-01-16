@@ -1,0 +1,188 @@
+/* ============================================
+   SalesFilters.module.css
+   Styles pour les filtres de ventes
+   ============================================ */
+
+   .container {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+  }
+  
+  .filters {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  
+  .filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 160px;
+  }
+  
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+  }
+  
+  .label svg {
+    color: var(--text-tertiary);
+  }
+  
+  /* === INPUTS DATES === */
+  .dateInput {
+    height: 44px;
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    transition: all var(--transition-speed) var(--transition-timing);
+    cursor: pointer;
+  }
+  
+  .dateInput:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+  }
+  
+  .dateInput::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: opacity(0.5);
+    transition: filter var(--transition-speed);
+  }
+  
+  .dateInput::-webkit-calendar-picker-indicator:hover {
+    filter: opacity(1);
+  }
+  
+  [data-theme="dark"] .dateInput::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.5);
+  }
+  
+  [data-theme="dark"] .dateInput::-webkit-calendar-picker-indicator:hover {
+    filter: invert(1) opacity(1);
+  }
+  
+  /* === SELECT === */
+  .select {
+    height: 44px;
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2386868b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-md) center;
+    padding-right: 40px;
+  }
+  
+  .select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+  }
+  
+  .select:hover {
+    border-color: var(--text-tertiary);
+  }
+  
+  [data-theme="dark"] .select {
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2398989d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  
+  .select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: var(--spacing-sm);
+  }
+  
+  /* === ACTIONS === */
+  .actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+  }
+  
+  .applyBtn,
+  .resetBtn {
+    height: 44px;
+    padding: 0 var(--spacing-lg);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--transition-speed) var(--transition-timing);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    white-space: nowrap;
+  }
+  
+  .applyBtn {
+    background: var(--primary);
+    color: white;
+    border: none;
+  }
+  
+  .applyBtn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .applyBtn:active {
+    transform: translateY(0);
+  }
+  
+  .resetBtn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+  }
+  
+  .resetBtn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  
+    .filters {
+      flex-direction: column;
+    }
+  
+    .filterGroup {
+      min-width: 100%;
+    }
+  
+    .actions {
+      width: 100%;
+    }
+  
+    .applyBtn,
+    .resetBtn {
+      flex: 1;
+      justify-content: center;
+    }
+  }

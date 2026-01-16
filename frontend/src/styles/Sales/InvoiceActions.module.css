@@ -1,0 +1,139 @@
+/* ============================================
+   InvoiceActions.module.css
+   Styles pour les actions de facture
+   ============================================ */
+
+   .container {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .icon {
+    color: var(--primary);
+  }
+  
+  .title {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+  }
+  
+  /* === ACTIONS === */
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--transition-speed) var(--transition-timing);
+    border: 1px solid transparent;
+  }
+  
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  /* Bouton Visualiser */
+  .btnView {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+  }
+  
+  .btnView:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--text-tertiary);
+  }
+  
+  /* Bouton Télécharger */
+  .btnDownload {
+    background: var(--primary);
+    color: white;
+  }
+  
+  .btnDownload:hover:not(:disabled) {
+    background: var(--primary-hover);
+  }
+  
+  /* Bouton Email */
+  .btnEmail {
+    background: var(--success);
+    color: white;
+  }
+  
+  .btnEmail:hover:not(:disabled) {
+    background: var(--success-hover);
+  }
+  
+  /* === SPINNER === */
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* === MESSAGES === */
+  .error,
+  .success {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    text-align: center;
+  }
+  
+  .error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  
+  .success {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (min-width: 640px) {
+    .actions {
+      flex-direction: row;
+    }
+    
+    .btn {
+      flex: 1;
+    }
+  }

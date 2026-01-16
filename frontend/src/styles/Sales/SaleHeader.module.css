@@ -1,0 +1,121 @@
+/* ============================================
+   SaleHeader.module.css
+   Styles pour l'en-tête de vente
+   ============================================ */
+
+   .container {
+    padding: var(--spacing-xl);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .number {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--primary);
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+  }
+  
+  .number svg {
+    color: var(--primary);
+  }
+  
+  .date {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+  }
+  
+  .date svg {
+    color: var(--text-tertiary);
+  }
+  
+  /* === MONTANTS === */
+  .amounts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .amountRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .label {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-normal);
+  }
+  
+  .value {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+  }
+  
+  .discount {
+    color: var(--success);
+  }
+  
+  .total {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .total .label {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+  }
+  
+  .total .value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--primary);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container {
+      padding: var(--spacing-lg);
+    }
+  
+    .top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+    }
+  
+    .number {
+      font-size: var(--font-size-lg);
+    }
+  
+    .value {
+      font-size: var(--font-size-md);
+    }
+  
+    .total .value {
+      font-size: var(--font-size-lg);
+    }
+  }

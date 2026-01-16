@@ -1,0 +1,44 @@
+/* ============================================
+   Layout.css - Apple-inspired Design
+   ============================================ */
+
+   .layout {
+    min-height: 100vh;
+    background: var(--bg-secondary);
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .layout-container {
+    display: flex;
+    position: relative;
+  }
+  
+  .layout-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 0;
+    min-height: calc(100vh - var(--header-height));
+    width: calc(100% - var(--sidebar-width));
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* === ANIMATIONS === */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .layout-content {
+      margin-left: 0;
+      width: 100%;
+    }
+  }

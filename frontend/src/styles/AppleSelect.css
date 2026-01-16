@@ -1,0 +1,230 @@
+.apple-select-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .apple-select-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+  }
+  
+  .apple-select-container {
+    position: relative;
+  }
+  
+  /* Trigger */
+  .apple-select-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0 16px;
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    outline: none;
+    text-align: left;
+    appearance: none;
+  }
+  
+  .apple-select-trigger:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--text-tertiary);
+  }
+  
+  .apple-select-trigger:focus {
+    border-color: var(--primary);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  
+  .apple-select-trigger-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-tertiary);
+  }
+  
+  .apple-select-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .apple-select-arrow {
+    flex-shrink: 0;
+    transition: transform var(--transition-speed) var(--transition-timing);
+    color: var(--text-tertiary);
+  }
+  
+  .apple-select-open .apple-select-arrow {
+    transform: rotate(180deg);
+  }
+  
+  /* Tailles */
+  .apple-select-small .apple-select-trigger {
+    height: 32px;
+    padding: 0 12px;
+    font-size: var(--font-size-sm);
+  }
+  
+  .apple-select-medium .apple-select-trigger {
+    height: 40px;
+    padding: 0 16px;
+    font-size: var(--font-size-md);
+  }
+  
+  .apple-select-large .apple-select-trigger {
+    height: 48px;
+    padding: 0 20px;
+    font-size: var(--font-size-lg);
+  }
+  
+  /* Dropdown */
+  .apple-select-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: var(--z-dropdown);
+    animation: apple-select-dropdown-in var(--transition-speed) var(--transition-timing);
+  }
+  
+  @keyframes apple-select-dropdown-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .apple-select-dropdown-inner {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  
+  /* Options */
+  .apple-select-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color var(--transition-speed) var(--transition-timing);
+    position: relative;
+  }
+  
+  .apple-select-option:hover:not(.apple-select-option-disabled) {
+    background: var(--bg-tertiary);
+  }
+  
+  .apple-select-option:active:not(.apple-select-option-disabled) {
+    background: var(--bg-secondary);
+  }
+  
+  .apple-select-option-selected {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  
+  .apple-select-option-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: var(--text-tertiary);
+  }
+  
+  .apple-select-option-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: var(--text-tertiary);
+  }
+  
+  .apple-select-option-selected .apple-select-option-icon {
+    color: var(--primary);
+  }
+  
+  .apple-select-option-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .apple-select-option-check {
+    flex-shrink: 0;
+    color: var(--primary);
+  }
+  
+  /* Message */
+  .apple-select-message {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    min-height: 20px;
+  }
+  
+  .apple-select-error .apple-select-message {
+    color: var(--danger);
+  }
+  
+  .apple-select-error .apple-select-trigger {
+    border-color: var(--danger);
+  }
+  
+  .apple-select-error .apple-select-trigger:focus {
+    box-shadow: 0 0 0 3px var(--danger-light);
+  }
+  
+  /* Full width */
+  .apple-select-fullwidth {
+    width: 100%;
+  }
+  
+  /* Dark mode support */
+  [data-theme="dark"] .apple-select-dropdown-inner {
+    background: var(--bg-secondary);
+  }
+  
+  [data-theme="dark"] .apple-select-option-selected {
+    background: var(--primary-light);
+  }
+  
+  /* Scrollbar pour dropdown */
+  .apple-select-dropdown-inner::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .apple-select-dropdown-inner::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .apple-select-dropdown-inner::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+  }
+  
+  .apple-select-dropdown-inner::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+  }

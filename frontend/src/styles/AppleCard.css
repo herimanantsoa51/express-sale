@@ -1,0 +1,76 @@
+.apple-card {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    transition: all var(--transition-speed) var(--transition-timing);
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .apple-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid var(--border-color);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+  }
+  
+  /* Padding */
+  .apple-card-padding-none {
+    padding: 0;
+  }
+  
+  .apple-card-padding-small {
+    padding: var(--spacing-md);
+  }
+  
+  .apple-card-padding-medium {
+    padding: var(--spacing-lg);
+  }
+  
+  .apple-card-padding-large {
+    padding: var(--spacing-xl);
+  }
+  
+  /* Elevation */
+  .apple-card-elevation-low {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .apple-card-elevation-medium {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .apple-card-elevation-high {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Effets hover */
+  .apple-card-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .apple-card-hover-elevate:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  .apple-card-hover-scale:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Clickable */
+  .apple-card[role="button"] {
+    cursor: pointer;
+  }
+  
+  .apple-card[role="button"]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }

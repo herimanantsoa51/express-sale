@@ -1,0 +1,167 @@
+/* ============================================
+   TransactionCard.module.css
+   Styles pour la carte transaction
+   ============================================ */
+
+   .container {
+    padding: var(--spacing-xl);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .container:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius);
+    background: var(--success-light);
+    color: var(--success);
+  }
+  
+  .header h3 {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+  }
+  
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  /* === RÉFÉRENCE === */
+  .reference {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .refLabel {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  .refValue {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--primary);
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+  }
+  
+  /* === COMPTE === */
+  .account {
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .accountHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .accountName {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+  }
+  
+  .accountType {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    padding: 2px var(--spacing-xs);
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+  }
+  
+  .accountNumber {
+    font-size: var(--font-size-sm);
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+  }
+  
+  /* === SOLDES === */
+  .balances {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .balanceRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .balanceLabel {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+  }
+  
+  .balanceLabel svg {
+    color: var(--text-tertiary);
+  }
+  
+  .balanceValue {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+  }
+  
+  .balanceValue.success {
+    color: var(--success);
+  }
+  
+  /* === TYPE === */
+  .type {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--success-light);
+    color: var(--success);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    border-radius: var(--border-radius);
+    text-align: center;
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container {
+      padding: var(--spacing-lg);
+    }
+  
+    .refValue {
+      font-size: var(--font-size-md);
+    }
+  }

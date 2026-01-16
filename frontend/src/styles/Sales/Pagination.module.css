@@ -1,0 +1,113 @@
+/* ============================================
+   Pagination.module.css
+   Styles pour la pagination
+   ============================================ */
+
+   .container {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+  
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+  }
+  
+  .navButton {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    height: 36px;
+    padding: 0 var(--spacing-md);
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .navButton:hover:not(:disabled) {
+    background: var(--bg-primary);
+    border-color: var(--text-tertiary);
+  }
+  
+  .navButton:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  
+  .numbers {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin: 0 var(--spacing-sm);
+  }
+  
+  .pageButton {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border: 1px solid transparent;
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .pageButton:hover {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+  }
+  
+  .pageButton.active {
+    background: var(--primary);
+    color: white;
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  .ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .pagination {
+      gap: var(--spacing-xs);
+    }
+  
+    .navButton span {
+      display: none;
+    }
+  
+    .navButton {
+      padding: 0 var(--spacing-sm);
+      min-width: 36px;
+      justify-content: center;
+    }
+  
+    .numbers {
+      margin: 0 var(--spacing-xs);
+    }
+  
+    .pageButton {
+      min-width: 32px;
+      height: 32px;
+    }
+  
+    .ellipsis {
+      min-width: 32px;
+      height: 32px;
+    }
+  }

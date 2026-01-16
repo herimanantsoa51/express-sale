@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: express_db
+    environment:
+      POSTGRES_DB: express_sale_db
+      POSTGRES_USER: express_sale_user
+      POSTGRES_PASSWORD: express_sale_mdp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build: ./backend
+    container_name: express_backend
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_storage:/var/www/storage
+
+
+  frontend:
+    build: ./frontend
+    container_name: express_frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+
+volumes:
+  pgdata:
+  backend_storage:

@@ -1,0 +1,91 @@
+.apple-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: var(--font-weight-medium);
+    border-radius: 100px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  
+  .apple-badge .apple-badge-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .apple-badge .apple-badge-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Tailles */
+  .apple-badge-small {
+    height: 20px;
+    padding: 0 8px;
+    font-size: var(--font-size-xs);
+  }
+  
+  .apple-badge-small .apple-badge-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .apple-badge-medium {
+    height: 24px;
+    padding: 0 10px;
+    font-size: var(--font-size-sm);
+  }
+  
+  .apple-badge-medium .apple-badge-icon {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .apple-badge-large {
+    height: 28px;
+    padding: 0 12px;
+    font-size: var(--font-size-md);
+  }
+  
+  .apple-badge-large .apple-badge-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Variantes */
+  .apple-badge-success {
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+  
+  .apple-badge-warning {
+    background: var(--warning-light);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+  }
+  
+  .apple-badge-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  
+  .apple-badge-info {
+    background: var(--info-light);
+    color: var(--info);
+    border: 1px solid var(--info);
+  }
+  
+  .apple-badge-primary {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  
+  .apple-badge-neutral {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+  }

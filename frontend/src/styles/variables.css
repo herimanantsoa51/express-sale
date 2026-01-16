@@ -1,0 +1,144 @@
+/* ============================================
+   VARIABLES CSS - THÈMES SOMBRE & CLAIR (Apple Style)
+   ============================================ */
+
+   :root {
+    /* === THÈME CLAIR (Apple-like) === */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f7;
+    --bg-tertiary: #e8e8ed;
+    --bg-blur: rgba(255, 255, 255, 0.72);
+    
+    --text-primary: #1d1d1f;
+    --text-secondary: #86868b;
+    --text-tertiary: #a1a1a6;
+    
+    --border-color: rgba(0, 0, 0, 0.08);
+    --border-radius: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 20px;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.08), 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 32px 0 rgba(0, 0, 0, 0.1), 0 2px 6px 0 rgba(0, 0, 0, 0.08);
+    --shadow-xl: 0 20px 48px 0 rgba(0, 0, 0, 0.12), 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+    
+    /* === COULEURS MARQUE (Apple-inspired) === */
+    --primary: #0071e3;
+    --primary-hover: #0077ed;
+    --primary-light: rgba(0, 113, 227, 0.1);
+    
+    --success: #30d158;
+    --success-hover: #32d74b;
+    --success-light: rgba(48, 209, 88, 0.1);
+    
+    --warning: #ff9f0a;
+    --warning-hover: #ffb340;
+    --warning-light: rgba(255, 159, 10, 0.1);
+    
+    --danger: #ff3b30;
+    --danger-hover: #ff6961;
+    --danger-light: rgba(255, 59, 48, 0.1);
+    
+    --info: #0a84ff;
+    --info-hover: #409cff;
+    --info-light: rgba(10, 132, 255, 0.1);
+    
+    /* === LAYOUT === */
+    --sidebar-width: 260px;
+    --header-height: 64px;
+    
+    /* === TRANSITIONS (Apple-like timing) === */
+    --transition-speed: 0.3s;
+    --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+    
+    /* === ESPACEMENTS === */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    /* === TYPOGRAPHIE (SF Pro-like) === */
+    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+      'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, 
+      Consolas, 'Courier New', monospace;
+    
+    --font-size-xs: 11px;
+    --font-size-sm: 13px;
+    --font-size-md: 15px;
+    --font-size-lg: 17px;
+    --font-size-xl: 22px;
+    --font-size-2xl: 28px;
+    
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 590;
+    --font-weight-bold: 700;
+    
+    /* === EFFECTS === */
+    --backdrop-blur: blur(20px) saturate(180%);
+    --backdrop-blur-sm: blur(10px) saturate(150%);
+    
+    /* === Z-INDEX === */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+  }
+  
+  /* === THÈME SOMBRE (Apple-like) === */
+  [data-theme="dark"] {
+    --bg-primary: #000000;
+    --bg-secondary: #1c1c1e;
+    --bg-tertiary: #2c2c2e;
+    --bg-blur: rgba(28, 28, 30, 0.72);
+    
+    --text-primary: #f5f5f7;
+    --text-secondary: #98989d;
+    --text-tertiary: #636366;
+    
+    --border-color: rgba(255, 255, 255, 0.1);
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.4), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 32px 0 rgba(0, 0, 0, 0.5), 0 2px 6px 0 rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 48px 0 rgba(0, 0, 0, 0.6), 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+    
+    /* Ajustements couleurs pour dark mode */
+    --primary: #0a84ff;
+    --primary-hover: #409cff;
+    --primary-light: rgba(10, 132, 255, 0.15);
+    
+    --success: #30d158;
+    --success-hover: #32d74b;
+    --success-light: rgba(48, 209, 88, 0.15);
+    
+    --warning: #ff9f0a;
+    --warning-hover: #ffb340;
+    --warning-light: rgba(255, 159, 10, 0.15);
+    
+    --danger: #ff453a;
+    --danger-hover: #ff6961;
+    --danger-light: rgba(255, 69, 58, 0.15);
+    
+    --info: #64d2ff;
+    --info-hover: #8ce2ff;
+    --info-light: rgba(100, 210, 255, 0.15);
+  }
+  
+  /* === BREAKPOINTS === */
+  /* Usage: @media (max-width: 768px) { ... } */
+  /* 
+    xs: < 576px
+    sm: >= 576px
+    md: >= 768px
+    lg: >= 992px
+    xl: >= 1200px
+    xxl: >= 1400px
+  */

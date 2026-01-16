@@ -1,0 +1,206 @@
+/* ============================================
+   CLIENT QUICK CREATE FORM - Apple Style
+   ============================================ */
+
+.client-quick-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  animation: fadeIn 0.2s var(--transition-timing);
+}
+
+.client-quick-modal-content {
+  background: var(--bg-primary);
+  border-radius: 24px;
+  box-shadow: var(--shadow-xl);
+  width: 90%;
+  max-width: 540px;
+  max-height: 85vh;
+  overflow: hidden;
+  animation: scaleIn 0.3s var(--transition-smooth);
+}
+
+.client-quick-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.client-quick-modal-header h2 {
+  font-size: 22px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.client-quick-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all 0.2s var(--transition-timing);
+  background: transparent;
+}
+
+.client-quick-modal-close:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.client-quick-form {
+  padding: 28px;
+  overflow-y: auto;
+  max-height: calc(85vh - 80px);
+}
+
+.client-quick-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  color: var(--danger);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.client-quick-form-group {
+  margin-bottom: 20px;
+}
+
+.client-quick-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.client-quick-label {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.client-quick-label.required::after {
+  content: ' *';
+  color: var(--danger);
+}
+
+.client-quick-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s var(--transition-timing);
+}
+
+.client-quick-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+.client-quick-input.input-error {
+  border-color: var(--danger);
+}
+
+.client-quick-input.input-error:focus {
+  box-shadow: 0 0 0 4px var(--danger-light);
+}
+
+.client-quick-error {
+  display: block;
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 6px;
+}
+
+.client-quick-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.client-quick-btn-secondary,
+.client-quick-btn-primary {
+  flex: 1;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: var(--font-weight-medium);
+  border-radius: 12px;
+  transition: all 0.2s var(--transition-timing);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.client-quick-btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.client-quick-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+}
+
+.client-quick-btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.client-quick-btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+}
+
+.client-quick-btn-secondary:disabled,
+.client-quick-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.client-quick-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 576px) {
+  .client-quick-modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .client-quick-form-row {
+    grid-template-columns: 1fr;
+  }
+}

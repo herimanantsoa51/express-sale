@@ -1,0 +1,641 @@
+/* ============================================
+   ACCOUNT DETAIL - Apple Style Design
+   ============================================ */
+
+.account-detail-page {
+  padding: var(--spacing-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* === BACK BUTTON === */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+/* === ACCOUNT HEADER === */
+.account-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-lg);
+}
+
+.account-detail-info {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: flex-start;
+}
+
+.account-detail-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.account-detail-icon.cash {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--success);
+}
+
+.account-detail-icon.mobile {
+  background: rgba(255, 159, 10, 0.1);
+  color: var(--warning);
+}
+
+.account-detail-icon.bank {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--info);
+}
+
+.account-detail-title h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.account-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.account-type-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: var(--font-size-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.account-number {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, monospace);
+}
+
+.account-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.account-status.active {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--success);
+}
+
+.account-status.inactive {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--danger);
+}
+
+.account-detail-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* === BALANCE CARD === */
+.balance-card {
+  background: var(--text-primary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  color: var(--bg-primary);
+}
+
+.balance-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-lg);
+}
+
+.balance-card-label {
+  font-size: var(--font-size-sm);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.balance-card-value {
+  font-size: 48px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.balance-card-value .currency {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+  opacity: 0.7;
+  margin-left: 8px;
+}
+
+.balance-card-initial {
+  text-align: right;
+}
+
+.balance-card-initial-label {
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+
+.balance-card-initial-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.balance-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.balance-stat {
+  text-align: center;
+}
+
+.balance-stat-label {
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.balance-stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.balance-stat-value.income {
+  color: var(--success);
+}
+
+.balance-stat-value.expense {
+  color: #ff6b6b;
+}
+
+.balance-stat-value.transfer {
+  color: var(--info);
+}
+
+/* === INFO GRID === */
+.account-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.info-card {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+}
+
+.info-card-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-card-value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.info-card-value.notes {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* === TRANSACTIONS SECTION === */
+.transactions-section {
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.transactions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.transactions-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.transactions-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.date-input {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  outline: none;
+  width: 130px;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+
+/* === TRANSACTIONS LIST === */
+.transactions-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  gap: var(--spacing-md);
+  transition: all 0.2s var(--transition-smooth);
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-item.clickable {
+  cursor: pointer;
+}
+
+.transaction-item.clickable:hover {
+  background: var(--bg-primary);
+}
+
+.transaction-item.clickable:active {
+  background: var(--bg-tertiary);
+}
+
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.transaction-icon.income {
+  background: rgba(52, 199, 89, 0.1);
+  color: var(--success);
+}
+
+.transaction-icon.expense {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--danger);
+}
+
+.transaction-icon.transfer {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--info);
+}
+
+.transaction-icon.adjustment {
+  background: rgba(255, 159, 10, 0.1);
+  color: var(--warning);
+}
+
+.transaction-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.transaction-recipient {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-category {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.transaction-amount-wrapper {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.transaction-amount {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.transaction-amount.income {
+  color: var(--success);
+}
+
+.transaction-amount.expense {
+  color: var(--danger);
+}
+
+.transaction-amount.adjustment {
+  color: var(--warning);
+}
+
+.transaction-balance-after {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.transaction-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-align: right;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.transaction-chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s var(--transition-smooth);
+}
+
+.transaction-item.clickable:hover .transaction-chevron {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* === PAGINATION === */
+.transactions-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.pagination-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  padding: 0 var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* === LOADING & EMPTY === */
+.detail-loading,
+.detail-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  text-align: center;
+}
+
+.detail-loading .loading-spinner {
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-tertiary);
+}
+
+.detail-error-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  margin-bottom: var(--spacing-md);
+}
+
+.transactions-empty {
+  padding: var(--spacing-2xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.transactions-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  margin: 0 auto var(--spacing-md);
+}
+
+/* === BUTTONS === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--border-radius);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .account-detail-page {
+    padding: var(--spacing-md);
+  }
+
+  .account-detail-header {
+    flex-direction: column;
+  }
+
+  .account-detail-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .account-detail-actions {
+    width: 100%;
+  }
+
+  .account-detail-actions .btn {
+    flex: 1;
+  }
+
+  .balance-card-value {
+    font-size: 32px;
+  }
+
+  .balance-card-stats {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .balance-stat {
+    text-align: left;
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .balance-stat:last-child {
+    border-bottom: none;
+  }
+
+  .transactions-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transactions-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .date-filter {
+    width: 100%;
+  }
+
+  .date-input {
+    flex: 1;
+  }
+
+  .transaction-item {
+    flex-wrap: wrap;
+  }
+
+  .transaction-date {
+    width: 100%;
+    text-align: left;
+    margin-top: 8px;
+    padding-left: 52px;
+  }
+}

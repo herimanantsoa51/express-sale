@@ -1,0 +1,60 @@
+/* ============================================
+   Dashboard.css
+   ============================================ */
+
+   .dashboard {
+    min-height: 100vh;
+    background: var(--bg-secondary);
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    font-family: var(--font-family);
+  }
+  
+  .dashboard__container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .dashboard__error {
+    background: var(--danger-light);
+    color: var(--danger);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
+    text-align: center;
+    font-weight: var(--font-weight-medium);
+    animation: fadeIn 0.4s var(--transition-timing);
+  }
+  
+  .stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+  }
+  
+  .dashboard__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 992px) {
+    .dashboard__grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .stat-cards {
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .dashboard {
+      padding: var(--spacing-lg) var(--spacing-sm);
+    }
+    
+    .stat-cards {
+      grid-template-columns: 1fr;
+    }
+  }

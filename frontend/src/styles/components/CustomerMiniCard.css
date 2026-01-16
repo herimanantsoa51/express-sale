@@ -1,0 +1,91 @@
+/* ============================================
+   styles/components/CustomerMiniCard.css
+   ============================================ */
+
+.customer-mini-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-speed) var(--transition-timing);
+}
+
+.customer-mini-card.clickable {
+  cursor: pointer;
+}
+
+.customer-mini-card.clickable:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.customer-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--primary);
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+}
+
+.customer-info-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+.customer-name-mini {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.customer-contact {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.customer-number {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+}
+
+.number-label {
+  color: var(--text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.number-value {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.customer-chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.customer-mini-card.clickable:hover .customer-chevron {
+  color: var(--primary);
+  transform: translateX(4px);
+}

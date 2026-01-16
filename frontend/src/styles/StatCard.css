@@ -1,0 +1,113 @@
+/* ============================================
+   StatCard.css
+   ============================================ */
+
+   .stat-card {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-speed) var(--transition-smooth);
+    animation: fadeIn 0.5s var(--transition-smooth) backwards;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .stat-card__title {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.01em;
+  }
+  
+  .stat-card__value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+  
+  .stat-card__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-top: auto;
+  }
+  
+  .stat-card__count {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+  }
+  
+  .stat-card__count-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+  }
+  
+  .stat-card__count-variation {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  
+  .stat-card__count-variation--positive {
+    color: var(--success);
+    background: var(--success-light);
+  }
+  
+  .stat-card__count-variation--negative {
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+  
+  .stat-card__variation {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+  }
+  
+  .stat-card__variation--positive {
+    color: var(--success);
+  }
+  
+  .stat-card__variation--negative {
+    color: var(--danger);
+  }
+  
+  .stat-card__skeleton {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    height: 140px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .stat-card__skeleton::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+  
+  @keyframes shimmer {
+    to { left: 100%; }
+  }

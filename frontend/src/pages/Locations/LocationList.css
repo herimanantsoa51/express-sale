@@ -1,0 +1,546 @@
+/* ============================================
+   LocationList.css - Apple-inspired Design Enhanced
+   ============================================ */
+
+/* ========== PAGE CONTAINER ========== */
+.loclist-page {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  padding: var(--spacing-2xl) var(--spacing-2xl) var(--spacing-3xl);
+}
+
+/* ========== HEADER ========== */
+.loclist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-2xl);
+  gap: var(--spacing-xl);
+}
+
+.loclist-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.032em;
+  line-height: 1.1;
+}
+
+.loclist-subtitle {
+  color: var(--text-secondary);
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.47059;
+}
+
+/* ========== BUTTONS ========== */
+.loclist-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: 10px 20px;
+  background: var(--primary);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 15px;
+  font-weight: 590;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08),
+              0 4px 12px rgba(0, 113, 227, 0.15);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.loclist-btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1),
+              0 8px 20px rgba(0, 113, 227, 0.25);
+}
+
+[data-theme="dark"] .loclist-btn-primary {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4),
+              0 4px 12px rgba(10, 132, 255, 0.2);
+}
+
+[data-theme="dark"] .loclist-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5),
+              0 8px 20px rgba(10, 132, 255, 0.35);
+}
+
+.loclist-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.loclist-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ========== STATISTICS ========== */
+.loclist-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.loclist-stat-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.loclist-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .loclist-stat-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .loclist-stat-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.loclist-stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.loclist-stat-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  letter-spacing: -0.026em;
+  margin-bottom: 2px;
+}
+
+.loclist-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+/* ========== FILTERS ========== */
+.loclist-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.loclist-search {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+}
+
+.loclist-search svg:first-child {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.loclist-search input {
+  width: 100%;
+  padding: 9px 38px 9px 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 15px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 400;
+}
+
+.loclist-search input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.loclist-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.loclist-search button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.loclist-search button:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.loclist-filters select {
+  padding: 9px 32px 9px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 15px;
+  cursor: pointer;
+  min-width: 140px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 400;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+[data-theme="dark"] .loclist-filters select {
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.loclist-filters select:hover {
+  border-color: var(--text-tertiary);
+}
+
+.loclist-filters select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.loclist-filters > button {
+  padding: 9px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loclist-filters > button:hover {
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  border-color: var(--border-color);
+}
+
+/* ========== GRID ========== */
+.loclist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.loclist-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.loclist-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .loclist-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .loclist-card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.loclist-card:active {
+  transform: translateY(-1px);
+}
+
+.loclist-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loclist-card p {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  background: var(--bg-tertiary);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  display: inline-block;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+.loclist-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  font-weight: 400;
+}
+
+.loclist-card-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.loclist-card-stats span {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.loclist-card-stats span svg {
+  color: var(--text-tertiary);
+}
+
+.loclist-card-stats .occupancy {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.loclist-card-stats .occupancy.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.loclist-card-stats .occupancy.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.loclist-card-stats .occupancy.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.loclist-card-stats .occupancy.neutral {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* ========== EMPTY STATE ========== */
+.loclist-empty {
+  text-align: center;
+  padding: var(--spacing-3xl) var(--spacing-2xl);
+  background: var(--bg-primary);
+  border-radius: 16px;
+  border: 2px dashed var(--border-color);
+  color: var(--text-tertiary);
+}
+
+.loclist-empty svg {
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.4;
+}
+
+.loclist-empty h3 {
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.loclist-empty p {
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-xl) 0;
+  font-size: 15px;
+  line-height: 1.47059;
+  font-weight: 400;
+}
+
+/* ========== ERROR STATE ========== */
+.loclist-error {
+  text-align: center;
+  padding: var(--spacing-3xl) var(--spacing-2xl);
+  background: var(--bg-primary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.loclist-error svg {
+  margin-bottom: var(--spacing-lg);
+  color: var(--danger);
+  opacity: 0.8;
+}
+
+.loclist-error h3 {
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xl) 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ========== LOADING ========== */
+.loclist-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: var(--spacing-md);
+  color: var(--text-secondary);
+}
+
+.loclist-loading p {
+  font-size: 15px;
+  font-weight: 400;
+  margin: 0;
+}
+
+.loclist-spinner {
+  border: 2.5px solid var(--bg-tertiary);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: loclist-spin 0.7s linear infinite;
+}
+
+.loclist-spinner.large {
+  width: 40px;
+  height: 40px;
+}
+
+@keyframes loclist-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+  .loclist-page {
+    padding: var(--spacing-xl);
+  }
+
+  .loclist-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .loclist-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .loclist-page {
+    padding: var(--spacing-md);
+  }
+
+  .loclist-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .loclist-btn-primary {
+    width: 100%;
+  }
+
+  .loclist-title {
+    font-size: 28px;
+  }
+
+  .loclist-subtitle {
+    font-size: 15px;
+  }
+
+  .loclist-stats {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+
+  .loclist-stat-card {
+    padding: var(--spacing-md);
+  }
+
+  .loclist-filters {
+    gap: var(--spacing-sm);
+  }
+
+  .loclist-search {
+    min-width: 100%;
+  }
+
+  .loclist-filters select {
+    width: 100%;
+  }
+
+  .loclist-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+
+  .loclist-card {
+    padding: var(--spacing-md);
+  }
+}

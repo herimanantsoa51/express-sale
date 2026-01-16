@@ -1,0 +1,138 @@
+/* ============================================
+   ImmediateSalesList.module.css
+   Styles pour la page liste des ventes
+   ============================================ */
+
+   .container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--spacing-xl) var(--spacing-lg);
+    animation: fadeIn 0.4s var(--transition-timing);
+  }
+  
+  /* === EN-TÊTE === */
+  .pageHeader {
+    margin-bottom: var(--spacing-2xl);
+  }
+  
+  .titleSection h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.03em;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+  }
+  
+  .subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-normal);
+  }
+  
+  /* === CONTRÔLES (Recherche + Filtres) === */
+  .controls {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+  }
+  
+  .searchWrapper {
+    flex: 1;
+    min-width: 280px;
+    position: relative;
+  }
+  
+  .searchIcon {
+    position: absolute;
+    left: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+  }
+  
+  .searchInput {
+    width: 100%;
+    height: 44px;
+    padding: 0 var(--spacing-md) 0 44px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .searchInput:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+  }
+  
+  .searchInput::placeholder {
+    color: var(--text-tertiary);
+  }
+  
+  /* === CONTENU === */
+  .content {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+  }
+  
+  /* === ÉTATS === */
+  .loading,
+  .error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-2xl);
+    min-height: 400px;
+  }
+  
+  .loading p,
+  .error p {
+    margin-top: var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+  }
+  
+  .error p {
+    color: var(--danger);
+  }
+  
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--bg-tertiary);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .container {
+      padding: var(--spacing-lg) var(--spacing-md);
+    }
+  
+    .controls {
+      flex-direction: column;
+    }
+  
+    .searchWrapper {
+      min-width: 100%;
+    }
+  
+    .pageHeader {
+      margin-bottom: var(--spacing-lg);
+    }
+  
+    .titleSection h1 {
+      font-size: var(--font-size-xl);
+    }
+  }
