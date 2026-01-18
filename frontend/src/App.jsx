@@ -65,7 +65,11 @@ import ExpenseCreate from './pages/Expenses/ExpenseCreate';
 import TransactionDetail from './pages/Transactions/TransactionDetail';
 import CurrencyRates from './pages/Accounts/CurrencyRates';
 import SalesStatistics from './pages/Statistics/SaleStatisctics';
-
+import UsersPage from './pages/Users/userPage';
+import CashCountDetail from './pages/CashCount/CashCountDetail';
+import CashCountForm from './pages/CashCount/CashCountForm';
+import CashCountList from './pages/CashCount/CashCountList';
+import StockReceiptPayment from './pages/StockReceipt/StockReceiptPayment';
 function App() {
   return (
     <ThemeProvider>
@@ -110,12 +114,13 @@ function App() {
                 <Route path=":id" element={<FreightForwarderDetails />} />
                 <Route path=":id/modifier" element={<FreightForwarderForm />} />
               </Route>
-
+              
               <Route path="reapprovisionnements">
                 <Route index element={<StockReceiptList/>}/>
                 <Route path='nouveau' element={<StockReceiptForm />} />
                 <Route path=':id' element={<StockReceiptDetails/>}/>
                 <Route path=':id/evaluation' element={<StockReceiptRating/>}/>
+                <Route path=':id/paiements' element={<StockReceiptPayment/>}/>
               </Route>
               <Route path="localisations-variantes">
                 <Route index element={<ProductVariantLocationsList />} />
@@ -179,6 +184,16 @@ function App() {
               <Route path="statistiques">
                 <Route index element={<SalesStatistics/>} />
               </Route>
+              <Route path="utilisateurs">
+                <Route index element={<UsersPage/>} />
+              </Route>
+              <Route path='comptages'>
+                <Route index element={<CashCountList/>} />
+                <Route path='nouveau' element={<CashCountForm />} />
+                <Route path=':id' element={<CashCountDetail/>} />
+                <Route path=':id/modifier' element={<CashCountForm />} />
+              </Route>
+
               {/* Route 404 pour les pages protégées */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>

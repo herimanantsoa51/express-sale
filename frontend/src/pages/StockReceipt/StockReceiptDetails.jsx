@@ -91,21 +91,6 @@ const VariantAttributes = ({ attributes }) => {
   );
 };
 
-const QualityBadge = ({ qualitySummary }) => {
-  if (!qualitySummary) return null;
-  
-  const rating = qualitySummary.average_quality_rating || 0;
-  let level = 'low';
-  if (rating >= 8) level = 'high';
-  else if (rating >= 6) level = 'medium';
-  
-  return (
-    <div className={`srd-quality-pill ${level}`}>
-      <Star size={12} fill="currentColor" />
-      <span>{rating}/10</span>
-    </div>
-  );
-};
 
 const StockReceiptDetails = () => {
   const { id } = useParams();
@@ -141,7 +126,7 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
       if (!receiptRes.data) {
         throw new Error('Aucune donnée reçue pour la réception');
       }
-      
+      console.log("RECEIPT:",receiptRes.data);
       setReceipt(receiptRes.data);
       setStatistics(statsRes?.data || null);
       setLocations(locationsRes?.data || locationsRes || []);
@@ -177,6 +162,18 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
           navigate(`/reapprovisionnements/${id}/evaluation`);
           setActionLoading(false);
           return;
+        case 'allocate_costs': // ← NOUVEAU
+          navigate(`/reapprovisionnements/${id}/cout-repartition`);
+          setActionLoading(false);
+          return;
+        case 'finalize': // ← NOUVEAU
+          if (window.confirm('Voulez-vous valider définitivement cette réception ?')) {
+            await stockReceiptService.finalizeReceipt(id); // API à créer
+          } else {
+            setActionLoading(false);
+            return;
+          }
+          break;
         case 'cancel':
           if (window.confirm('Êtes-vous sûr de vouloir annuler cette réception ? Cette action est irréversible.')) {
             await stockReceiptService.cancel(id);
@@ -248,7 +245,17 @@ const handleViewRatings = (item, event) => {
         break;
       case 'arrived':
         actions.push(
-          { key: 'validate', label: 'Évaluer et valider', icon: BadgeCheck, variant: 'success' }
+          { key: 'validate', label: 'Évaluer', icon: BadgeCheck, variant: 'success' } // ← CHANGÉ
+        );
+        break;
+      case 'rated': // ← NOUVEAU STATUT
+        actions.push(
+          { key: 'allocate_costs', label: 'Répartir les coûts', icon: DollarSign, variant: 'primary' }
+        );
+        break;
+      case 'cost_allocated': // ← NOUVEAU STATUT
+        actions.push(
+          { key: 'finalize', label: 'Valider définitivement', icon: CheckSquare, variant: 'success' }
         );
         break;
       default:
@@ -371,9 +378,20 @@ const handleViewRatings = (item, event) => {
                     </button>
                   );
                 })}
+                
+                {/* NOUVEAU BOUTON ICI */}
+                {(receipt.status === 'arrived' || receipt.status=='rated') && (
+                  <button
+                    className="srd-action-btn primary"
+                    onClick={() => navigate(`/reapprovisionnements/${id}/paiements`)}
+                  >
+                    <DollarSign size={18} />
+                    Paiement
+                  </button>
+                )}
               </div>
             )}
-          </div>
+                      </div>
           
           <div className="srd-hero-meta">
             <div className="srd-meta-item">

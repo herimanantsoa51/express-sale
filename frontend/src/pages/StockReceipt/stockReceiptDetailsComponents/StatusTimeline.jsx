@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 const StatusTimeline = ({ currentStatus, expectedDate, actualDate, isDelayed }) => {
-  const statuses = ['pending', 'sent', 'in_transit', 'arrived', 'validated'];
+  const statuses = ['pending', 'sent', 'in_transit', 'arrived', 'rated', 'cost_allocated', 'validated'];
   const currentIndex = statuses.indexOf(currentStatus);
   const isCancelled = currentStatus === 'cancelled';
 
@@ -24,7 +24,10 @@ const StatusTimeline = ({ currentStatus, expectedDate, actualDate, isDelayed }) 
     sent: 'Envoyée',
     in_transit: 'En transit',
     arrived: 'Arrivée',
-    validated: 'Validée'
+    rated:'Évaluée',
+    cost_allocated:'Coût répartit et alloué',
+    validated: 'Validée',
+    
   };
 
   return (

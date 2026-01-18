@@ -1,4 +1,4 @@
-/* StockReceiptRating.css - Version évaluation globale */
+/* StockReceiptRating.css - Version complète avec transfert de variants */
 
 .rating-page {
   min-height: 100vh;
@@ -58,6 +58,78 @@
 .rating-header-right {
   display: flex;
   gap: 0.75rem;
+}
+
+/* ============================================
+   INDICATEUR DE PROGRESSION
+   ============================================ */
+.progress-section {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1.5rem;
+}
+
+.progress-indicator {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.progress-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.progress-count {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
+  transition: width 0.5s ease;
+  border-radius: 6px;
+}
+
+.progress-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--warning-light);
+  border-left: 4px solid var(--warning);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #856404;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.progress-hint svg {
+  flex-shrink: 0;
 }
 
 /* ============================================
@@ -131,6 +203,10 @@
   opacity: 0.95;
 }
 
+.item-rating-card.complete {
+  border-color: var(--success);
+}
+
 /* ============================================
    HEADER DE L'ITEM
    ============================================ */
@@ -160,6 +236,19 @@
   min-width: 0;
 }
 
+.item-number-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+
 .item-name-rating {
   margin: 0 0 0.5rem 0;
   font-size: 1.125rem;
@@ -187,6 +276,13 @@
   font-size: 0.875rem;
 }
 
+.item-badges-rating {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
 .saved-badge {
   display: inline-flex;
   align-items: center;
@@ -194,6 +290,19 @@
   padding: 0.375rem 0.75rem;
   background: var(--success);
   color: white;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.complete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--success-light);
+  color: var(--success);
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
@@ -236,10 +345,63 @@
 }
 
 /* ============================================
+   SECTION DE TRANSFERT
+   ============================================ */
+.transfer-section-rating {
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.btn-transfer-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.btn-transfer-rating:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-transfer-rating:active {
+  transform: translateY(0);
+}
+
+.transfer-hint {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ============================================
    RATING SLIDER
    ============================================ */
 .rating-slider-field {
   margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.rating-slider-field.untouched {
+  border-color: rgba(255, 159, 10, 0.3);
+  background: rgba(255, 159, 10, 0.05);
 }
 
 .rating-slider-header {
@@ -260,6 +422,19 @@
 
 .rating-slider-label svg {
   color: var(--text-secondary);
+}
+
+.required-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 159, 10, 0.15);
+  color: #ff9f0a;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .rating-slider-description {
@@ -819,8 +994,8 @@
     flex-direction: column;
   }
   
-  .saved-badge {
-    align-self: flex-start;
+  .item-badges-rating {
+    align-items: flex-start;
   }
   
   .action-buttons-rating {
@@ -868,89 +1043,178 @@
     font-size: 0.875rem;
   }
 }
-/* ============================================
-   INDICATEUR DE PROGRESSION
-   ============================================ */
-   .progress-section {
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
-    padding: 1.5rem;
-  }
-  
-  .progress-indicator {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .progress-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-  }
-  
-  .progress-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-  
-  .progress-count {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--primary);
-  }
-  
-  .progress-bar-container {
-    width: 100%;
-    height: 12px;
-    background: var(--bg-tertiary);
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-  
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
-    transition: width 0.5s ease;
-    border-radius: 6px;
-  }
-  
-  .progress-hint {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem 1rem;
-    background: var(--warning-light);
-    border-left: 4px solid var(--warning);
-    border-radius: 6px;
-    font-size: 0.875rem;
-    color: #856404;
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  
-  .progress-hint svg {
-    flex-shrink: 0;
-  }
-  
-  /* ============================================
-     NOTICE DE VERROUILLAGE
-     ============================================ */
-  .locked-notice-rating {
-    background: #d1ecf1;
-    border: 1px solid #bee5eb;
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    margin: 1.5rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    color: #0c5460;
-  }
+/* Badge pour variant non commandé */
+.item-unordered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #ffeaa7;
+}
+
+.item-unordered-badge svg {
+  flex-shrink: 0;
+}
+
+/* Notice pour variant non commandé */
+.unordered-variant-notice {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #856404;
+}
+
+.unordered-variant-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.unordered-variant-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.unordered-variant-notice p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+/* Badge pour variant non commandé */
+.item-unordered-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #ffeaa7;
+}
+
+.item-unordered-badge svg {
+  flex-shrink: 0;
+}
+
+/* Notice pour variant non commandé */
+.unordered-variant-notice {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  color: #856404;
+}
+
+.unordered-variant-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.unordered-variant-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.unordered-variant-notice p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Section des ratings automatiques */
+.attribute-ratings-section.auto-calculated {
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+}
+
+.auto-ratings-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auto-rating-item {
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.auto-rating-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.auto-rating-header .attribute-name {
+  font-weight: 600;
+  color: #495057;
+}
+
+.auto-rating-header .attribute-expected {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.auto-rating-value {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auto-rating-label {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.auto-rating-score {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+.auto-rating-score.excellent {
+  background: #d4edda;
+  color: #155724;
+}
+
+.auto-rating-score.good {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.auto-rating-score.average {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.auto-rating-score.poor {
+  background: #f8d7da;
+  color: #721c24;
+}

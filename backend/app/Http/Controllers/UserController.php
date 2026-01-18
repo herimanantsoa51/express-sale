@@ -17,7 +17,7 @@ class UserController extends Controller
     }
 
     /**
-     * Liste des utilisateurs
+     * Liste des utilisateurs GET /users/all
      */
     public function indexUsers()
     {
@@ -29,7 +29,7 @@ class UserController extends Controller
     }
 
     /**
-     * Créer un utilisateur
+     * Créer un utilisateur POST /users
      */
     public function store(Request $request)
     {
@@ -37,7 +37,7 @@ class UserController extends Controller
             'name' => 'required|string',
             'username' => 'required|string|unique:users,username',
             'password' => 'required|string|min:4',
-            'role' => 'required|in:admin,user,vendeur',
+            'role' => 'required|in:admin,vendeur',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -56,33 +56,41 @@ class UserController extends Controller
     }
 
     /**
-     * Modifier nom / rôle / activation
+     * Modifier nom / rôle / activation PUT /users/{id}
      */
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        try {
+            $user = User::findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string',
-            'role' => 'sometimes|in:admin,user,vendeur',
-            'is_active' => 'sometimes|boolean',
-            'password' => 'sometimes|string|min:4',
-        ]);
+            $validated = $request->validate([
+                'name' => 'sometimes|string',
+                'role' => 'sometimes|in:admin,vendeur',
+                'is_active' => 'sometimes|boolean',
+                'password' => 'sometimes|string|min:4',
+            ]);
 
-        if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+            if (isset($validated['password'])) {
+                $validated['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($validated);
+
+            return response()->json([
+                'message' => 'Utilisateur mis à jour',
+                'user' => $user,
+            ]);
+        } catch (\Throwable $th) {
+            //throw $th;
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour de l\'utilisateur',
+                'error' => $th->getMessage(),
+            ], 500);
         }
-
-        $user->update($validated);
-
-        return response()->json([
-            'message' => 'Utilisateur mis à jour',
-            'user' => $user,
-        ]);
     }
 
     /**
-     * Activer / désactiver rapidement
+     * Activer / désactiver rapidement POST /users/{id}/toggle
      */
     public function toggleStatus($id)
     {

@@ -238,15 +238,10 @@
   min-width: 300px;
 }
 
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.account-selector-dropdown {
+  position: fixed;
+  z-index: 9999;
+  will-change: top, left;
 }
 
 .account-selector-dropdown-header {

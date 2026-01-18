@@ -13,6 +13,7 @@ class FreightForwarder extends Model
         'contact',
         'service_score',
         'notes',
+        'type',
         'is_active'
     ];
 
@@ -51,7 +52,7 @@ class FreightForwarder extends Model
 
     // =====================
     // SCOPES MÉTIER
-    // =====================
+    // =====================s
 
     public function scopeActive($query)
     {

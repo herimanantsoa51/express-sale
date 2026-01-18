@@ -21,7 +21,8 @@ import {
   ArrowUpDown,
   Warehouse,
   Handbag,
-  MoveDown
+  MoveDown,
+  Euro
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -119,9 +120,15 @@ const Sidebar = () => {
       roles: ['admin'],
     },
     {
+      icon: Euro,
+      label: 'Comptages',
+      path: '/comptages',
+      roles: ['admin','vendeur'],
+    },
+    {
       icon: Settings,
       label: 'Configuration',
-      path: '/config',
+      path: '/utilisateurs',
       roles: ['admin'],
     },
   ];

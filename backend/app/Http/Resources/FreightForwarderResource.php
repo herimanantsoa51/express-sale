@@ -15,6 +15,7 @@ class FreightForwarderResource extends JsonResource
             'logo_url' => $this->logo_url,
             'contact' => $this->contact,
             'notes' => $this->notes,
+            'type' => $this->type,
             'is_active' => $this->is_active,
             'service_score' => $this->service_score,
             // relation

@@ -260,5 +260,29 @@ class ProductVariant extends Model
         ];
     }
 
+    /**
+     * Retourne les attributs du variant sous forme clé => valeur
+     * Exemple: ["couleur" => "rouge", "pointure" => 39]
+     */
+    /**
+     * Retourne les attributs du variant sous forme clé => valeur
+     */
+    public function attributeTypeValueMap(): array
+    {
+        return $this->variantAttributeValues()
+            ->with('attributeValue.attributeType')
+            ->get()
+            ->filter(fn ($vav) => $vav->attributeValue && $vav->attributeValue->attributeType)
+            ->mapWithKeys(function ($vav) {
+                return [
+                    $vav->attributeValue->attributeType->display_name =>
+                    $vav->attributeValue->value
+                ];
+            })
+            ->toArray();
+    }
+
+
+
     
 }

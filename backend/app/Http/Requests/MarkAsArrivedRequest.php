@@ -18,8 +18,8 @@ class MarkAsArrivedRequest extends FormRequest
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|integer|exists:stock_receipt_items,id',
             'items.*.quantity_received' => 'required|integer|min:0',
-            'items.*.location_id' => 'required|exists:locations,id',
-            'items.*.notes' => 'nullable|string|max:500'
+            // 'items.*.location_id' => 'required|exists:locations,id',
+            // 'items.*.notes' => 'nullable|string|max:500'
         ];
     }
 
@@ -31,8 +31,8 @@ class MarkAsArrivedRequest extends FormRequest
             'items.*.item_id.required' => 'L\'ID de l\'item est requis',
             'items.*.quantity_received.required' => 'La quantité reçue est requise',
             'items.*.quantity_received.min' => 'La quantité ne peut pas être négative',
-            'items.*.location_id.required' => 'L\'emplacement est requis',
-            'items.*.location_id.exists' => 'L\'emplacement sélectionné n\'existe pas'
+            // 'items.*.location_id.required' => 'L\'emplacement est requis',
+            // 'items.*.location_id.exists' => 'L\'emplacement sélectionné n\'existe pas'
         ];
     }
 }

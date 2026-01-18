@@ -1,3 +1,4 @@
+import { data } from 'react-router-dom';
 import api from './api';
 
 const stockReceiptService = {
@@ -179,6 +180,11 @@ const stockReceiptService = {
     return response.data;
   },
 
+  markAsRated: async (id, data = {}) => {
+    const response = await api.post(`/stock-receipts/${id}/mark-rated`, data);
+    return response.data;
+  },
+
   /**
    * Marquer comme arrivé et assigner les emplacements
    * POST /api/stock-receipts/{id}/mark-arrived
@@ -264,7 +270,7 @@ const stockReceiptService = {
    * @param {Object} data
    * @param {number} data.account_id - ID du compte (requis)
    * @param {number} data.amount - Montant (requis, min 0)
-   * @param {string} data.payment_type - Type: 'supplier' | 'freight' (requis)
+   * @param {string} data.payment_type - Type: 'supplier' | 'freight' (requis)|other
    * @param {string|null} [data.notes] - Notes
    * @param {string|null} [data.reference_number] - Numéro de référence (max 255)
    * 
@@ -274,6 +280,7 @@ const stockReceiptService = {
    * @returns {Object} return.data - Transaction créée
    */
   recordPayment: async (id, data) => {
+    console.log('Recording payment for stock receipt', id, 'with data:', data);
     const response = await api.post(`/stock-receipts/${id}/payment`, data);
     return response.data;
   },
@@ -310,7 +317,26 @@ const stockReceiptService = {
   getStatistics: async (id) => {
     const response = await api.get(`/stock-receipts/${id}/statistics`);
     return response.data;
+  },
+  getCostRecommendations:async (id,method)=>{
+    const response = await api.get(`/stock-receipts/${id}/cost-recommendations`,{method});
+    return response.data;
+  },
+  applyCosts: async (id,dataCosts)=>{
+    const response = await api.post(`/stock-receipts/${id}/apply-costs`,dataCosts);
+    return response.data;
+  },
+  validateCosts:async(id)=>{
+    const response = await api.post(`/stock-receipts/${id}/validate-costs`);
+    return response.data;
+  },
+  moveReceivedVariant:async(id,data)=>{
+    const response = await api.post(`/stock-receipts/${id}/move-received-variant`,data);
+    return response.data;
   }
+
+
+
 };
 
 export default stockReceiptService;

@@ -37,23 +37,23 @@ const AccountSelector = ({
   const hasReservedAmount = reservedAmount > 0;
 
   // Calculer la position du dropdown
+  // Calculer la position du dropdown
   const updateDropdownPosition = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const dropdownHeight = 400;
       
-      // Si pas assez d'espace en bas, ouvrir vers le haut
-      const shouldOpenUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+      // Toujours ouvrir vers le bas par défaut, sauf si vraiment pas d'espace
+      const shouldOpenUp = spaceBelow < 200 && rect.top > dropdownHeight;
       
       setDropdownPosition({
-        top: shouldOpenUp ? rect.top - dropdownHeight - 8 : rect.bottom + 8,
+        top: shouldOpenUp ? rect.top - dropdownHeight - 8 : rect.bottom + 4,
         left: rect.left,
         width: rect.width
       });
     }
   };
-
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event) => {

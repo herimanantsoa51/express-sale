@@ -706,4 +706,37 @@ public function index(Request $request)
             ]
         ]);
     }
+
+    public function updateBasePrices(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'products' => 'required|array',
+            'products.*.id' => 'required|exists:products,id',
+            'products.*.base_price' => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->products as $prodData) {
+                $product = Product::findOrFail($prodData['id']);
+                $product->base_price = $prodData['base_price'];
+                $product->save();
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Prix de base mis à jour avec succès']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('🔥 Erreur mise à jour prix de base produit', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['message' => 'Erreur lors de la mise à jour des prix', 'error' => $e->getMessage()], 500);
+        }
+    }
 }

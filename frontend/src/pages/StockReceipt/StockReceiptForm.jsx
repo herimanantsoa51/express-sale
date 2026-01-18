@@ -70,7 +70,6 @@ const StockReceiptForm = () => {
   const [notes, setNotes] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [paySupplierNow, setPaySupplierNow] = useState(true);
-  const [payFreightNow, setPayFreightNow] = useState(true);
   const [supplierPayment, setSupplierPayment] = useState({
     accountId: '',
     transaction_date: '',
@@ -83,11 +82,82 @@ const StockReceiptForm = () => {
     referenceNumber: '',
     notes: ''
   });
-  
+  const STORAGE_KEY = 'stockReceiptFormDraft';
+
+// Fonction pour sauvegarder l'état
+const saveFormState = (state) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...state,
+      timestamp: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde:', error);
+  }
+};
+
+// Fonction pour charger l'état
+const loadFormState = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const data = JSON.parse(saved);
+      // Vérifier si les données ont moins de 24h
+      const timestamp = new Date(data.timestamp);
+      const now = new Date();
+      const hoursDiff = (now - timestamp) / (1000 * 60 * 60);
+      
+      if (hoursDiff < 24) {
+        return data;
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement:', error);
+  }
+  return null;
+};
   useEffect(() => {
     loadInitialData();
+    
+    // Charger les données sauvegardées
+    const savedState = loadFormState();
+    if (savedState) {
+      setCurrentStep(savedState.currentStep || 1);
+      setSelectedCurrency(savedState.selectedCurrency || 'EUR');
+      setItems(savedState.items || []);
+      setSelectedSupplier(savedState.selectedSupplier || null);
+      setSelectedFreightForwarder(savedState.selectedFreightForwarder || null);
+      setFreightCost(savedState.freightCost || '');
+      setExpectedDeliveryDate(savedState.expectedDeliveryDate || '');
+      setNotes(savedState.notes || '');
+      setSupplierPayment(savedState.supplierPayment || {
+        accountId: '',
+        transaction_date: '',
+        referenceNumber: '',
+        notes: ''
+      });
+    }
   }, []);
-  
+  // Sauvegarder automatiquement les changements
+useEffect(() => {
+  if (!initialLoading && !success) {
+    const stateToSave = {
+      currentStep,
+      selectedCurrency,
+      items,
+      selectedSupplier,
+      selectedFreightForwarder,
+      freightCost,
+      expectedDeliveryDate,
+      notes,
+      supplierPayment
+    };
+    saveFormState(stateToSave);
+  }
+}, [currentStep, selectedCurrency, items, selectedSupplier, selectedFreightForwarder, 
+    freightCost, expectedDeliveryDate, notes, supplierPayment, initialLoading, success]);
   const loadInitialData = async () => {
     try {
       setInitialLoading(true);
@@ -314,29 +384,30 @@ const StockReceiptForm = () => {
         }
         return true;
         
-      case 3:
-        if (!supplierPayment.accountId) {
-          setError('Veuillez sélectionner un compte pour le paiement fournisseur');
-          return false;
-        }
-        
-        if (selectedFreightForwarder) {
-          if (!freightCost || parseFloat(freightCost) <= 0) {
-            setError('Veuillez entrer un coût de transport valide');
+        case 3:
+          if (!supplierPayment.accountId) {
+            setError('Veuillez sélectionner un compte pour le paiement fournisseur');
             return false;
           }
-          if (!freightPayment.accountId) {
-            setError('Veuillez sélectionner un compte pour le paiement transport');
-            return false;
-          }
-        }
-        return true;
+          return true;
         
       default:
         return true;
     }
   };
+  // Ajouter cette fonction avant le return, avec les autres fonctions helper
+
+const hasInsufficientFunds = () => {
+  if (!supplierPayment.accountId) return false;
   
+  const selectedAccount = accounts.find(acc => acc.id === parseInt(supplierPayment.accountId));
+  if (!selectedAccount) return false;
+  
+  const supplierTotal = calculateTotalInAriary();
+  const balanceAfter = selectedAccount.current_balance - supplierTotal;
+  
+  return balanceAfter < 0;
+};
   const goToNextStep = () => {
     if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
@@ -397,27 +468,12 @@ const StockReceiptForm = () => {
         await stockPaymentService.paySupplier(supplierPaymentData);
       }
       
-      if (payFreightNow && selectedFreightForwarder) {
-        const freightCostAriary = calculateFreightCostAriary();
-        
-        const freightPaymentData = {
-          stock_receipt_id: receiptId,
-          account_id: parseInt(freightPayment.accountId),
-          amount: freightCostAriary,
-          reference_number: freightPayment.referenceNumber || null,
-          notes: freightPayment.notes || null
-        };
-        
-        if (freightPayment.transaction_date) {
-          freightPaymentData.transaction_date = freightPayment.transaction_date;
-        }
-        
-        await stockPaymentService.payFreight(freightPaymentData);
-      }
+      // Effacer les données sauvegardées après succès
+      localStorage.removeItem(STORAGE_KEY);
       
       setSuccess(true);
       setTimeout(() => {
-        navigate('/stock-receipts');
+        navigate(`reapprovisionnements/${receiptId}`);
       }, 2000);
       
     } catch (err) {
@@ -713,19 +769,11 @@ const StockReceiptForm = () => {
             </div>
             
             <PaymentSection
-              accounts={accounts}
-              paySupplierNow={paySupplierNow}
-              setPaySupplierNow={setPaySupplierNow}
-              supplierPayment={supplierPayment}
-              setSupplierPayment={setSupplierPayment}
-              payFreightNow={payFreightNow}
-              setPayFreightNow={setPayFreightNow}
-              freightPayment={freightPayment}
-              setFreightPayment={setFreightPayment}
-              supplierTotal={calculateTotalInAriary()}
-              freightCost={calculateFreightCostAriary()}
-              hasFreightForwarder={!!selectedFreightForwarder && !!freightCost}
-            />
+            accounts={accounts}
+            supplierPayment={supplierPayment}
+            setSupplierPayment={setSupplierPayment}
+            supplierTotal={calculateTotalInAriary()}
+          />
           </div>
         )}
       </div>
@@ -758,23 +806,28 @@ const StockReceiptForm = () => {
             </button>
           ) : (
             <button
-              type="button"
-              className="srf-btn-primary srf-btn-submit"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="srf-spinning" />
-                  Création en cours...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Créer le Réapprovisionnement
-                </>
-              )}
-            </button>
+            type="button"
+            className="srf-btn-primary srf-btn-submit"
+            onClick={handleSubmit}
+            disabled={loading || hasInsufficientFunds()}
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="srf-spinning" />
+                Création en cours...
+              </>
+            ) : hasInsufficientFunds() ? (
+              <>
+                <AlertCircle size={16} />
+                Fonds insuffisants
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Créer le Réapprovisionnement
+              </>
+            )}
+          </button>
           )}
         </div>
       </div>

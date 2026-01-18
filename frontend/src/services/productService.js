@@ -175,6 +175,10 @@ const productService = {
   async getCategoriesForSale() {
     const response = await api.get('/categories/for-sale');
     return response.data;
+  },
+  async updateBasePrices(data){
+    const response = await api.post('/products/update-base-prices', data);
+    return response.data;
   }
 };
 

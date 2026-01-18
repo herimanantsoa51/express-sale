@@ -179,42 +179,6 @@ const FreightForwarderSelector = ({
           })
         )}
       </div>
-
-      {selectedFreightForwarderId && (
-        <div className="freight-cost-section">
-          <div className="freight-cost-header">
-            <h4>Coût du transport</h4>
-            <p>Entrez le montant en {currency}. Il sera automatiquement converti en Ariary.</p>
-          </div>
-          
-          <div className="freight-cost-input-group">
-            <div className="freight-cost-input-wrapper">
-              <input
-                type="number"
-                className="freight-cost-input"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={freightCost}
-                onChange={(e) => onFreightCostChange(e.target.value)}
-              />
-              <span className="freight-cost-currency">{currencySymbol}</span>
-            </div>
-            
-            {freightCost && parseFloat(freightCost) > 0 && (
-              <div className="freight-cost-conversion">
-                <ArrowRight size={16} />
-                <span className="conversion-result">
-                  {new Intl.NumberFormat('fr-FR').format(freightCostAriary)} Ar
-                </span>
-                <span className="conversion-rate">
-                  (1 {currencySymbol} = {new Intl.NumberFormat('fr-FR').format(currencyRate)} Ar)
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

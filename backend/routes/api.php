@@ -28,6 +28,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SalesStatisticsController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\CashCountController;
 
 Route::get('/ping', fn () => response()->json(['status' => 'ok']));
 // toutes les routes d'auth sous le préfixe "auth""
@@ -73,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('products/{productId}/variants/{id}', [ProductVariantController::class, 'update']);
     Route::delete('products/{productId}/variants/{id}', [ProductVariantController::class, 'destroy']);
     Route::get('products/{productId}/variants/{id}', [ProductVariantController::class, 'show']);
-
+    Route::get('products/update-base-prices', [ProductVariantController::class, 'updateBasePrices']);
     // routes/api.php
     Route::get('products/{product}/attribute-types', [ProductController::class, 'getProductAttributeTypes']);
 
@@ -190,12 +191,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{stockReceipt}/mark-shipped', [StockReceiptController::class, 'markAsShipped']);
         Route::post('/{stockReceipt}/mark-in-transit', [StockReceiptController::class, 'markAsInTransit']);
         Route::post('/{stockReceipt}/mark-arrived', [StockReceiptController::class, 'markAsArrived']);
+        Route::post('/{stockReceipt}/mark-rated', [StockReceiptController::class, 'markAsRated']);
         
         // Validation finale et mise à jour des scores
         Route::post('/{stockReceipt}/validate', [StockReceiptController::class, 'validate']);
         Route::post('/{stockReceipt}/cancel', [StockReceiptController::class, 'cancel']);
         
+        // Recommandations de COÛTS (pour le frontend)
+        Route::get('{stockReceipt}/cost-recommendations', [StockReceiptController::class, 'getCostRecommendations']);
+
+        // Appliquer les coûts validés par l'utilisateur
+        Route::post('{stockReceipt}/apply-costs', [StockReceiptController::class, 'applyCosts']);
+
+        // Valider définitivement
+        Route::post('{stockReceipt}/validate-costs', [StockReceiptController::class, 'validateBatchCosts']);
+
+        // Ajouter une dépense
+        Route::post('{stockReceipt}/expenses', [StockReceiptController::class, 'addExpense']);
+
+        // Lister les dépenses
+        Route::get('{stockReceipt}/expenses', [StockReceiptController::class, 'getExpenses']);
         // Paiements et évaluations
+        Route::post('/{stockReceipt}/move-received-variant', [StockReceiptController::class, 'moveReceivedQuantity']);
         Route::post('/{stockReceipt}/payment', [StockReceiptController::class, 'recordPayment']);
         Route::post('/{stockReceipt}/items/{itemId}/rate', [StockReceiptController::class, 'rateItem']);
         
@@ -320,5 +337,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{sale}/download', [InvoiceController::class, 'download']);
         Route::get('/{sale}/show', [InvoiceController::class, 'show']);
     });
+    Route::apiResource('cash-counts', CashCountController::class)->only(['index','store','show','update']);   
 });
-// route de test

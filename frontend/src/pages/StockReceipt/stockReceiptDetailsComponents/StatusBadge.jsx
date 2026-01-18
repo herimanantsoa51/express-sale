@@ -5,7 +5,9 @@ import {
   Navigation,
   PackageCheck,
   BadgeCheck,
-  Ban
+  Ban,
+  ArrowUp,
+  Euro
 } from 'lucide-react';
 
 const StatusBadge = ({ status }) => {
@@ -29,6 +31,16 @@ const StatusBadge = ({ status }) => {
       label: 'Arrivé', 
       icon: PackageCheck, 
       className: 'srd-status-arrived'
+    },
+    rated:{
+      label: 'Évalué',
+      icon: ArrowUp,
+      className: 'srd-status-arrived'
+    },
+    cost_allocated:{
+      label: 'Coûts alloués',
+      icon: Euro,
+      className: 'srd-status-cost-arrived'
     },
     validated: { 
       label: 'Validé', 

@@ -16,6 +16,14 @@ use App\Models\TransactionType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\GetCostRecommendationsRequest;
+use App\Http\Requests\ApplyCostAllocationRequest;   
+use App\Http\Resources\CostRecommendationsSummaryResource;
+use  App\Http\Requests\AddExpenseRequest;
+use App\Http\Resources\ReceiptExpenseResource;
+use App\Models\StockReceiptItem;
+
 
 class StockReceiptController extends Controller
 {
@@ -275,12 +283,12 @@ class StockReceiptController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception marquée comme arrivée. Les stocks ont été mis à jour dans les emplacements.',
-                'data' => new StockReceiptResource($stockReceipt->load([
-                    'supplier',
-                    'freightForwarder',
-                    'items.variant.product',
-                    'items.variant.locations.location'
-                ]))
+                // 'data' => new StockReceiptResource($stockReceipt->load([
+                //     'supplier',
+                //     'freightForwarder',
+                //     'items.variant.product',
+                //     'items.variant.locations.location'
+                // ]))
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -339,6 +347,27 @@ class StockReceiptController extends Controller
     }
 
     /**
+     * Marquer la réception comme évaluée
+     * POST /api/stock-receipts/{id}/mark-rated
+     */
+    public function markAsRated(StockReceipt $stockReceipt){
+        try {
+            $stockReceipt->update(['status'=>'rated']); 
+            $stockReceipt->createBatches();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Réception marquée comme évaluée avec succès',  
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors du marquage en rated',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
      * Évaluer la qualité d'un item
      * POST /api/stock-receipts/{id}/items/{itemId}/rate
      */
@@ -372,61 +401,116 @@ class StockReceiptController extends Controller
             ], 500);
         }
     }
+    /*
+    * Enregistrer un paiement pour cette réception
+    * POST /api/stock-receipts/{id}/payment
+    */
+   public function recordPayment(Request $request, StockReceipt $stockReceipt): JsonResponse
+   {
+       $request->validate([
+           'account_id' => 'required|exists:accounts,id',
+           'amount' => 'required|numeric|min:0',
+           'payment_type' => 'required|in:supplier,freight,other',
+           'expense_category_id' => 'required_if:payment_type,other|exists:expense_categories,id',
+           'recipient_name' => 'nullable|string|max:255',
+           'notes' => 'nullable|string',
+           'reference_number' => 'nullable|string|max:255',
+           'transaction_date' => 'nullable|date'
+       ]);
 
-    /**
-     * Enregistrer un paiement pour cette réception
-     * POST /api/stock-receipts/{id}/payment
-     */
-    public function recordPayment(Request $request, StockReceipt $stockReceipt): JsonResponse
-    {
-        $request->validate([
-            'account_id' => 'required|exists:accounts,id',
-            'amount' => 'required|numeric|min:0',
-            'payment_type' => 'required|in:supplier,freight',
-            'notes' => 'nullable|string',
-            'reference_number' => 'nullable|string|max:255'
-        ]);
-
-        try {
-            $transaction = DB::transaction(function () use ($request, $stockReceipt) {
-                $data = [
-                    'account_id' => $request->account_id,
-                    'transaction_type_id' => TransactionType::where('code', 'EXPENSE')->first()->id,
-                    'amount' => $request->amount,
-                    'description' => $request->payment_type === 'supplier' 
-                        ? "Paiement fournisseur - {$stockReceipt->receipt_number}"
-                        : "Paiement transitaire - {$stockReceipt->receipt_number}",
-                    'notes' => $request->notes,
-                    'reference_number' => $request->reference_number,
-                    'stock_receipt_id' => $stockReceipt->id,
-
-                ];
-
-                if ($request->payment_type === 'supplier') {
-                    $data['supplier_id'] = $stockReceipt->supplier_id;
-                    $data['expense_category_id'] = ExpenseCategory::where('name', 'Approvisionnement')->first()->id;
+       try {
+           $transaction = DB::transaction(function () use ($request, $stockReceipt) {
+               
+               // Déterminer le type de transaction et la catégorie
+               if ($request->payment_type === 'supplier') {
+                   $data = [
+                       'account_id' => $request->account_id,
+                       'recipient_name' => $stockReceipt->supplier->name,
+                       'transaction_type_id' => TransactionType::where('code', 'EXPENSE')->first()->id,
+                       'amount' => $request->amount,
+                       'description' => "Paiement fournisseur - {$stockReceipt->receipt_number}",
+                       'supplier_id' => $stockReceipt->supplier_id,
+                       'expense_category_id' => ExpenseCategory::where('name', 'Approvisionnement')->first()->id,
+                       'stock_receipt_id' => $stockReceipt->id,
+                       'notes' => $request->notes,
+                       'reference_number' => $request->reference_number,
+                       'transaction_date' => $request->transaction_date ?? now(),
+                   ];
                    
+                   return AccountTransaction::createTransaction($data);
+                   
+               } else if ($request->payment_type === 'freight') {
+                // Vérifier qu'il y a un transitaire
+                    if (!$stockReceipt->freight_forwarder_id) {
+                        throw new \Exception('Aucun transitaire associé à cette réception');
+                    }
+                    
+                    // Vérifier qu'on n'a pas déjà payé le transitaire
+                    $existingPayment = AccountTransaction::where('stock_receipt_id', $stockReceipt->id)
+                        ->where('freight_forwarder_id', $stockReceipt->freight_forwarder_id)
+                        ->whereNull('reversed_transaction_id')
+                        ->exists();
+                        
+                    if ($existingPayment) {
+                        throw new \Exception('Le transitaire a déjà été payé pour cette réception');
+                    }
+                    $freightForwarder = $stockReceipt->freightForwarder;
+
+                    if (!$freightForwarder) {
+                        throw new \Exception('Transitaire introuvable ou non chargé');
+                    }
+
+                    $transaction = AccountTransaction::recordOperatingExpense(
+                        accountId: $request->account_id,
+                        expenseCategoryId: ExpenseCategory::where('name', 'Transport & Transit')->firstOrFail()->id,
+                        amount: $request->amount,
+                        recipientName: $freightForwarder->name,
+                        notes: $request->notes,
+                        transactionDate: $request->transaction_date
+                    );
+                                        
+                    // Ajouter les relations manquantes
+                    $transaction->update([
+                        'freight_forwarder_id' => $stockReceipt->freight_forwarder_id,
+                        'stock_receipt_id' => $stockReceipt->id,
+                    ]);
+                    
+                    return $transaction;
+                    
                 } else {
-                    $data['freight_forwarder_id'] = $stockReceipt->freight_forwarder_id;
-                    $data['expense_category_id'] =  ExpenseCategory::where('name', 'Transport & Transit')->first()->id;
+                    // Autre dépense
+                    $transaction = AccountTransaction::recordOperatingExpense(
+                        accountId: $request->account_id,
+                        expenseCategoryId: $request->expense_category_id,
+                        amount: $request->amount,
+                        recipientName: $request->recipient_name,
+                        notes: $request->notes,
+                        transactionDate: $request->transaction_date
+                    );
+                    
+                    // Ajouter la relation stock_receipt
+                    $transaction->update([
+                        'stock_receipt_id' => $stockReceipt->id,
+                    ]);
+                    
+                    return $transaction;
                 }
+           });
 
-                return AccountTransaction::createTransaction($data);
-            });
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Paiement enregistré avec succès',
-                'data' => $transaction
-            ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Erreur lors de l\'enregistrement du paiement',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+           return response()->json([
+               'status' => 'success',
+               'message' => 'Paiement enregistré avec succès',
+               'data' => $transaction
+           ], 201);
+           
+       } catch (\Exception $e) {
+           return response()->json([
+               'status' => 'error',
+               'message' => 'Erreur lors de l\'enregistrement du paiement',
+               'error' => $e->getMessage()
+           ], 500);
+       }
+   }
 
     /**
      * Obtenir les statistiques globales des réceptions
@@ -443,6 +527,8 @@ class StockReceiptController extends Controller
                 'arrived' => StockReceipt::where('status', 'arrived')->count(),
                 'validated' => StockReceipt::where('status', 'validated')->count(),
                 'cancelled' => StockReceipt::where('status', 'cancelled')->count(),
+                'rated' => StockReceipt::where('status', 'rated')->count(),
+                'costs_allocated' => StockReceipt::where('status', 'costs_allocated')->count(),
             ],
             'not_arrived' => StockReceipt::whereNotIn('status', ['arrived', 'validated', 'cancelled'])->count(),
             'delayed' => StockReceipt::where('expected_delivery_date', '<', now())
@@ -523,4 +609,415 @@ class StockReceiptController extends Controller
             ]
         ]);
     }
+    /**
+     * ⭐ OBTENIR LES RECOMMANDATIONS de répartition des coûts par produit
+     * GET /api/stock-receipts/{id}/cost-recommendations
+     * 
+     * Query params:
+     * - method: weight|value|quantity (default: value)
+     * 
+     * Retourne les RECOMMANDATIONS calculées automatiquement
+     * (L'utilisateur peut ensuite ajuster et appliquer via /apply-costs)
+     */
+    public function getCostRecommendations(
+        GetCostRecommendationsRequest $request, 
+        StockReceipt $stockReceipt
+    ): JsonResponse {
+        try {
+            // Vérifier que les batches existent
+            if (!$stockReceipt->hasBatches()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Aucun batch trouvé. Créez d\'abord les batches après l\'arrivée de la commande.',
+                ], 422);
+            }
+
+            $method = $request->get('method', 'value');
+            
+            // Calculer les RECOMMANDATIONS (sans les appliquer aux batches)
+            $batches = $stockReceipt->batches();
+            $expenses = $stockReceipt->getExpensesByCategory();
+
+            // Séparer les dépenses
+            $freightCosts = $expenses->where('category_name', 'Transport & Transit')
+                ->sum('total_amount');
+            
+            $otherCosts = $expenses->whereNotIn('category_name', [
+                'Transport & Transit',
+                'Approvisionnement'
+            ])->sum('total_amount');
+            // Grouper par produit
+            $batchesByProduct = $batches->groupBy(function($batch) {
+                return $batch->variant->product_id;
+            });
+
+            // Calculer les totaux
+            $productTotals = [
+                'weight' => 0,
+                'value' => 0,
+                'quantity' => 0,
+            ];
+
+            foreach ($batchesByProduct as $productId => $productBatches) {
+                $avgUnitWeight = $productBatches->avg(fn($b) => $b->variant->unit_weight ?? 0);
+                $totalProductQty = $productBatches->sum('initial_quantity');
+                $supplierCost = $productBatches->first()->supplier_unit_cost;
+
+                $productTotals['weight'] += $avgUnitWeight * $totalProductQty;
+                $productTotals['value'] += $supplierCost * $totalProductQty;
+                $productTotals['quantity'] += $totalProductQty;
+            }
+
+            // Générer les recommandations
+            $recommendations = [];
+
+            foreach ($batchesByProduct as $productId => $productBatches) {
+                $product = $productBatches->first()->variant->product;
+                $supplierUnitCost = $productBatches->first()->supplier_unit_cost;
+                $totalProductQty = $productBatches->sum('initial_quantity');
+
+                // Calculer le coefficient de répartition
+                $weight = 0;
+                switch ($method) {
+                    case 'weight':
+                        $avgUnitWeight = $productBatches->avg(fn($b) => $b->variant->unit_weight ?? 0);
+                        $productWeight = $avgUnitWeight * $totalProductQty;
+                        $weight = $productTotals['weight'] > 0 ? ($productWeight / $productTotals['weight']) : 0;
+                        break;
+                    case 'value':
+                        $productValue = $supplierUnitCost * $totalProductQty;
+                        $weight = $productTotals['value'] > 0 ? ($productValue / $productTotals['value']) : 0;
+                        break;
+                    case 'quantity':
+                        $weight = $productTotals['quantity'] > 0 ? ($totalProductQty / $productTotals['quantity']) : 0;
+                        break;
+                }
+
+                $freightPerUnit = $weight > 0 ? ($weight * $freightCosts) / $totalProductQty : 0;
+                $otherPerUnit = $weight > 0 ? ($weight * $otherCosts) / $totalProductQty : 0;
+
+                $recommendations[] = [
+                    'product_id' => $productId,
+                    'product_name' => $product->name,
+                    'supplier_unit_cost' => $supplierUnitCost,
+                    'freight_cost_per_unit' => round($freightPerUnit, 2),
+                    'other_costs_per_unit' => round($otherPerUnit, 2),
+                    'total_unit_cost' => round($supplierUnitCost + $freightPerUnit + $otherPerUnit, 2),
+                    'total_quantity' => $totalProductQty,
+                    'variants_count' => $productBatches->count(),
+                    'batches' => $productBatches->map(function($batch) {
+                        return [
+                            'batch_id' => $batch->id,
+                            'batch_number' => $batch->batch_number,
+                            'variant_id' => $batch->variant_id,
+                            'variant_sku' => $batch->variant->sku,
+                            'variant_image' => $batch->variant->image_path,
+                            'variant_attributes' => $batch->variant->attributeTypeValueMap(),
+                            'quantity' => $batch->initial_quantity,
+                        ];
+                    }),
+                ];
+            }
+
+            $result = [
+                'method' => $method,
+                'total_freight_costs' => $freightCosts,
+                'total_other_costs' => $otherCosts,
+                'total_allocated' => $freightCosts + $otherCosts,
+                'products_count' => count($recommendations),
+                'batches_count' => $batches->count(),
+                'allocations' => $recommendations,
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Recommandations calculées avec succès',
+                'data' => new CostRecommendationsSummaryResource($result)
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors du calcul des recommandations',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ⭐ APPLIQUER les coûts validés par l'utilisateur
+     * POST /api/stock-receipts/{id}/apply-costs
+     * 
+     * L'utilisateur envoie SA VERSION FINALE (peut être différente des recommandations)
+     * 
+     * Body:
+     * {
+     *   "allocations": [
+     *     {
+     *       "product_id": 1,
+     *       "freight_cost_per_unit": 150.00,
+     *       "other_costs_per_unit": 50.00
+     *     }
+     *   ]
+     * }
+     */
+    public function applyCosts(
+        ApplyCostAllocationRequest $request, 
+        StockReceipt $stockReceipt
+    ): JsonResponse {
+        try {
+            if (!$stockReceipt->hasBatches()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Aucun batch trouvé.',
+                ], 422);
+            }
+
+            // Formater les allocations par product_id
+            $customAllocations = [];
+            foreach ($request->allocations as $allocation) {
+                $customAllocations[$allocation['product_id']] = [
+                    'freight_cost_per_unit' => $allocation['freight_cost_per_unit'],
+                    'other_costs_per_unit' => $allocation['other_costs_per_unit'],
+                ];
+            }
+
+            // Appliquer les coûts aux batches
+            $result = $stockReceipt->allocateCostsToBatches('value', $customAllocations);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Coûts appliqués avec succès aux batches',
+                'data' => $result
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de l\'application des coûts',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ⭐ VALIDER définitivement les coûts (fige les batches)
+     * POST /api/stock-receipts/{id}/validate-costs
+     */
+    public function validateBatchCosts(StockReceipt $stockReceipt): JsonResponse
+    {
+        try {
+            $batches = $stockReceipt->batches();
+            $hasEstimated = $batches->contains('cost_status', 'estimated');
+            
+            if (!$hasEstimated) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Aucun coût estimé trouvé. Appliquez d\'abord les coûts.',
+                ], 422);
+            }
+
+            $stockReceipt->validateBatchCosts(Auth::id());
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Coûts validés avec succès. Les batches sont maintenant figés.',
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la validation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ⭐ AJOUTER une dépense autre (douane, manutention, etc.)
+     * POST /api/stock-receipts/{id}/expenses
+     */
+    public function addExpense(
+        AddExpenseRequest $request, 
+        StockReceipt $stockReceipt
+    ): JsonResponse {
+        try {
+            $transaction = $stockReceipt->addExpense($request->validated());
+            $transaction->load(['expenseCategory', 'account', 'creator']);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Dépense ajoutée avec succès',
+                'data' => new ReceiptExpenseResource($transaction)
+            ], 201);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de l\'ajout de la dépense',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtenir toutes les dépenses liées
+     * GET /api/stock-receipts/{id}/expenses
+     */
+    public function getExpenses(StockReceipt $stockReceipt): JsonResponse
+    {
+        try {
+            $expenses = $stockReceipt->getAllExpenses();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'total_amount' => (float) $expenses->sum('amount'),
+                    'expenses_count' => $expenses->count(),
+                    'by_category' => $stockReceipt->getExpensesByCategory()->values(),
+                    'expenses' => ReceiptExpenseResource::collection($expenses),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la récupération des dépenses',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Créer les batches après arrivée
+     * POST /api/stock-receipts/{id}/batches/create
+     */
+    public function createBatches(StockReceipt $stockReceipt): JsonResponse
+    {
+        try {
+            if ($stockReceipt->status !== 'arrived') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'La réception doit être marquée comme arrivée.',
+                ], 422);
+            }
+
+            if ($stockReceipt->hasBatches()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Les batches existent déjà.',
+                ], 422);
+            }
+
+            $batches = $stockReceipt->createBatches();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Batches créés avec succès',
+                'data' => [
+                    'batches_count' => $batches->count(),
+                    'batches' => $batches->map(fn($b) => [
+                        'id' => $b->id,
+                        'batch_number' => $b->batch_number,
+                        'variant_id' => $b->variant_id,
+                        'product_name' => $b->variant->product->name,
+                        'quantity' => $b->initial_quantity,
+                        'supplier_unit_cost' => (float) $b->supplier_unit_cost,
+                        'cost_status' => $b->cost_status,
+                    ])
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la création des batches',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function moveReceivedQuantity(
+        Request $request,
+        $stockReceiptId
+    ) {
+        $data = $request->validate([
+            'from_variant_id' => 'required|exists:product_variants,id',
+            'to_variant_id'   => 'required|exists:product_variants,id',
+            'quantity'        => 'required|integer|min:1',
+        ]);
+    
+        if ($data['from_variant_id'] === $data['to_variant_id']) {
+            return response()->json([
+                'message' => 'Les variants doivent être différents'
+            ], 422);
+        }
+    
+        try {
+            return DB::transaction(function () use ($data, $stockReceiptId) {
+    
+                $receipt = StockReceipt::with('items')
+                    ->findOrFail($stockReceiptId);
+    
+                // if ($receipt->status !== 'validated' || $receipt->delivery_status !== 'arrived') {
+                //     throw new \Exception(
+                //         'La réception est déjà finalisée'
+                //     );
+                // }
+    
+                // 🔹 Ligne source (commandée)
+                $sourceItem = $receipt->items
+                    ->where('variant_id', $data['from_variant_id'])
+                    ->first();
+    
+                if (!$sourceItem) {
+                    throw new \Exception(
+                        'Variant source introuvable dans la réception'
+                    );
+                }
+    
+                if ($sourceItem->quantity_received < $data['quantity']) {
+                    throw new \Exception(
+                        'Quantité reçue insuffisante'
+                    );
+                }
+    
+                // 🔹 Diminuer la quantité reçue
+                $sourceItem->decrement(
+                    'quantity_received',
+                    $data['quantity']
+                );
+    
+                // 🔹 Ligne destination (livrée)
+                $destinationItem = $receipt->items
+                    ->where('variant_id', $data['to_variant_id'])
+                    ->first();
+    
+                if ($destinationItem) {
+                    $destinationItem->increment(
+                        'quantity_received',
+                        $data['quantity']
+                    );
+                } else {
+                    StockReceiptItem::create([
+                        'stock_receipt_id' => $receipt->id,
+                        'variant_id' => $data['to_variant_id'],
+                        'quantity_ordered' => 0,
+                        'quantity_received' => $data['quantity'],
+                        'unit_cost_ariary' => $sourceItem->unit_cost_ariary,
+                    ]);
+                }
+    
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Quantité corrigée avant création des batches',
+                ]);
+            });
+    
+        } catch (\Exception $e) {
+            return response()->json([   
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+    
 }

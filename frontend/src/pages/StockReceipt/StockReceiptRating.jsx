@@ -14,12 +14,13 @@ import {
   AlertTriangle,
   X,
   Check,
-  Clock
+  Clock,
+  ArrowRightLeft
 } from 'lucide-react';
 import stockReceiptService from '../../services/stockReceiptService';
+import VariantTransferModal from './stockReceiptFormComponents/VariantTransferModal';
 import './StockReceiptRating.css';
 
-// Composant pour afficher une couleur
 const ColorSwatch = ({ color, size = 20 }) => {
   if (!color || !color.startsWith('#')) return null;
   return (
@@ -40,7 +41,6 @@ const ColorSwatch = ({ color, size = 20 }) => {
   );
 };
 
-// Composant pour un slider de note
 const RatingSlider = ({ label, icon: Icon, value, onChange, description, disabled, touched, required }) => {
   const getColorClass = (val) => {
     if (val >= 8) return 'excellent';
@@ -83,7 +83,6 @@ const RatingSlider = ({ label, icon: Icon, value, onChange, description, disable
   );
 };
 
-// Indicateur de progression
 const ProgressIndicator = ({ current, total }) => {
   const percentage = total > 0 ? (current / total) * 100 : 0;
   
@@ -108,7 +107,6 @@ const ProgressIndicator = ({ current, total }) => {
   );
 };
 
-// Modal de confirmation
 const ConfirmationModal = ({ isOpen, onConfirm, onCancel, itemsCount }) => {
   if (!isOpen) return null;
 
@@ -140,7 +138,6 @@ const ConfirmationModal = ({ isOpen, onConfirm, onCancel, itemsCount }) => {
   );
 };
 
-// Toast de succès
 const SuccessToast = ({ message, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -171,10 +168,62 @@ const StockReceiptRating = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedItemForTransfer, setSelectedItemForTransfer] = useState(null);
+
+  const STORAGE_KEY = `receipt_rating_progress_${id}`;
+
+  useEffect(() => {
+    if (receipt && !isSaved) {
+      const progressData = {
+        ratingsData,
+        touchedRatings,
+        timestamp: Date.now(),
+        receiptId: id
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progressData));
+    }
+  }, [ratingsData, touchedRatings, receipt, isSaved, STORAGE_KEY, id]);
+
+  const loadSavedProgress = () => {
+    try {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        const { ratingsData: saved, touchedRatings: savedTouched, timestamp } = JSON.parse(savedData);
+        const isRecent = Date.now() - timestamp < 24 * 60 * 60 * 1000;
+        if (isRecent && saved && savedTouched) {
+          return { ratingsData: saved, touchedRatings: savedTouched };
+        }
+      }
+    } catch (err) {
+      console.error('Error loading saved progress:', err);
+    }
+    return null;
+  };
+
+  const clearSavedProgress = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   useEffect(() => {
     fetchReceipt();
   }, [id]);
+
+  // Gérer l'ouverture automatique du modal de transfert via URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openTransferModal') === 'true' && receipt?.items?.length > 0) {
+      // Trouver le premier item avec quantity_received > 0
+      const itemToTransfer = receipt.items.find(item => item.quantity_received > 0);
+      if (itemToTransfer) {
+        setSelectedItemForTransfer(itemToTransfer);
+        setShowTransferModal(true);
+        // Nettoyer l'URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [receipt]);
 
   const fetchReceipt = async () => {
     try {
@@ -185,7 +234,6 @@ const StockReceiptRating = () => {
         throw new Error('Réception non trouvée');
       }
 
-      // Vérifier que la réception est au bon statut
       if (response.data.status !== 'arrived') {
         setError('Cette réception n\'est pas prête pour l\'évaluation. Elle doit être au statut "Arrivée".');
         setReceipt(null);
@@ -194,10 +242,24 @@ const StockReceiptRating = () => {
 
       setReceipt(response.data);
       
-      // Initialiser les données de rating
+      const savedProgress = loadSavedProgress();
+      
+      if (savedProgress) {
+        const resume = window.confirm(
+          'Une évaluation en cours a été trouvée. Voulez-vous reprendre où vous en étiez ?'
+        );
+        
+        if (resume) {
+          setRatingsData(savedProgress.ratingsData);
+          setTouchedRatings(savedProgress.touchedRatings);
+          setError(null);
+          return;
+        }
+      }
+
       const initialRatings = {};
       const initialTouched = {};
-      response.data.items?.forEach(item => {
+      (response.data.items || []).forEach(item => {
         const attributes = item.variant?.attributes || [];
         initialRatings[item.id] = {
           quality_rating: 7,
@@ -210,7 +272,6 @@ const StockReceiptRating = () => {
           }))
         };
         
-        // Initialiser les "touched" pour chaque rating
         initialTouched[item.id] = {
           quality: false,
           attributes: attributes.map(() => false)
@@ -237,7 +298,6 @@ const StockReceiptRating = () => {
       }
     }));
     
-    // Marquer comme touché
     setTouchedRatings(prev => ({
       ...prev,
       [itemId]: {
@@ -259,7 +319,6 @@ const StockReceiptRating = () => {
       }
     }));
     
-    // Marquer l'attribut comme touché
     setTouchedRatings(prev => ({
       ...prev,
       [itemId]: {
@@ -282,13 +341,57 @@ const StockReceiptRating = () => {
     }));
   };
 
+  const handleOpenTransferModal = (item) => {
+    if (isSaved) {
+      alert('Les évaluations sont déjà enregistrées. Vous ne pouvez plus effectuer de transfert.');
+      return;
+    }
+    setSelectedItemForTransfer(item);
+    setShowTransferModal(true);
+  };
+
+  const handleTransferSuccess = async (transferData) => {
+    try {
+      await stockReceiptService.moveReceivedVariant(id, transferData);
+      setShowTransferModal(false);
+      setSelectedItemForTransfer(null);
+      
+      await fetchReceipt();
+      
+      alert(`Transfert effectué avec succès ! ${transferData.quantity} unité(s) transférée(s).`);
+    } catch (err) {
+      console.error('Error transferring variant:', err);
+      alert(err.response?.data?.message || 'Erreur lors du transfert');
+    }
+  };
+
+  // Calculer la moyenne de conformité des attributs pour un type d'attribut donné
+  const calculateAttributeConformityAverage = (attributeTypeId) => {
+    const orderedItems = receipt?.items.filter(item => item.quantity_ordered > 0) || [];
+    const ratings = [];
+    
+    orderedItems.forEach(item => {
+      const itemRating = ratingsData[item.id];
+      if (itemRating?.attribute_ratings) {
+        const attrRating = itemRating.attribute_ratings.find(
+          ar => ar.attribute_type_id === attributeTypeId
+        );
+        if (attrRating) {
+          ratings.push(attrRating.conformity_rating);
+        }
+      }
+    });
+    
+    if (ratings.length === 0) return 7; // Valeur par défaut
+    return Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length);
+  };
+
   const calculateAverageConformity = (attributeRatings) => {
     if (!attributeRatings || attributeRatings.length === 0) return 7;
     const sum = attributeRatings.reduce((acc, attr) => acc + attr.conformity_rating, 0);
     return Math.round(sum / attributeRatings.length);
   };
 
-  // Calculer le nombre total de ratings requis et complétés
   const getTotalRatingsStats = () => {
     let total = 0;
     let completed = 0;
@@ -297,14 +400,16 @@ const StockReceiptRating = () => {
       const itemTouched = touchedRatings[item.id];
       if (!itemTouched) return;
 
-      // Rating de qualité
       total++;
       if (itemTouched.quality) completed++;
 
-      // Ratings d'attributs
       const attrCount = item.variant?.attributes?.length || 0;
       total += attrCount;
-      completed += itemTouched.attributes.filter(t => t).length;
+      
+      // Vérifier que attributes existe avant de filtrer
+      if (itemTouched.attributes && Array.isArray(itemTouched.attributes)) {
+        completed += itemTouched.attributes.filter(t => t).length;
+      }
     });
 
     return { total, completed, isComplete: total > 0 && completed === total };
@@ -327,21 +432,18 @@ const StockReceiptRating = () => {
     try {
       setSaving(true);
       
-      // Pour chaque item, construire et envoyer les ratings
       for (const item of receipt.items) {
         const itemRating = ratingsData[item.id];
         if (!itemRating) continue;
 
         const ratings = [];
         
-        // Rating général
         ratings.push({
           quality_rating: itemRating.quality_rating,
           attribute_conformity_rating: calculateAverageConformity(itemRating.attribute_ratings),
           quality_notes: itemRating.quality_notes || null
         });
         
-        // Ratings par attribut
         itemRating.attribute_ratings.forEach(attrRating => {
           if (attrRating.attribute_type_id) {
             ratings.push({
@@ -358,6 +460,7 @@ const StockReceiptRating = () => {
       
       setIsSaved(true);
       setShowSuccessToast(true);
+      clearSavedProgress();
       
     } catch (err) {
       console.error('Error saving ratings:', err);
@@ -375,9 +478,10 @@ const StockReceiptRating = () => {
 
     try {
       setValidating(true);
-      await stockReceiptService.validate(id);
+      await stockReceiptService.markAsRated(id);
+      clearSavedProgress();
       navigate(`/reapprovisionnements/${id}`, { 
-        state: { message: 'Réception validée avec succès' } 
+        state: { message: 'Réception évalué avec succès' } 
       });
     } catch (err) {
       console.error('Error validating receipt:', err);
@@ -445,7 +549,6 @@ const StockReceiptRating = () => {
 
   return (
     <div className="rating-page">
-      {/* Header */}
       <header className="rating-header">
         <div className="rating-header-left">
           <button className="btn-back" onClick={() => navigate(`/reapprovisionnements/${id}`)}>
@@ -503,7 +606,6 @@ const StockReceiptRating = () => {
         </div>
       </header>
 
-      {/* Indicateur de progression */}
       {!isSaved && (
         <div className="progress-section">
           <ProgressIndicator 
@@ -511,15 +613,28 @@ const StockReceiptRating = () => {
             total={ratingsStats.total} 
           />
           {!ratingsStats.isComplete && (
-            <p className="progress-hint">
-              <AlertCircle size={16} />
-              Vous devez évaluer tous les critères avant de pouvoir enregistrer
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+              <p className="progress-hint">
+                <AlertCircle size={16} />
+                Vous devez évaluer tous les critères avant de pouvoir enregistrer
+              </p>
+              <button 
+                onClick={() => {
+                  if (window.confirm('⚠️ Réinitialiser complètement et recharger ?\n\nCela va :\n- Effacer toute la progression sauvegardée\n- Recharger la page\n- Recalculer correctement les évaluations requises\n\nToutes les évaluations non sauvegardées seront perdues.')) {
+                    clearSavedProgress();
+                    window.location.reload();
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px' }}
+              >
+                🔄 Réinitialiser la progression (si bloqué)
+              </button>
+            </div>
           )}
         </div>
       )}
 
-      {/* Notice si déjà sauvegardé */}
       {isSaved && (
         <div className="locked-notice-rating">
           <CheckSquare size={20} />
@@ -532,21 +647,23 @@ const StockReceiptRating = () => {
         </div>
       )}
 
-      {/* Contenu principal */}
       <div className="rating-main-content">
-        {/* Grille des items */}
         <div className="items-grid-rating">
           {receipt.items.map((item, itemIndex) => {
             const itemRating = ratingsData[item.id] || {};
             const itemTouched = touchedRatings[item.id] || { quality: false, attributes: [] };
+            const isUnorderedVariant = item.quantity_ordered === 0;
             
-            // Calculer si cet item est complet
-            const itemComplete = itemTouched.quality && 
-              itemTouched.attributes.every(t => t);
+            // Pour les variants non commandés, on ne vérifie que la qualité
+            const itemComplete = isUnorderedVariant 
+              ? itemTouched.quality
+              : (itemTouched.quality && 
+                 itemTouched.attributes && 
+                 Array.isArray(itemTouched.attributes) &&
+                 itemTouched.attributes.every(t => t));
             
             return (
               <div key={item.id} className={`item-rating-card ${isSaved ? 'saved' : ''} ${itemComplete ? 'complete' : ''}`}>
-                {/* Header de l'item */}
                 <div className="item-header-rating">
                   <div className="item-icon-rating">
                     <Box size={24} />
@@ -563,20 +680,21 @@ const StockReceiptRating = () => {
                       </span>
                     </div>
                   </div>
-                  {isSaved ? (
-                    <span className="saved-badge">
-                      <CheckSquare size={16} />
-                      Évalué
-                    </span>
-                  ) : itemComplete ? (
-                    <span className="complete-badge">
-                      <Check size={16} />
-                      Complet
-                    </span>
-                  ) : null}
+                  <div className="item-badges-rating">
+                    {isSaved ? (
+                      <span className="saved-badge">
+                        <CheckSquare size={16} />
+                        Évalué
+                      </span>
+                    ) : itemComplete ? (
+                      <span className="complete-badge">
+                        <Check size={16} />
+                        Complet
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
-                {/* Attributs */}
                 {item.variant?.attributes && item.variant.attributes.length > 0 && (
                   <div className="attributes-display-rating">
                     {item.variant.attributes.map((attr, idx) => (
@@ -592,7 +710,21 @@ const StockReceiptRating = () => {
                   </div>
                 )}
 
-                {/* Note de qualité générale */}
+                {!isSaved && item.quantity_received > 0 && (
+                  <div className="transfer-section-rating">
+                    <button 
+                      className="btn-transfer-rating"
+                      onClick={() => handleOpenTransferModal(item)}
+                    >
+                      <ArrowRightLeft size={16} />
+                      Transférer vers un autre variant
+                    </button>
+                    <p className="transfer-hint">
+                      Si certaines unités ne correspondent pas au variant commandé, transférez-les vers le bon variant avant d'évaluer.
+                    </p>
+                  </div>
+                )}
+
                 <RatingSlider
                   label="Qualité du produit"
                   icon={Star}
@@ -604,7 +736,6 @@ const StockReceiptRating = () => {
                   required={true}
                 />
 
-                {/* Ratings par attribut */}
                 {itemRating.attribute_ratings && itemRating.attribute_ratings.length > 0 && (
                   <div className="attribute-ratings-section">
                     <h4 className="section-title-rating">
@@ -640,7 +771,6 @@ const StockReceiptRating = () => {
                   </div>
                 )}
 
-                {/* Notes */}
                 <div className="notes-section-rating">
                   <label className="notes-label">
                     <FileText size={18} />
@@ -659,7 +789,6 @@ const StockReceiptRating = () => {
           })}
         </div>
 
-        {/* Boutons d'action */}
         <div className="action-buttons-rating">
           {!isSaved && (
             <button 
@@ -689,12 +818,12 @@ const StockReceiptRating = () => {
               {validating ? (
                 <>
                   <Loader2 className="spinner" size={20} />
-                  Validation en cours...
+                  évaluation en cours...
                 </>
               ) : (
                 <>
                   <BadgeCheck size={20} />
-                  Valider la réception
+                  Evaluer la réception
                 </>
               )}
             </button>
@@ -702,7 +831,6 @@ const StockReceiptRating = () => {
         </div>
       </div>
 
-      {/* Modals et Toasts */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onConfirm={confirmSaveRatings}
@@ -714,6 +842,19 @@ const StockReceiptRating = () => {
         <SuccessToast
           message="Évaluations enregistrées avec succès !"
           onClose={() => setShowSuccessToast(false)}
+        />
+      )}
+
+      {showTransferModal && selectedItemForTransfer && (
+        <VariantTransferModal
+          isOpen={showTransferModal}
+          onClose={() => {
+            setShowTransferModal(false);
+            setSelectedItemForTransfer(null);
+          }}
+          sourceItem={selectedItemForTransfer}
+          receiptId={id}
+          onTransferSuccess={handleTransferSuccess}
         />
       )}
     </div>

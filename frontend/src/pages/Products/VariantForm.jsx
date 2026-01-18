@@ -202,15 +202,17 @@ const VariantForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Remplacer tout le handleSubmit par cette version :
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-  
+
     setLoading(true);
-  
+
     try {
       let imagePath = null;
-  
+
       if (formData.image) {
         console.log('📤 Upload de la nouvelle image...');
         const compressed = await fileService.compressImage(formData.image);
@@ -219,7 +221,7 @@ const VariantForm = () => {
       } else if (!imageRemoved && formData.image_preview) {
         imagePath = formData.image_preview;
       }
-  
+
       const payload = {
         price_adjustment: Number(formData.price_adjustment) || 0,
         low_stock_threshold: Number(formData.low_stock_threshold) || 5,
@@ -249,14 +251,36 @@ const VariantForm = () => {
         result = await productService.createVariant(productId, payload);
         alert('Variante créée avec succès !');
       }
-  
+
       if (result.sku) {
         console.log('✅ SKU généré:', result.sku);
         setSku(result.sku);
       }
-  
-      navigate(-1);
-  
+
+      // 🔹 Gérer le retour avec ouverture du modal
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get('returnTo');
+      const shouldOpenTransferModal = params.get('openTransferModal') === 'true';
+      
+      if (returnTo && shouldOpenTransferModal) {
+        // Rediriger vers la page de retour avec le paramètre pour ouvrir le modal
+        if (window.opener) {
+          window.opener.location.href = `${returnTo}?openTransferModal=true`;
+          window.close();
+        } else {
+          window.location.href = `${returnTo}?openTransferModal=true`;
+        }
+      } else if (returnTo) {
+        if (window.opener) {
+          window.opener.location.href = returnTo;
+          window.close();
+        } else {
+          window.location.href = returnTo;
+        }
+      } else {
+        navigate(-1);
+      }
+
     } catch (err) {
       console.error('❌ Erreur détaillée:', err);
       
