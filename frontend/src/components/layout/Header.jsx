@@ -1,9 +1,11 @@
 // ============================================
 // components/layout/Header.jsx
 // ============================================
+
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Button from '../common/Button';
+import NotificationBell from '../notifications/NotificationBell';
 import '../../styles/Header.css';
 import { BaggageClaim, Sun, Moon } from 'lucide-react';
 
@@ -25,6 +27,8 @@ const Header = () => {
       </div>
 
       <div className="header-right">
+        <NotificationBell />
+        
         <button 
           className="theme-toggle" 
           onClick={toggleTheme} 

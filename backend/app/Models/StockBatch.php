@@ -19,20 +19,16 @@ class StockBatch extends Model
         'other_costs_per_unit',
         // total_unit_cost est auto-calculé (generated column)
         'cost_status',
-        'received_date',
-        'cost_validated_at',
-        'cost_validated_by',
     ];
 
     protected $casts = [
-        'received_date' => 'datetime',
-        'cost_validated_at' => 'datetime',
+    
         'supplier_unit_cost' => 'decimal:2',
         'freight_cost_per_unit' => 'decimal:2',
         'other_costs_per_unit' => 'decimal:2',
         'total_unit_cost' => 'decimal:2',
     ];
-
+    public $timestamps = false;
     // ===== BOOT: Génération automatique du batch_number =====
     
     protected static function boot()
@@ -106,10 +102,6 @@ class StockBatch extends Model
         return $this->belongsTo(StockReceiptItem::class, 'stock_receipt_item_id');
     }
 
-    public function costValidator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'cost_validated_by');
-    }
 
     public function saleItemBatches(): HasMany
     {

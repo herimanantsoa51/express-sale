@@ -209,13 +209,13 @@ class SaleService
             // Calcul des totaux
             $totals = $this->calculateTotals($data['items'], $data['discount_amount'] ?? 0);
 
-            // Vérifier si le client peut avoir ce crédit
-            if (!$customer->canGetCredit($totals['total'])) {
-                throw new \Exception(
-                    "Le client ne peut pas obtenir ce crédit. " .
-                    "Disponible: {$customer->getAvailableCredit()}, Demandé: {$totals['total']}"
-                );
-            }
+            // // Vérifier si le client peut avoir ce crédit
+            // if (!$customer->canGetCredit($totals['total'])) {
+            //     throw new \Exception(
+            //         "Le client ne peut pas obtenir ce crédit. " .
+            //         "Disponible: {$customer->getAvailableCredit()}, Demandé: {$totals['total']}"
+            //     );
+            // }
 
             // Validation du stock
             $stockValidation = $this->validateStockAvailability($data['items']);

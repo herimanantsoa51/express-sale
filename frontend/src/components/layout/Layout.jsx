@@ -7,8 +7,10 @@ import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import '../../styles/Layout.css';
+import useNotificationGenerator from '../../hooks/useNotificationGenerator';
 
 const Layout = () => {
+  useNotificationGenerator();
   return (
     <div className="layout">
       <Header />

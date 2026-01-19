@@ -17,12 +17,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Http\Requests\GetCostRecommendationsRequest;
 use App\Http\Requests\ApplyCostAllocationRequest;   
-use App\Http\Resources\CostRecommendationsSummaryResource;
 use  App\Http\Requests\AddExpenseRequest;
 use App\Http\Resources\ReceiptExpenseResource;
 use App\Models\StockReceiptItem;
+use App\Http\Requests\MarkAsValidateRequest;
 
 
 class StockReceiptController extends Controller
@@ -134,7 +135,7 @@ class StockReceiptController extends Controller
             'freightForwarder',
             'items.variant.product.category',
             'items.variant.locations.location',
-            'items.ratings.attributeType',
+            'items.ratings.attributeType',  
             'items.ratings.ratedBy',
             'creator',
             'transactions.transactionType'
@@ -301,12 +302,12 @@ class StockReceiptController extends Controller
 
     /**
      * Valider la réception et mettre à jour les scores
-     * POST /api/stock-receipts/{id}/validate
-     */
-    public function validate(StockReceipt $stockReceipt): JsonResponse
+     * POST /api/stock-receipts/{id}/validate       
+     */     
+    public function validateReceipt(MarkAsValidateRequest $request,StockReceipt $stockReceipt): JsonResponse
     {
-        try {
-            $stockReceipt->validate();
+        try {                       
+            $stockReceipt->validate($request->items);
 
             return response()->json([
                 'status' => 'success',
@@ -620,130 +621,189 @@ class StockReceiptController extends Controller
      * (L'utilisateur peut ensuite ajuster et appliquer via /apply-costs)
      */
     public function getCostRecommendations(
-        GetCostRecommendationsRequest $request, 
+        GetCostRecommendationsRequest $request,
         StockReceipt $stockReceipt
     ): JsonResponse {
         try {
-            // Vérifier que les batches existent
             if (!$stockReceipt->hasBatches()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Aucun batch trouvé. Créez d\'abord les batches après l\'arrivée de la commande.',
                 ], 422);
             }
-
-            $method = $request->get('method', 'value');
+    
+            $method = $request->get('method', 'weight');
             
-            // Calculer les RECOMMANDATIONS (sans les appliquer aux batches)
-            $batches = $stockReceipt->batches();
+            // CORRECTION : Utiliser le bon nom de relation 'attributeValues'
+            $batches = $stockReceipt->batches()
+                ->with([
+                    'variant.product', 
+                    'variant.attributeValues.attributeType' // Relation correcte
+                ])
+                ->get();
+            
             $expenses = $stockReceipt->getExpensesByCategory();
-
-            // Séparer les dépenses
-            $freightCosts = $expenses->where('category_name', 'Transport & Transit')
+    
+            // Convertir en collection si nécessaire
+            if (!$expenses instanceof \Illuminate\Support\Collection) {
+                $expenses = collect($expenses);
+            }
+    
+            // Dépenses avec filter()
+            $freightCosts = $expenses
+                ->filter(function ($expense) {
+                    return isset($expense['category_name']) && 
+                           $expense['category_name'] === 'Transport & Transit';
+                })
                 ->sum('total_amount');
-            
-            $otherCosts = $expenses->whereNotIn('category_name', [
-                'Transport & Transit',
-                'Approvisionnement'
-            ])->sum('total_amount');
+    
+            $otherCosts = $expenses
+                ->filter(function ($expense) {
+                    return isset($expense['category_name']) && 
+                           !in_array($expense['category_name'], [
+                               'Transport & Transit', 
+                               'Approvisionnement'
+                           ]);
+                })
+                ->sum('total_amount');
+    
             // Grouper par produit
-            $batchesByProduct = $batches->groupBy(function($batch) {
+            $batchesByProduct = $batches->groupBy(function ($batch) {
                 return $batch->variant->product_id;
             });
-
-            // Calculer les totaux
+    
             $productTotals = [
-                'weight' => 0,
-                'value' => 0,
+                'price'    => 0,
                 'quantity' => 0,
+                'weight'   => 0,
             ];
-
-            foreach ($batchesByProduct as $productId => $productBatches) {
-                $avgUnitWeight = $productBatches->avg(fn($b) => $b->variant->unit_weight ?? 0);
-                $totalProductQty = $productBatches->sum('initial_quantity');
-                $supplierCost = $productBatches->first()->supplier_unit_cost;
-
-                $productTotals['weight'] += $avgUnitWeight * $totalProductQty;
-                $productTotals['value'] += $supplierCost * $totalProductQty;
-                $productTotals['quantity'] += $totalProductQty;
+    
+            foreach ($batchesByProduct as $productBatches) {
+                $totalQty  = $productBatches->sum('initial_quantity');
+                $unitPrice = $productBatches->first()->supplier_unit_cost;
+    
+                $productTotals['price']    += $unitPrice;
+                $productTotals['quantity'] += $totalQty;
+                $productTotals['weight']   += $unitPrice * $totalQty;
             }
-
-            // Générer les recommandations
+    
             $recommendations = [];
-
+    
             foreach ($batchesByProduct as $productId => $productBatches) {
-                $product = $productBatches->first()->variant->product;
-                $supplierUnitCost = $productBatches->first()->supplier_unit_cost;
-                $totalProductQty = $productBatches->sum('initial_quantity');
-
-                // Calculer le coefficient de répartition
-                $weight = 0;
+                if (!$productBatches->first()->variant || !$productBatches->first()->variant->product) {
+                    continue;
+                }
+    
+                $product     = $productBatches->first()->variant->product;
+                $totalQty    = $productBatches->sum('initial_quantity');
+                $unitPrice   = $productBatches->first()->supplier_unit_cost;
+    
                 switch ($method) {
-                    case 'weight':
-                        $avgUnitWeight = $productBatches->avg(fn($b) => $b->variant->unit_weight ?? 0);
-                        $productWeight = $avgUnitWeight * $totalProductQty;
-                        $weight = $productTotals['weight'] > 0 ? ($productWeight / $productTotals['weight']) : 0;
+                    case 'price':
+                        $ratio = $productTotals['price'] > 0
+                            ? $unitPrice / $productTotals['price']
+                            : 0;
                         break;
-                    case 'value':
-                        $productValue = $supplierUnitCost * $totalProductQty;
-                        $weight = $productTotals['value'] > 0 ? ($productValue / $productTotals['value']) : 0;
-                        break;
+    
                     case 'quantity':
-                        $weight = $productTotals['quantity'] > 0 ? ($totalProductQty / $productTotals['quantity']) : 0;
+                        $ratio = $productTotals['quantity'] > 0
+                            ? $totalQty / $productTotals['quantity']
+                            : 0;
+                        break;
+    
+                    case 'weight':
+                    default:
+                        $productWeight = $unitPrice * $totalQty;
+                        $ratio = $productTotals['weight'] > 0
+                            ? $productWeight / $productTotals['weight']
+                            : 0;
                         break;
                 }
-
-                $freightPerUnit = $weight > 0 ? ($weight * $freightCosts) / $totalProductQty : 0;
-                $otherPerUnit = $weight > 0 ? ($weight * $otherCosts) / $totalProductQty : 0;
-
+    
+                $freightPerUnit = $ratio > 0
+                    ? ($ratio * $freightCosts) / $totalQty
+                    : 0;
+    
+                $otherPerUnit = $ratio > 0
+                    ? ($ratio * $otherCosts) / $totalQty
+                    : 0;
+    
                 $recommendations[] = [
-                    'product_id' => $productId,
-                    'product_name' => $product->name,
-                    'supplier_unit_cost' => $supplierUnitCost,
-                    'freight_cost_per_unit' => round($freightPerUnit, 2),
-                    'other_costs_per_unit' => round($otherPerUnit, 2),
-                    'total_unit_cost' => round($supplierUnitCost + $freightPerUnit + $otherPerUnit, 2),
-                    'total_quantity' => $totalProductQty,
-                    'variants_count' => $productBatches->count(),
-                    'batches' => $productBatches->map(function($batch) {
+                    'product_id'                       => $productId,
+                    'product_name'                     => $product->name,
+                    'product_current_base_price'       => $product->base_price,
+                    'supplier_unit_cost'               => round($unitPrice, 2),
+                    'recommended_freight_cost_per_unit'=> round($freightPerUnit, 2),
+                    'recommended_other_costs_per_unit' => round($otherPerUnit, 2),
+                    'recommended_total_unit_cost'      => round(
+                        $unitPrice + $freightPerUnit + $otherPerUnit, 2
+                    ),
+                    'total_quantity'                   => $totalQty,
+                    'variants_count'                   => $productBatches->count(),
+                    'total_freight_cost'               => round($freightPerUnit * $totalQty, 2),
+                    'total_other_costs'                => round($otherPerUnit * $totalQty, 2),
+                    'variants' => $productBatches->map(function ($batch) {
+                        // CORRECTION : Vérifier si la méthode attributeTypeValueMap existe
+                        $variant = $batch->variant;
+                        
+                        // Option 1: Si la méthode existe
+                        if (method_exists($variant, 'attributeTypeValueMap')) {
+                            $attributes = $variant->attributeTypeValueMap();
+                        } 
+                        // Option 2: Construire manuellement
+                        else {
+                            $attributes = $variant->attributeValues
+                                ->map(function ($attrValue) {
+                                    return [
+                                        'type' => $attrValue->attributeType->name ?? 'Unknown',
+                                        'value' => $attrValue->value,
+                                    ];
+                                })
+                                ->toArray();
+                        }
+                        
                         return [
-                            'batch_id' => $batch->id,
-                            'batch_number' => $batch->batch_number,
-                            'variant_id' => $batch->variant_id,
-                            'variant_sku' => $batch->variant->sku,
-                            'variant_image' => $batch->variant->image_path,
-                            'variant_attributes' => $batch->variant->attributeTypeValueMap(),
-                            'quantity' => $batch->initial_quantity,
+                            'variant_id'         => $batch->variant_id,
+                            'variant_attributes' => $attributes,
+                            'quantity'           => $batch->initial_quantity,
                         ];
-                    }),
+                    })->values(),
                 ];
             }
-
-            $result = [
-                'method' => $method,
-                'total_freight_costs' => $freightCosts,
-                'total_other_costs' => $otherCosts,
-                'total_allocated' => $freightCosts + $otherCosts,
-                'products_count' => count($recommendations),
-                'batches_count' => $batches->count(),
-                'allocations' => $recommendations,
-            ];
-
+    
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'Recommandations calculées avec succès',
-                'data' => new CostRecommendationsSummaryResource($result)
+                'data' => [
+                    'allocation_method' => $method,
+                    'total_expenses' => [
+                        'freight_costs'     => round($freightCosts, 2),
+                        'other_costs'       => round($otherCosts, 2),
+                        'total_to_allocate' => round($freightCosts + $otherCosts, 2),
+                    ],
+                    'statistics' => [
+                        'products_count' => count($recommendations),
+                        'batches_count'  => $batches->count(),
+                    ],
+                    'recommendations' => $recommendations,
+                ]
             ]);
-            
-        } catch (\Exception $e) {
+    
+        } catch (\Throwable $e) {
+            Log::error('Erreur getCostRecommendations', [
+                'message' => $e->getMessage(),
+                'trace'   => $e->getTraceAsString(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+            ]);
+    
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Erreur lors du calcul des recommandations',
-                'error' => $e->getMessage()
+                'error'   => config('app.debug') ? $e->getMessage() : 'Erreur interne',
             ], 500);
         }
     }
-
     /**
      * ⭐ APPLIQUER les coûts validés par l'utilisateur
      * POST /api/stock-receipts/{id}/apply-costs
@@ -772,19 +832,28 @@ class StockReceiptController extends Controller
                     'message' => 'Aucun batch trouvé.',
                 ], 422);
             }
-
+    
             // Formater les allocations par product_id
             $customAllocations = [];
             foreach ($request->allocations as $allocation) {
                 $customAllocations[$allocation['product_id']] = [
-                    'freight_cost_per_unit' => $allocation['freight_cost_per_unit'],
-                    'other_costs_per_unit' => $allocation['other_costs_per_unit'],
+                    'freight_cost_per_unit' => floatval($allocation['freight_cost_per_unit']),
+                    'other_costs_per_unit' => floatval($allocation['other_costs_per_unit']),
                 ];
             }
-
+    
             // Appliquer les coûts aux batches
             $result = $stockReceipt->allocateCostsToBatches('value', $customAllocations);
-
+    
+            // Mettre à jour le statut si nécessaire
+            if ($stockReceipt->status != 'cost_allocated') {
+                $stockReceipt->update([
+                    'status' => 'cost_allocated',
+                    'cost_validated_by' => Auth::id(),
+                    'cost_validated_at' => now(),
+                ]);
+            }
+    
             return response()->json([
                 'status' => 'success',
                 'message' => 'Coûts appliqués avec succès aux batches',
@@ -792,46 +861,21 @@ class StockReceiptController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            // Ajouter un log détaillé
+            Log::error('Erreur applyCosts', [
+                'stock_receipt_id' => $stockReceipt->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de l\'application des coûts',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Erreur interne'
             ], 500);
         }
     }
 
-    /**
-     * ⭐ VALIDER définitivement les coûts (fige les batches)
-     * POST /api/stock-receipts/{id}/validate-costs
-     */
-    public function validateBatchCosts(StockReceipt $stockReceipt): JsonResponse
-    {
-        try {
-            $batches = $stockReceipt->batches();
-            $hasEstimated = $batches->contains('cost_status', 'estimated');
-            
-            if (!$hasEstimated) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Aucun coût estimé trouvé. Appliquez d\'abord les coûts.',
-                ], 422);
-            }
-
-            $stockReceipt->validateBatchCosts(Auth::id());
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Coûts validés avec succès. Les batches sont maintenant figés.',
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Erreur lors de la validation',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
     /**
      * ⭐ AJOUTER une dépense autre (douane, manutention, etc.)
@@ -1019,5 +1063,72 @@ class StockReceiptController extends Controller
             ], 422);
         }
     }
+
+    public function getCostAllocated(StockReceipt $stockReceipt)
+    {
+        try {
+            $batches = $stockReceipt->batches()
+                ->with('variant.product')
+                ->get();
+
+            // Regroupement par produit
+            $allocations = $batches
+                ->groupBy(fn ($batch) => $batch->variant->product->id)
+                ->map(function ($productBatches) {
+
+                    $product = $productBatches->first()->variant->product;
+
+                    return [
+                        'product_id'   => $product->id,
+                        'product_name' => $product->name,
+
+                        // ===== Coûts unitaires (au niveau produit) =====
+                        'costs' => [
+                            'supplier_unit' => (float) $productBatches->first()->supplier_unit_cost,
+                            'freight_unit'  => (float) $productBatches->first()->freight_cost_per_unit,
+                            'other_unit'    => (float) $productBatches->first()->other_costs_per_unit,
+                            'total_unit'    => (float) $productBatches->first()->total_unit_cost,
+                        ],
+
+                        // ===== Quantité totale produit =====
+                        'total_quantity' => $productBatches->sum('initial_quantity'),
+
+                        // ===== Variantes =====
+                        'variants' => $productBatches->map(function ($batch) {
+                            return [
+                                'batch_number'=>$batch->batch_number,
+                                'variant_id' => $batch->variant_id,
+                                'attributes' => $batch->variant->attributeTypeValueMap(),
+                                'intial_quantity'   => $batch->initial_quantity,
+                                'remaining_quantity'=>$batch->remaining_quantity
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'validated_at' => $stockReceipt->cost_validated_at,
+                    'cost_validated_by' => $stockReceipt->costValidator
+                        ? [
+                            'id'   => $stockReceipt->costValidator->id,
+                            'name' => $stockReceipt->costValidator->name,
+                        ]
+                        : null,
+                    'allocations' => $allocations,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la récupération des coûts alloués',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     
 }

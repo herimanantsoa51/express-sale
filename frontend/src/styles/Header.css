@@ -1,44 +1,38 @@
 /* ============================================
-   Header.css - Apple-inspired Design
+   HEADER - APPLE STYLE
    ============================================ */
 
    .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     height: var(--header-height);
-    background: var(--bg-primary);
+    background: var(--bg-blur);
     backdrop-filter: var(--backdrop-blur);
-    -webkit-backdrop-filter: var(--backdrop-blur);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--spacing-xl);
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0 var(--spacing-lg);
+    z-index: var(--z-fixed);
   }
   
   .header-left {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
   }
   
   .header-title {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    font-size: 19px;
-    font-weight: 600;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
     margin: 0;
-    letter-spacing: -0.02em;
-    transition: color 0.2s ease;
-  }
-  
-  .header-title svg {
-    color: var(--primary);
-    flex-shrink: 0;
+    letter-spacing: -0.022em;
   }
   
   .header-right {
@@ -47,25 +41,23 @@
     gap: var(--spacing-md);
   }
   
-  /* === THEME TOGGLE === */
+  /* Theme Toggle */
   .theme-toggle {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all var(--transition-speed) var(--transition-timing);
   }
   
   .theme-toggle:hover {
-    background: var(--bg-tertiary);
-    color: var(--primary);
-    border-color: var(--border-color);
+    background: var(--bg-secondary);
     transform: scale(1.05);
   }
   
@@ -73,44 +65,38 @@
     transform: scale(0.95);
   }
   
-  .theme-toggle svg {
-    width: 18px;
-    height: 18px;
-  }
-  
-  /* === USER INFO === */
+  /* User Info */
   .user-info {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;
-    padding-right: var(--spacing-sm);
+    padding: 0 var(--spacing-sm);
   }
   
   .user-name {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
     color: var(--text-primary);
-    letter-spacing: -0.01em;
-    line-height: 1.3;
+    line-height: 1.2;
   }
   
   .user-role {
-    font-size: 11px;
-    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
   }
   
-  /* === RESPONSIVE === */
+  /* Responsive */
   @media (max-width: 768px) {
     .header {
       padding: 0 var(--spacing-md);
     }
   
     .header-title {
-      font-size: 17px;
+      font-size: var(--font-size-md);
     }
   
     .user-info {

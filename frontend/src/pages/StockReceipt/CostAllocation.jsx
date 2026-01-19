@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, Package, DollarSign, TrendingUp, Percent, Edit2,
-  Save, RefreshCw, AlertCircle, CheckCircle, X, Info, 
-  AlertTriangle, Truck, Tag, Calculator, ShoppingCart, Layers
+  ArrowLeft, DollarSign, AlertCircle, CheckCircle, X, Info, 
+  AlertTriangle, Truck, Tag, Calculator, ShoppingCart, 
+  TrendingUp, Package, Layers, Percent
 } from 'lucide-react';
 import stockReceiptService from '../../services/stockReceiptService';
 import productService from '../../services/productService';
@@ -74,7 +74,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, loading }) => {
           >
             {loading ? (
               <>
-                <RefreshCw size={18} className="ca-loading-spinner" />
+                <div className="ca-loading-spinner" />
                 Chargement...
               </>
             ) : (
@@ -90,278 +90,74 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, loading }) => {
   );
 };
 
-// === PRODUCT COST CARD ===
-const ProductCostCard = ({ product, onUpdate }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [freightCost, setFreightCost] = useState(product.recommended_freight_cost_per_unit);
-  const [otherCosts, setOtherCosts] = useState(product.recommended_other_costs_per_unit);
-
-  const totalCost = parseFloat(product.supplier_unit_cost) + parseFloat(freightCost) + parseFloat(otherCosts);
-  const totalQuantity = product.total_quantity;
-  const totalFreight = freightCost * totalQuantity;
-  const totalOther = otherCosts * totalQuantity;
-
-  const handleSave = () => {
-    onUpdate(product.product_id, {
-      freight_cost_per_unit: parseFloat(freightCost),
-      other_costs_per_unit: parseFloat(otherCosts)
-    });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setFreightCost(product.recommended_freight_cost_per_unit);
-    setOtherCosts(product.recommended_other_costs_per_unit);
-    setIsEditing(false);
-  };
+// === PRICE UPDATE MODAL ===
+const PriceUpdateModal = ({ isOpen, onClose, onConfirm, onSkip, loading, changedProducts }) => {
+  if (!isOpen) return null;
 
   return (
     <motion.div
-      className="ca-product-card"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      layout
+      className="ca-modal-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
     >
-      <div className="ca-product-header">
-        <div className="ca-product-title">
-          <Package size={20} />
-          <h3>{product.product_name}</h3>
-        </div>
-        <div className="ca-product-meta">
-          <span className="ca-badge info">
-            <Layers size={14} />
-            {product.variants_count} variant{product.variants_count > 1 ? 's' : ''}
-          </span>
-          <span className="ca-badge primary">
-            {totalQuantity} unités
-          </span>
-        </div>
-      </div>
-
-      <div className="ca-cost-breakdown">
-        <div className="ca-cost-row base">
-          <span className="ca-cost-label">Prix fournisseur unitaire</span>
-          <span className="ca-cost-value">{formatCurrency(product.supplier_unit_cost)} Ar</span>
+      <motion.div
+        className="ca-modal-content"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="ca-modal-header warning">
+          <TrendingUp size={28} />
+          <h2>Mise à jour des prix de vente</h2>
         </div>
 
-        <div className="ca-cost-row freight">
-          <span className="ca-cost-label">
-            <Truck size={16} />
-            Coût transport unitaire
-          </span>
-          {isEditing ? (
-            <input
-              type="number"
-              className="ca-cost-input"
-              value={freightCost}
-              onChange={(e) => setFreightCost(e.target.value)}
-              step="0.01"
-              min="0"
-            />
-          ) : (
-            <span className="ca-cost-value">{formatCurrency(freightCost)} Ar</span>
-          )}
-        </div>
-
-        <div className="ca-cost-row other">
-          <span className="ca-cost-label">
-            <Tag size={16} />
-            Autres coûts unitaires
-          </span>
-          {isEditing ? (
-            <input
-              type="number"
-              className="ca-cost-input"
-              value={otherCosts}
-              onChange={(e) => setOtherCosts(e.target.value)}
-              step="0.01"
-              min="0"
-            />
-          ) : (
-            <span className="ca-cost-value">{formatCurrency(otherCosts)} Ar</span>
-          )}
-        </div>
-
-        <div className="ca-cost-divider" />
-
-        <div className="ca-cost-row total">
-          <span className="ca-cost-label">Coût total unitaire</span>
-          <span className="ca-cost-value highlight">{formatCurrency(totalCost)} Ar</span>
-        </div>
-      </div>
-
-      <div className="ca-totals-grid">
-        <div className="ca-total-box">
-          <span className="ca-total-label">Transport total</span>
-          <span className="ca-total-value freight">{formatCurrency(totalFreight)} Ar</span>
-        </div>
-        <div className="ca-total-box">
-          <span className="ca-total-label">Autres coûts total</span>
-          <span className="ca-total-value other">{formatCurrency(totalOther)} Ar</span>
-        </div>
-      </div>
-
-      <div className="ca-variants-preview">
-        <h4>Variantes concernées</h4>
-        <div className="ca-variants-list">
-          {product.variants.map((variant, idx) => (
-            <div key={idx} className="ca-variant-item">
-              <div className="ca-variant-attrs">
-                {Object.entries(variant.variant_attributes).map(([key, value]) => (
-                  <span key={key} className="ca-variant-attr">
-                    {key}: {value}
-                  </span>
-                ))}
-              </div>
-              <span className="ca-variant-qty">{variant.quantity}x</span>
+        <div className="ca-modal-body">
+          <p className="ca-modal-warning-text">
+            Voulez-vous mettre à jour les prix de vente des produits ?
+          </p>
+          <div className="ca-modal-info-box">
+            <Info size={18} />
+            <div>
+              <strong>Produits concernés :</strong> {changedProducts} produit(s) avec de nouveaux prix
             </div>
-          ))}
+          </div>
+          <p className="ca-modal-question">
+            Les coûts seront sauvegardés dans tous les cas. Souhaitez-vous également mettre à jour les prix de vente ?
+          </p>
         </div>
-      </div>
 
-      <div className="ca-product-actions">
-        {isEditing ? (
-          <>
-            <button className="ca-btn ca-btn-sm ca-btn-secondary" onClick={handleCancel}>
-              <X size={16} />
-              Annuler
-            </button>
-            <button className="ca-btn ca-btn-sm ca-btn-primary" onClick={handleSave}>
-              <Save size={16} />
-              Enregistrer
-            </button>
-          </>
-        ) : (
-          <button className="ca-btn ca-btn-sm ca-btn-outline" onClick={() => setIsEditing(true)}>
-            <Edit2 size={16} />
-            Modifier
+        <div className="ca-modal-footer">
+          <button 
+            className="ca-btn ca-btn-secondary" 
+            onClick={onSkip}
+            disabled={loading}
+          >
+            <X size={18} />
+            Non, garder les prix actuels
           </button>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
-// === PRICING SECTION ===
-const PricingSection = ({ products, onUpdatePrices }) => {
-  const [prices, setPrices] = useState({});
-  const [margins, setMargins] = useState({});
-
-  useEffect(() => {
-    const initialPrices = {};
-    const initialMargins = {};
-    products.forEach(p => {
-      initialPrices[p.product_id] = p.recommended_total_unit_cost * 1.3; // 30% par défaut
-      initialMargins[p.product_id] = 30;
-    });
-    setPrices(initialPrices);
-    setMargins(initialMargins);
-  }, [products]);
-
-  const handleMarginChange = (productId, margin, cost) => {
-    const newMargin = parseFloat(margin) || 0;
-    const newPrice = cost * (1 + newMargin / 100);
-    setMargins(prev => ({ ...prev, [productId]: newMargin }));
-    setPrices(prev => ({ ...prev, [productId]: newPrice }));
-  };
-
-  const handlePriceChange = (productId, price, cost) => {
-    const newPrice = parseFloat(price) || 0;
-    const newMargin = ((newPrice - cost) / cost) * 100;
-    setPrices(prev => ({ ...prev, [productId]: newPrice }));
-    setMargins(prev => ({ ...prev, [productId]: newMargin }));
-  };
-
-  const handleSave = () => {
-    const data = {
-      products: products.map(p => ({
-        id: p.product_id,
-        base_price: prices[p.product_id]
-      }))
-    };
-    onUpdatePrices(data);
-  };
-
-  return (
-    <div className="ca-pricing-section">
-      <div className="ca-section-header">
-        <div>
-          <h2>
-            <ShoppingCart size={24} />
-            Prix de vente
-          </h2>
-          <p>Définissez les prix de vente pour chaque produit</p>
+          <button 
+            className="ca-btn ca-btn-success" 
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <div className="ca-loading-spinner" />
+                Enregistrement...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={18} />
+                Oui, mettre à jour les prix
+              </>
+            )}
+          </button>
         </div>
-        <button className="ca-btn ca-btn-success" onClick={handleSave}>
-          <Save size={18} />
-          Enregistrer les prix
-        </button>
-      </div>
-
-      <div className="ca-pricing-grid">
-        {products.map(product => {
-          const cost = product.recommended_total_unit_cost;
-          const price = prices[product.product_id] || cost;
-          const margin = margins[product.product_id] || 0;
-          const profit = price - cost;
-
-          return (
-            <div key={product.product_id} className="ca-pricing-card">
-              <div className="ca-pricing-header">
-                <h4>{product.product_name}</h4>
-                <span className="ca-pricing-cost">Coût: {formatCurrency(cost)} Ar</span>
-              </div>
-
-              <div className="ca-pricing-inputs">
-                <div className="ca-pricing-input-group">
-                  <label>
-                    <Percent size={16} />
-                    Marge (%)
-                  </label>
-                  <input
-                    type="number"
-                    className="ca-pricing-input"
-                    value={margin.toFixed(2)}
-                    onChange={(e) => handleMarginChange(product.product_id, e.target.value, cost)}
-                    step="0.1"
-                  />
-                </div>
-
-                <div className="ca-pricing-input-group">
-                  <label>
-                    <DollarSign size={16} />
-                    Prix de vente (Ar)
-                  </label>
-                  <input
-                    type="number"
-                    className="ca-pricing-input"
-                    value={price.toFixed(2)}
-                    onChange={(e) => handlePriceChange(product.product_id, e.target.value, cost)}
-                    step="0.01"
-                    min={cost}
-                  />
-                </div>
-              </div>
-
-              <div className="ca-pricing-stats">
-                <div className="ca-pricing-stat">
-                  <span className="ca-stat-label">Profit unitaire</span>
-                  <span className={`ca-stat-value ${profit >= 0 ? 'positive' : 'negative'}`}>
-                    {formatCurrency(profit)} Ar
-                  </span>
-                </div>
-                <div className="ca-pricing-stat">
-                  <span className="ca-stat-label">Marge</span>
-                  <span className={`ca-stat-value ${margin >= 0 ? 'positive' : 'negative'}`}>
-                    {margin.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -374,11 +170,17 @@ const CostAllocation = () => {
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
-  const [method, setMethod] = useState('value');
+  const [method, setMethod] = useState('price');
   const [alert, setAlert] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPriceUpdateModal, setShowPriceUpdateModal] = useState(false);
   const [isUpdateMode, setIsUpdateMode] = useState(false);
-  const [allocations, setAllocations] = useState({});
+  
+  // États pour les coûts et prix
+  const [productCosts, setProductCosts] = useState({});
+  const [productPrices, setProductPrices] = useState({});
+  const [productMargins, setProductMargins] = useState({});
+  const [pricesChanged, setPricesChanged] = useState({});
 
   useEffect(() => {
     checkReceiptStatus();
@@ -391,12 +193,10 @@ const CostAllocation = () => {
       const receiptData = response.data;
       setReceipt(receiptData);
 
-      // Vérifier si déjà alloué (mode modification)
       if (receiptData.status === 'cost_allocated') {
         setIsUpdateMode(true);
-        loadRecommendations();
+        await loadRecommendations();
       } else {
-        // Mode création : afficher le modal de confirmation
         setShowConfirmModal(true);
       }
     } catch (err) {
@@ -407,21 +207,38 @@ const CostAllocation = () => {
     }
   };
 
-  const loadRecommendations = async () => {
+  const loadRecommendations = async (selectedMethod = method) => {
     try {
       setLoading(true);
-      const response = await stockReceiptService.getCostRecommendations(id, method);
+      const response = await stockReceiptService.getCostRecommendations(id, selectedMethod);
       setRecommendations(response.data);
 
-      // Initialiser les allocations avec les recommandations
-      const initialAllocations = {};
+      // Initialiser avec les recommandations
+      const costs = {};
+      const prices = {};
+      const margins = {};
+      const changed = {};
+      
       response.data.recommendations.forEach(rec => {
-        initialAllocations[rec.product_id] = {
-          freight_cost_per_unit: rec.recommended_freight_cost_per_unit,
-          other_costs_per_unit: rec.recommended_other_costs_per_unit
+        costs[rec.product_id] = {
+          freight: parseFloat(rec.recommended_freight_cost_per_unit),
+          other: parseFloat(rec.recommended_other_costs_per_unit),
+          supplier: parseFloat(rec.supplier_unit_cost),
+          total: parseFloat(rec.recommended_total_unit_cost)
         };
+        
+        const currentPrice = parseFloat(rec.product_current_base_price) || 0;
+        const defaultPrice = rec.recommended_total_unit_cost * 1.3;
+        
+        prices[rec.product_id] = defaultPrice;
+        margins[rec.product_id] = 30;
+        changed[rec.product_id] = false;
       });
-      setAllocations(initialAllocations);
+      
+      setProductCosts(costs);
+      setProductPrices(prices);
+      setProductMargins(margins);
+      setPricesChanged(changed);
     } catch (err) {
       console.error('Erreur:', err);
       setAlert({ type: 'error', message: 'Impossible de charger les recommandations' });
@@ -435,81 +252,209 @@ const CostAllocation = () => {
     loadRecommendations();
   };
 
-  const handleMethodChange = (newMethod) => {
+  const handleMethodChange = async (newMethod) => {
     setMethod(newMethod);
-    loadRecommendations();
+    await loadRecommendations(newMethod);
   };
 
-  const handleUpdateAllocation = (productId, newValues) => {
-    setAllocations(prev => ({
+  const redistributeCosts = (updatedProductId, field, newValue) => {
+    const totalFreight = recommendations.total_expenses.freight_costs;
+    const totalOther = recommendations.total_expenses.other_costs;
+    
+    const newCosts = { ...productCosts };
+    const parsedValue = parseFloat(newValue) || 0;
+    newCosts[updatedProductId] = { 
+      ...newCosts[updatedProductId], 
+      [field]: parsedValue 
+    };
+    
+    let totalAllocated = 0;
+    Object.keys(newCosts).forEach(pid => {
+      const product = recommendations.recommendations.find(r => r.product_id === parseInt(pid));
+      if (product) {
+        totalAllocated += newCosts[pid][field] * product.total_quantity;
+      }
+    });
+    
+    const targetTotal = field === 'freight' ? totalFreight : totalOther;
+    const diff = targetTotal - totalAllocated;
+    
+    if (Math.abs(diff) > 0.01) {
+      const otherProducts = Object.keys(newCosts).filter(pid => pid !== updatedProductId.toString());
+      let totalOtherQty = 0;
+      
+      otherProducts.forEach(pid => {
+        const product = recommendations.recommendations.find(r => r.product_id === parseInt(pid));
+        if (product) {
+          totalOtherQty += product.total_quantity;
+        }
+      });
+      
+      if (totalOtherQty > 0) {
+        otherProducts.forEach(pid => {
+          const product = recommendations.recommendations.find(r => r.product_id === parseInt(pid));
+          if (product) {
+            const currentTotal = newCosts[pid][field] * product.total_quantity;
+            const newTotal = currentTotal + (diff * product.total_quantity / totalOtherQty);
+            newCosts[pid][field] = Math.max(0, newTotal / product.total_quantity);
+          }
+        });
+      }
+    }
+    
+    Object.keys(newCosts).forEach(pid => {
+      newCosts[pid].total = newCosts[pid].supplier + newCosts[pid].freight + newCosts[pid].other;
+    });
+    
+    return newCosts;
+  };
+
+  const handleCostBlur = (productId, field) => {
+    const updated = redistributeCosts(productId, field, productCosts[productId][field]);
+    setProductCosts(updated);
+    
+    if (productMargins[productId]) {
+      const newTotal = updated[productId].total;
+      const newPrice = newTotal * (1 + productMargins[productId] / 100);
+      setProductPrices(prev => ({ ...prev, [productId]: newPrice }));
+    }
+  };
+
+  const handleCostChange = (productId, field, value) => {
+    setProductCosts(prev => ({
       ...prev,
-      [productId]: newValues
+      [productId]: {
+        ...prev[productId],
+        [field]: parseFloat(value) || 0,
+        total: prev[productId].supplier + 
+               (field === 'freight' ? (parseFloat(value) || 0) : prev[productId].freight) +
+               (field === 'other' ? (parseFloat(value) || 0) : prev[productId].other)
+      }
     }));
   };
 
-  const handleApplyCosts = async () => {
+  const handleMarginChange = (productId, margin) => {
+    setProductMargins(prev => ({ ...prev, [productId]: parseFloat(margin) || 0 }));
+  };
+
+  const handleMarginBlur = (productId) => {
+    const margin = productMargins[productId] || 0;
+    const cost = productCosts[productId]?.total || 0;
+    const newPrice = cost * (1 + margin / 100);
+    setProductPrices(prev => ({ ...prev, [productId]: newPrice }));
+    
+    const product = recommendations.recommendations.find(r => r.product_id === productId);
+    const currentPrice = parseFloat(product?.product_current_base_price) || 0;
+    setPricesChanged(prev => ({ ...prev, [productId]: Math.abs(newPrice - currentPrice) > 0.01 }));
+  };
+
+  const handlePriceChange = (productId, price) => {
+    setProductPrices(prev => ({ ...prev, [productId]: parseFloat(price) || 0 }));
+    
+    const product = recommendations.recommendations.find(r => r.product_id === productId);
+    const currentPrice = parseFloat(product?.product_current_base_price) || 0;
+    setPricesChanged(prev => ({ ...prev, [productId]: Math.abs(parseFloat(price) - currentPrice) > 0.01 }));
+  };
+
+  const handlePriceBlur = (productId) => {
+    const price = productPrices[productId] || 0;
+    const cost = productCosts[productId]?.total || 0;
+    const newMargin = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+    setProductMargins(prev => ({ ...prev, [productId]: newMargin }));
+  };
+
+  const handleSaveClick = () => {
+    const changedCount = Object.values(pricesChanged).filter(Boolean).length;
+    if (changedCount > 0) {
+      setShowPriceUpdateModal(true);
+    } else {
+      handleSaveAll(false);
+    }
+  };
+
+  const handleSaveAll = async (updatePrices) => {
     try {
       setSubmitting(true);
       setAlert(null);
 
-      const data = {
-        allocations: Object.entries(allocations).map(([productId, values]) => ({
+      // Sauvegarder les coûts
+      const costData = {
+        allocations: Object.entries(productCosts).map(([productId, costs]) => ({
           product_id: parseInt(productId),
-          freight_cost_per_unit: values.freight_cost_per_unit,
-          other_costs_per_unit: values.other_costs_per_unit
+          freight_cost_per_unit: costs.freight,
+          other_costs_per_unit: costs.other
         }))
       };
+      await stockReceiptService.applyCosts(id, costData);
 
-      await stockReceiptService.applyCosts(id, data);
+      // Sauvegarder les prix si demandé
+      if (updatePrices) {
+        const priceData = {
+          products: Object.entries(productPrices)
+            .filter(([pid]) => pricesChanged[pid])
+            .map(([productId, price]) => ({
+              id: parseInt(productId),
+              base_price: price
+            }))
+        };
+        
+        if (priceData.products.length > 0) {
+          await productService.updateBasePrices(priceData);
+        }
+      }
+
+      // Nettoyer le localStorage
+      localStorage.removeItem(`cost-allocation-${id}`);
 
       setAlert({ 
         type: 'success', 
-        message: 'Coûts appliqués avec succès ! Vous pouvez maintenant définir les prix de vente.' 
+        message: updatePrices 
+          ? 'Coûts et prix enregistrés avec succès !' 
+          : 'Coûts enregistrés avec succès !'
       });
-
-      // Recharger les données
-      await checkReceiptStatus();
-
-    } catch (err) {
-      console.error('Erreur:', err);
-      setAlert({ 
-        type: 'error', 
-        message: err.response?.data?.message || 'Erreur lors de l\'application des coûts' 
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleUpdatePrices = async (data) => {
-    try {
-      setSubmitting(true);
-      await productService.updateBasePrices(data);
-      setAlert({ type: 'success', message: 'Prix de vente mis à jour avec succès !' });
       
       setTimeout(() => {
         navigate(`/reapprovisionnements/${id}`);
       }, 1500);
     } catch (err) {
       console.error('Erreur:', err);
-      setAlert({ type: 'error', message: 'Erreur lors de la mise à jour des prix' });
+      setAlert({ type: 'error', message: err.response?.data?.message || 'Erreur lors de l\'enregistrement' });
     } finally {
       setSubmitting(false);
+      setShowPriceUpdateModal(false);
     }
   };
 
   if (loading && !recommendations) {
     return (
       <div className="ca-loading-screen">
-        <RefreshCw className="ca-loading-spinner" size={48} />
+        <div className="ca-loading-spinner" />
         <p>Chargement...</p>
       </div>
     );
   }
 
+  const totalToAllocate = recommendations?.total_expenses?.total_to_allocate || 0;
+
+  // Calcul des totaux
+  let grandTotalProfit = 0;
+  let grandTotalRevenue = 0;
+  let grandTotalCost = 0;
+
+  recommendations?.recommendations.forEach(product => {
+    const costs = productCosts[product.product_id] || {};
+    const price = productPrices[product.product_id] || 0;
+    const profit = (price - (costs.total || 0)) * product.total_quantity;
+    const revenue = price * product.total_quantity;
+    const totalCost = (costs.total || 0) * product.total_quantity;
+    
+    grandTotalProfit += profit;
+    grandTotalRevenue += revenue;
+    grandTotalCost += totalCost;
+  });
+
   return (
     <div className="ca-page">
-      {/* Back button */}
       <motion.button
         className="ca-back-btn"
         onClick={() => navigate(`/reapprovisionnements/${id}`)}
@@ -521,7 +466,6 @@ const CostAllocation = () => {
         Retour à la réception
       </motion.button>
 
-      {/* Header */}
       <motion.div
         className="ca-header"
         initial={{ opacity: 0, y: -20 }}
@@ -534,15 +478,8 @@ const CostAllocation = () => {
           <h1>Répartition des coûts</h1>
           <p>Réception {receipt?.receipt_number}</p>
         </div>
-        {isUpdateMode && (
-          <span className="ca-badge warning">
-            <Edit2 size={14} />
-            Mode modification
-          </span>
-        )}
       </motion.div>
 
-      {/* Alert */}
       <AnimatePresence>
         {alert && (
           <motion.div
@@ -591,7 +528,7 @@ const CostAllocation = () => {
               <div>
                 <span className="ca-summary-label">Total à répartir</span>
                 <span className="ca-summary-value">
-                  {formatCurrency(recommendations.total_expenses.total_to_allocate)} Ar
+                  {formatCurrency(totalToAllocate)} Ar
                 </span>
               </div>
             </div>
@@ -602,9 +539,9 @@ const CostAllocation = () => {
             <h3>Méthode de répartition</h3>
             <div className="ca-method-buttons">
               {[
-                { key: 'value', label: 'Par valeur', icon: DollarSign },
+                { key: 'price', label: 'Par prix', icon: DollarSign },
                 { key: 'quantity', label: 'Par quantité', icon: Layers },
-                { key: 'weight', label: 'Par poids', icon: Package }
+                { key: 'weight', label: 'Par pondération prix×quantité', icon: Package }
               ].map(m => {
                 const Icon = m.icon;
                 return (
@@ -621,56 +558,181 @@ const CostAllocation = () => {
             </div>
           </div>
 
-          {/* Products */}
-          <div className="ca-products-section">
-            <h2>Coûts par produit</h2>
-            <div className="ca-products-grid">
-              {recommendations.recommendations.map(product => (
-                <ProductCostCard
-                  key={product.product_id}
-                  product={{
-                    ...product,
-                    recommended_freight_cost_per_unit: allocations[product.product_id]?.freight_cost_per_unit || product.recommended_freight_cost_per_unit,
-                    recommended_other_costs_per_unit: allocations[product.product_id]?.other_costs_per_unit || product.recommended_other_costs_per_unit
-                  }}
-                  onUpdate={handleUpdateAllocation}
-                />
-              ))}
+          {/* Products Table */}
+          <div className="ca-table-wrapper">
+            <div className="ca-table-container">
+              <table className="ca-table">
+                <thead>
+                  <tr>
+                    <th className="ca-sticky-col">Produit</th>
+                    <th>Qté</th>
+                    <th>Prix actuel</th>
+                    <th>Prix fourn.</th>
+                    <th>Transport/u</th>
+                    <th>% Transp.</th>
+                    <th>Autres/u</th>
+                    <th>% Autres</th>
+                    <th>Coût tot/u</th>
+                    <th>Coût total</th>
+                    <th>Marge %</th>
+                    <th>Prix vente</th>
+                    <th>Profit/u</th>
+                    <th>Profit tot.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recommendations.recommendations.map(product => {
+                    const costs = productCosts[product.product_id] || {};
+                    const price = productPrices[product.product_id] || 0;
+                    const margin = productMargins[product.product_id] || 0;
+                    const profit = price - (costs.total || 0);
+                    const totalProfit = profit * product.total_quantity;
+                    
+                    const freightTotal = (costs.freight || 0) * product.total_quantity;
+                    const otherTotal = (costs.other || 0) * product.total_quantity;
+                    const grandTotal = (costs.total || 0) * product.total_quantity;
+                    
+                    const freightPercent = recommendations.total_expenses.freight_costs > 0 
+                      ? (freightTotal / recommendations.total_expenses.freight_costs) * 100 
+                      : 0;
+                    const otherPercent = recommendations.total_expenses.other_costs > 0 
+                      ? (otherTotal / recommendations.total_expenses.other_costs) * 100 
+                      : 0;
+                    
+                    const currentPrice = parseFloat(product.product_current_base_price) || 0;
+                    const isPriceChanged = pricesChanged[product.product_id];
+                    
+                    return (
+                      <tr key={product.product_id}>
+                        <td className="ca-product-cell ca-sticky-col">
+                          <div className="ca-product-name">{product.product_name}</div>
+                          <div className="ca-product-variants">{product.variants_count} variant(s)</div>
+                        </td>
+                        <td className="ca-qty-cell">{product.total_quantity}</td>
+                        <td className="ca-current-price-cell">
+                          {formatCurrency(currentPrice)} Ar
+                        </td>
+                        <td className="ca-cost-cell">{formatCurrency(costs.supplier || 0)} Ar</td>
+                        <td className="ca-input-cell">
+                          <input
+                            type="number"
+                            className="ca-table-input"
+                            value={costs.freight || 0}
+                            onChange={(e) => handleCostChange(product.product_id, 'freight', e.target.value)}
+                            onBlur={() => handleCostBlur(product.product_id, 'freight')}
+                            step="0.01"
+                            min="0"
+                          />
+                        </td>
+                        <td className="ca-percent-cell">
+                          <div className="ca-percent-bar">
+                            <div 
+                              className="ca-percent-fill freight" 
+                              style={{ width: `${Math.min(freightPercent, 100)}%` }}
+                            />
+                            <span className="ca-percent-text">{freightPercent.toFixed(1)}%</span>
+                          </div>
+                        </td>
+                        <td className="ca-input-cell">
+                          <input
+                            type="number"
+                            className="ca-table-input"
+                            value={costs.other || 0}
+                            onChange={(e) => handleCostChange(product.product_id, 'other', e.target.value)}
+                            onBlur={() => handleCostBlur(product.product_id, 'other')}
+                            step="0.01"
+                            min="0"
+                          />
+                        </td>
+                        <td className="ca-percent-cell">
+                          <div className="ca-percent-bar">
+                            <div 
+                              className="ca-percent-fill other" 
+                              style={{ width: `${Math.min(otherPercent, 100)}%` }}
+                            />
+                            <span className="ca-percent-text">{otherPercent.toFixed(1)}%</span>
+                          </div>
+                        </td>
+                        <td className="ca-total-cell">{formatCurrency(costs.total || 0)} Ar</td>
+                        <td className="ca-grand-total-cell">{formatCurrency(grandTotal)} Ar</td>
+                        <td className="ca-input-cell">
+                          <input
+                            type="number"
+                            className="ca-table-input"
+                            value={margin}
+                            onChange={(e) => handleMarginChange(product.product_id, e.target.value)}
+                            onBlur={() => handleMarginBlur(product.product_id)}
+                            step="0.1"
+                          />
+                        </td>
+                        <td className="ca-input-cell">
+                          <input
+                            type="number"
+                            className={`ca-table-input ${isPriceChanged ? 'ca-price-changed' : ''}`}
+                            value={price}
+                            onChange={(e) => handlePriceChange(product.product_id, e.target.value)}
+                            onBlur={() => handlePriceBlur(product.product_id)}
+                            step="0.01"
+                            min={costs.total || 0}
+                          />
+                        </td>
+                        <td className={`ca-profit-cell ${profit >= 0 ? 'positive' : 'negative'}`}>
+                          {formatCurrency(profit)} Ar
+                        </td>
+                        <td className={`ca-total-profit-cell ${totalProfit >= 0 ? 'positive' : 'negative'}`}>
+                          {formatCurrency(totalProfit)} Ar
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="ca-total-row">
+                    <td className="ca-sticky-col"><strong>TOTAL</strong></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td className="ca-footer-total">{formatCurrency(grandTotalCost)} Ar</td>
+                    <td></td>
+                    <td className="ca-footer-total">{formatCurrency(grandTotalRevenue)} Ar</td>
+                    <td></td>
+                    <td className={`ca-footer-profit ${grandTotalProfit >= 0 ? 'positive' : 'negative'}`}>
+                      {formatCurrency(grandTotalProfit)} Ar
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
 
-          {/* Apply button */}
+          {/* Save Button */}
           <div className="ca-actions">
             <button 
               className="ca-btn ca-btn-lg ca-btn-success"
-              onClick={handleApplyCosts}
+              onClick={handleSaveClick}
               disabled={submitting}
             >
               {submitting ? (
                 <>
-                  <RefreshCw size={20} className="ca-loading-spinner" />
-                  Application en cours...
+                  <div className="ca-loading-spinner" />
+                  Enregistrement...
                 </>
               ) : (
                 <>
                   <CheckCircle size={20} />
-                  {isUpdateMode ? 'Mettre à jour les coûts' : 'Appliquer les coûts'}
+                  Enregistrer tout
                 </>
               )}
             </button>
           </div>
-
-          {/* Pricing section */}
-          {isUpdateMode && (
-            <PricingSection
-              products={recommendations.recommendations}
-              onUpdatePrices={handleUpdatePrices}
-            />
-          )}
         </motion.div>
       )}
 
-      {/* Confirmation Modal */}
       <AnimatePresence>
         {showConfirmModal && (
           <ConfirmationModal
@@ -678,6 +740,19 @@ const CostAllocation = () => {
             onClose={() => navigate(`/reapprovisionnements/${id}`)}
             onConfirm={handleConfirmStart}
             loading={loading}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPriceUpdateModal && (
+          <PriceUpdateModal
+            isOpen={showPriceUpdateModal}
+            onClose={() => setShowPriceUpdateModal(false)}
+            onConfirm={() => handleSaveAll(true)}
+            onSkip={() => handleSaveAll(false)}
+            loading={submitting}
+            changedProducts={Object.values(pricesChanged).filter(Boolean).length}
           />
         )}
       </AnimatePresence>

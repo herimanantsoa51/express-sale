@@ -218,8 +218,8 @@ const stockReceiptService = {
    * @returns {string} return.message
    * @returns {Object} return.data - StockReceiptResource
    */
-  validate: async (id) => {
-    const response = await api.post(`/stock-receipts/${id}/validate`);
+  validate: async (id,data) => {
+    const response = await api.post(`/stock-receipts/${id}/validate`,data);
     return response.data;
   },
 
@@ -319,7 +319,7 @@ const stockReceiptService = {
     return response.data;
   },
   getCostRecommendations:async (id,method)=>{
-    const response = await api.get(`/stock-receipts/${id}/cost-recommendations`,{method});
+    const response = await api.get(`/stock-receipts/${id}/cost-recommendations?method=${method}`);
     return response.data;
   },
   applyCosts: async (id,dataCosts)=>{
@@ -332,6 +332,10 @@ const stockReceiptService = {
   },
   moveReceivedVariant:async(id,data)=>{
     const response = await api.post(`/stock-receipts/${id}/move-received-variant`,data);
+    return response.data;
+  },
+  getAllocatedCosts: async(id)=>{
+    const response = await api.get(`/stock-receipts/${id}/cost-allocations`);
     return response.data;
   }
 

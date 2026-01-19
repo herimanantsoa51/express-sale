@@ -245,8 +245,8 @@ public function index(Request $request)
                 ];
             });
             
-            $totalStock = $variant->locations->sum('quantity');
-            $availableStock = $totalStock - $reservedQuantity - $creditQuantity;
+            $totalStock = $variant->locations->sum('quantity') + $reservedQuantity;
+            $availableStock = $totalStock - $reservedQuantity ;
             
             return [
                 'id' => $variant->id,

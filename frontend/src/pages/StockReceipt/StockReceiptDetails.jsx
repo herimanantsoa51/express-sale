@@ -44,7 +44,7 @@ import StatusBadge from './stockReceiptDetailsComponents/StatusBadge';
 import StatusTimeline from './stockReceiptDetailsComponents/StatusTimeline';
 import ArrivalModal from './stockReceiptDetailsComponents/ArrivalModal';
 import RatingsModal from './stockReceiptDetailsComponents/RatingsModal'
-
+import LocationModal from './stockReceiptDetailsComponents/LocationModal';
 
 import {
   formatCurrency,
@@ -105,6 +105,7 @@ const StockReceiptDetails = () => {
   const [expandedItems, setExpandedItems] = useState({});
   const [showArrivalModal, setShowArrivalModal] = useState(false);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
 
   useEffect(() => {
@@ -158,7 +159,7 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
           setShowArrivalModal(true);
           setActionLoading(false);
           return;
-        case 'validate':
+        case 'rate':
           navigate(`/reapprovisionnements/${id}/evaluation`);
           setActionLoading(false);
           return;
@@ -166,13 +167,13 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
           navigate(`/reapprovisionnements/${id}/cout-repartition`);
           setActionLoading(false);
           return;
-        case 'finalize': // ← NOUVEAU
-          if (window.confirm('Voulez-vous valider définitivement cette réception ?')) {
-            await stockReceiptService.finalizeReceipt(id); // API à créer
-          } else {
+        case 'validate':
+            setShowLocationModal(true);
             setActionLoading(false);
-            return;
-          }
+          return;
+        case 'view_costs':
+          navigate(`/reapprovisionnements/${id}/cout-repartition/detail`);
+          setActionLoading(false);
           break;
         case 'cancel':
           if (window.confirm('Êtes-vous sûr de vouloir annuler cette réception ? Cette action est irréversible.')) {
@@ -218,7 +219,19 @@ const handleViewRatings = (item, event) => {
       [itemId]: !prev[itemId]
     }));
   };
-
+  const handleValidationSubmit = async (data) => {
+    try {
+      setActionLoading(true);
+      await stockReceiptService.validate(id, data);
+      setShowLocationModal(false);
+      await fetchData();
+    } catch (err) {
+      console.log(err.response);
+      alert(err.response?.data?.message || 'Erreur lors de la validation');
+    } finally {
+      setActionLoading(false);
+    }
+  };
   const getAvailableActions = () => {
     if (!receipt || !receipt.status) return [];
     
@@ -245,7 +258,7 @@ const handleViewRatings = (item, event) => {
         break;
       case 'arrived':
         actions.push(
-          { key: 'validate', label: 'Évaluer', icon: BadgeCheck, variant: 'success' } // ← CHANGÉ
+          { key: 'rate', label: 'Évaluer', icon: BadgeCheck, variant: 'success' } // ← CHANGÉ
         );
         break;
       case 'rated': // ← NOUVEAU STATUT
@@ -255,8 +268,14 @@ const handleViewRatings = (item, event) => {
         break;
       case 'cost_allocated': // ← NOUVEAU STATUT
         actions.push(
-          { key: 'finalize', label: 'Valider définitivement', icon: CheckSquare, variant: 'success' }
+          { key: 'validate', label: 'Valider définitivement', icon: CheckSquare, variant: 'success' },
+          { key: 'allocate_costs', label: 'Modifier la répartition des coûts', icon: DollarSign, variant: 'secondary' }
         );
+        break;
+      case 'validated':
+        actions.push(
+          { key: 'view_costs', label: 'Voir la répartition des coûts', icon: DollarSign, variant: 'secondary' }
+        )
         break;
       default:
         break;
@@ -816,6 +835,14 @@ const handleViewRatings = (item, event) => {
       onClose={() => setShowRatingsModal(false)}
       item={selectedItemForRatings}
     />
+    <LocationModal
+    isOpen={showLocationModal}
+    onClose={() => setShowLocationModal(false)}
+    items={receipt.items || []}
+    locations={locations}
+    onSubmit={handleValidationSubmit}
+    isLoading={actionLoading}
+  />
     </div>
   );
 };

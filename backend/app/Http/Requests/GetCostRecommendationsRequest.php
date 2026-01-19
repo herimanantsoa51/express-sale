@@ -21,14 +21,14 @@ class GetCostRecommendationsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'method' => 'nullable|in:weight,value,quantity',
+            'method' => 'nullable|in:weight,price,quantity',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'method.in' => 'La méthode doit être: weight, value ou quantity',
+            'method.in' => 'La méthode doit être: weight, price ou quantity',
         ];
     }
 }

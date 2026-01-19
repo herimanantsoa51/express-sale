@@ -70,6 +70,10 @@ import CashCountDetail from './pages/CashCount/CashCountDetail';
 import CashCountForm from './pages/CashCount/CashCountForm';
 import CashCountList from './pages/CashCount/CashCountList';
 import StockReceiptPayment from './pages/StockReceipt/StockReceiptPayment';
+
+import CostAllocation from './pages/StockReceipt/CostAllocation';
+import CostAllocationView from './pages/StockReceipt/CostAllocationView';
+
 function App() {
   return (
     <ThemeProvider>
@@ -114,13 +118,16 @@ function App() {
                 <Route path=":id" element={<FreightForwarderDetails />} />
                 <Route path=":id/modifier" element={<FreightForwarderForm />} />
               </Route>
-              
+
               <Route path="reapprovisionnements">
                 <Route index element={<StockReceiptList/>}/>
                 <Route path='nouveau' element={<StockReceiptForm />} />
                 <Route path=':id' element={<StockReceiptDetails/>}/>
                 <Route path=':id/evaluation' element={<StockReceiptRating/>}/>
                 <Route path=':id/paiements' element={<StockReceiptPayment/>}/>
+                <Route path=':id/cout-repartition' element={<CostAllocation/>}/>
+                <Route path=':id/cout-repartition/detail' element={<CostAllocationView/>}/>
+
               </Route>
               <Route path="localisations-variantes">
                 <Route index element={<ProductVariantLocationsList />} />
@@ -193,6 +200,7 @@ function App() {
                 <Route path=':id' element={<CashCountDetail/>} />
                 <Route path=':id/modifier' element={<CashCountForm />} />
               </Route>
+              
 
               {/* Route 404 pour les pages protégées */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

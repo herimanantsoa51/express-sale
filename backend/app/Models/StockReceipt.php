@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
-
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class StockReceipt extends Model
 {
     protected $fillable = [
@@ -22,7 +22,9 @@ class StockReceipt extends Model
         'total_cost_ariary',
         'status',
         'notes',
-        'created_by'
+        'created_by',
+        'cost_validated_by',
+        'cost_validated_at'
     ];
 
     protected $casts = [
@@ -30,6 +32,7 @@ class StockReceipt extends Model
         'expected_delivery_date' => 'date',
         'actual_delivery_date' => 'datetime',
         'total_cost_ariary' => 'decimal:2',
+         'cost_validated_at' => 'date'
     ];
 
     // Status possibles: pending, sent, in_transit, arrived, validated, cancelled
@@ -56,6 +59,11 @@ class StockReceipt extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function costValidator():BelongsTo
+    {
+        return $this->belongsTo(User::class,'cost_validated_by');
+    }
+
     public function transactions(): HasMany
     {
         return $this->hasMany(AccountTransaction::class);
@@ -64,11 +72,18 @@ class StockReceipt extends Model
     /**
      * Obtenir tous les batches liés à cette réception
      */
-    public function batches(): Collection
+    
+
+    public function batches(): HasManyThrough
     {
-        return StockBatch::whereIn('stock_receipt_item_id', 
-            $this->items->pluck('id')
-        )->get();
+        return $this->hasManyThrough(
+            StockBatch::class,
+            StockReceiptItem::class,
+            'stock_receipt_id',        // FK sur stock_receipt_items
+            'stock_receipt_item_id',   // FK sur stock_batches
+            'id',
+            'id'
+        );
     }
 
     /**
@@ -244,17 +259,52 @@ class StockReceipt extends Model
     /**
      * Valider la réception et mettre à jour les scores
      */
-    public function validate(): void
+    public function validate(array $itemsWithLocations): void
     {
-        if ($this->status !== 'arrived') {
-            throw new \Exception('La réception doit être marquée comme arrivée avant validation');
+        if ($this->status !== 'cost_allocated') {
+            throw new \Exception('La réception doit être marquée comme arrivée et cout répartit avant validation');
         }
 
-        DB::transaction(function () {
+        DB::transaction(function () use($itemsWithLocations) {
             $this->update([
                 'status' => 'validated',
-                'validated_at' => now()
+                'cost_status'=>'validated',
+                'cost_validated_by'=>Auth::id(),
+                'cost_validated_at'=>now()
             ]);
+            foreach($itemsWithLocations as $itemData){
+                $item = $this->items()->findOrFail($itemData['item_id']);
+                 // Assigner à un emplacement si fourni et créer le mouvement de stock
+                if (isset($itemData['location_id']) && $item->quantity_received >0) {
+                    // Ajouter le stock à l'emplacement
+                    $variantLocation = ProductVariantLocation::firstOrCreate(
+                        [
+                            'variant_id' => $item->variant_id,
+                            'location_id' => $itemData['location_id']
+                        ],
+                        ['quantity' => 0]
+                    );
+                    
+                    $variantLocation->increment('quantity', $item->quantity_received);
+
+
+                    // Recalculer le stock total de la variante
+                    $item->variant->recalculateTotalStock();
+
+                    // Créer le mouvement de stock de type 'receipt'
+                    StockMovement::create([
+                        'variant_id' => $item->variant_id,
+                        'from_location_id' => null, // Pas de source pour une réception
+                        'to_location_id' => $itemData['location_id'],
+                        'quantity' => $item->quantity_received,
+                        'movement_type' => StockMovement::TYPE_RECEIPT,
+                        'stock_receipt_id' => $this->id,
+                        'performed_by' => Auth::id(),
+                        'reason' => "Réception {$this->receipt_number}",
+                        'notes' => $item->notes,
+                    ]);
+                }
+            }
 
             // Calculer et mettre à jour les scores
             $this->updateSupplierScore();
@@ -604,40 +654,65 @@ class StockReceipt extends Model
         if (!$this->hasBatches()) {
             throw new \Exception('Aucun batch trouvé pour cette réception');
         }
-
+    
         return DB::transaction(function () use ($method, $customAllocations) {
-            $batches = $this->batches();
+            // CORRECTION: Ajouter ->get() pour convertir en Collection
+            $batches = $this->batches()
+                ->with(['variant.product', 'variant.attributeValues.attributeType'])
+                ->get();
+            
             $expenses = $this->getExpensesByCategory();
-
-            // Séparer les dépenses
-            $freightCosts = $expenses->where('category_name', 'Transport & Transit')
+    
+            // Convertir en collection si nécessaire
+            if (!$expenses instanceof \Illuminate\Support\Collection) {
+                $expenses = collect($expenses);
+            }
+    
+            // Séparer les dépenses avec filter() au lieu de where()
+            $freightCosts = $expenses
+                ->filter(function ($expense) {
+                    return isset($expense['category_name']) && 
+                           $expense['category_name'] === 'Transport & Transit';
+                })
                 ->sum('total_amount');
             
-            $otherCosts = $expenses->whereNotqIn('category_name', [
-                'Transport & Transit',
-                'Approvisionnement' // On n'inclut pas le paiement fournisseur
-            ])->sum('total_amount');
-
-            // ⭐ GROUPER PAR PRODUIT (pas variant)
+            $otherCosts = $expenses
+                ->filter(function ($expense) {
+                    return isset($expense['category_name']) && 
+                           !in_array($expense['category_name'], [
+                               'Transport & Transit',
+                               'Approvisionnement'
+                           ]);
+                })
+                ->sum('total_amount');
+    
+            // Grouper par produit - Maintenant que $batches est une Collection
             $batchesByProduct = $batches->groupBy(function($batch) {
                 return $batch->variant->product_id;
             });
-
+    
             // Calculer les totaux pour la répartition AU NIVEAU PRODUIT
             $productTotals = $this->calculateProductAllocationTotals($batchesByProduct, $method);
-
+    
             $allocations = [];
-
+    
             // Répartir par PRODUIT
             foreach ($batchesByProduct as $productId => $productBatches) {
-                $product = $productBatches->first()->variant->product;
+                $firstBatch = $productBatches->first();
                 
-                // ⭐ COÛT UNIQUE PAR PRODUIT (tous les variants ont le même coût fournisseur)
-                $supplierUnitCost = $productBatches->first()->supplier_unit_cost;
+                // Vérifier que le variant et le produit existent
+                if (!$firstBatch->variant || !$firstBatch->variant->product) {
+                    continue;
+                }
+                
+                $product = $firstBatch->variant->product;
+                
+                // COÛT UNIQUE PAR PRODUIT (tous les variants ont le même coût fournisseur)
+                $supplierUnitCost = $firstBatch->supplier_unit_cost;
                 
                 // Quantité totale de ce produit (tous variants confondus)
                 $totalProductQuantity = $productBatches->sum('initial_quantity');
-
+    
                 // Utiliser allocation personnalisée si fournie
                 if (isset($customAllocations[$productId])) {
                     $freightPerUnit = $customAllocations[$productId]['freight_cost_per_unit'];
@@ -654,8 +729,8 @@ class StockReceipt extends Model
                         ? ($weight * $otherCosts) / $totalProductQuantity
                         : 0;
                 }
-
-                // ⭐ APPLIQUER LE MÊME COÛT À TOUS LES VARIANTS DU PRODUIT
+    
+                // APPLIQUER LE MÊME COÛT À TOUS LES VARIANTS DU PRODUIT
                 foreach ($productBatches as $batch) {
                     $batch->update([
                         'freight_cost_per_unit' => round($freightPerUnit, 2),
@@ -663,7 +738,7 @@ class StockReceipt extends Model
                         'cost_status' => 'estimated',
                     ]);
                 }
-
+    
                 // Résumé par produit
                 $allocations[] = [
                     'product_id' => $productId,
@@ -675,18 +750,29 @@ class StockReceipt extends Model
                     'total_quantity' => $totalProductQuantity,
                     'variants_count' => $productBatches->count(),
                     'batches' => $productBatches->map(function($batch) {
+                        // Vérifier si les attributs sont chargés
+                        $attributes = '';
+                        if ($batch->variant && $batch->variant->relationLoaded('attributeValues')) {
+                            $attributes = $batch->variant->attributeValues
+                                ->map(function ($attrValue) {
+                                    return $attrValue->value;
+                                })
+                                ->filter()
+                                ->join(', ');
+                        }
+                        
                         return [
                             'batch_id' => $batch->id,
                             'batch_number' => $batch->batch_number,
                             'variant_id' => $batch->variant_id,
-                            'variant_attributes' => $batch->variant->attributeValues->pluck('value')->join(', '),
+                            'variant_attributes' => $attributes,
                             'quantity' => $batch->initial_quantity,
                             'total_unit_cost' => $batch->fresh()->total_unit_cost,
                         ];
-                    }),
+                    })->values(),
                 ];
             }
-
+    
             return [
                 'method' => $method,
                 'total_freight_costs' => $freightCosts,
@@ -766,8 +852,7 @@ class StockReceipt extends Model
             foreach ($batches as $batch) {
                 $batch->update([
                     'cost_status' => 'validated',
-                    'cost_validated_at' => now(),
-                    'cost_validated_by' => $userId,
+                
                 ]);
             }
 

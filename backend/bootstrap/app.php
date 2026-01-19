@@ -15,12 +15,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Enregistrer l'alias du middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'admin' => \App\Http\Middleware\IsAdmin::class
         ]);
         
         // Ajouter le middleware d'expiration des réservations sur les routes API
         $middleware->appendToGroup('api', [
-            \App\Http\Middleware\ExpireReservationsMiddleware::class,
+            \App\Http\Middleware\AdminNotificationsMiddleware::class,
         ]);
+     
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

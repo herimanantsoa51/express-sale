@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict htPpf5z5Jtws1XhkOg2egeJgaq5bntI4nduj4HhiQcaCOqqIR5KzH8qJkEbdsDL
+\restrict UcIVCRaFTvHHIisBykNyp3eCBCJUTHoAbvNJMe3aU7htJOEYYcdeUWXFzJJfvLO
 
 -- Dumped from database version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
 -- Dumped by pg_dump version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
@@ -1802,7 +1802,9 @@ CREATE TABLE public.freight_forwarders (
     total_value_delivered numeric(15,2) DEFAULT 0,
     weighted_service_sum numeric(15,2) DEFAULT 0,
     total_weighted_shipment_value numeric(15,2) DEFAULT 0,
-    CONSTRAINT freight_forwarders_service_score_check CHECK (((service_score >= (0)::numeric) AND (service_score <= (10)::numeric)))
+    type character varying(20),
+    CONSTRAINT freight_forwarders_service_score_check CHECK (((service_score >= (0)::numeric) AND (service_score <= (10)::numeric))),
+    CONSTRAINT freight_forwarders_type_check CHECK (((type)::text = ANY ((ARRAY['aerien'::character varying, 'maritime'::character varying])::text[])))
 );
 
 
@@ -2372,6 +2374,63 @@ ALTER SEQUENCE public.reservations_id_seq OWNED BY public.reservations.id;
 
 
 --
+-- Name: sale_item_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sale_item_batches (
+    id bigint NOT NULL,
+    sale_item_id bigint NOT NULL,
+    batch_id bigint NOT NULL,
+    quantity integer NOT NULL,
+    unit_price_at_sale numeric(12,2) NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone,
+    CONSTRAINT chk_sib_price_positive CHECK ((unit_price_at_sale >= (0)::numeric)),
+    CONSTRAINT chk_sib_quantity_positive CHECK ((quantity > 0))
+);
+
+
+--
+-- Name: TABLE sale_item_batches; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.sale_item_batches IS 'Traçabilité FIFO : quel batch a été vendu dans quelle vente (sans snapshot de coût)';
+
+
+--
+-- Name: COLUMN sale_item_batches.quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sale_item_batches.quantity IS 'Quantité vendue provenant de ce lot';
+
+
+--
+-- Name: COLUMN sale_item_batches.unit_price_at_sale; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sale_item_batches.unit_price_at_sale IS 'Snapshot du prix de vente (le coût est lu depuis batch.total_unit_cost)';
+
+
+--
+-- Name: sale_item_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sale_item_batches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sale_item_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sale_item_batches_id_seq OWNED BY public.sale_item_batches.id;
+
+
+--
 -- Name: sale_items; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2478,6 +2537,113 @@ CREATE TABLE public.sessions (
     payload text NOT NULL,
     last_activity integer NOT NULL
 );
+
+
+--
+-- Name: stock_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_batches (
+    id bigint NOT NULL,
+    variant_id bigint NOT NULL,
+    stock_receipt_item_id bigint,
+    batch_number character varying(50) NOT NULL,
+    initial_quantity integer NOT NULL,
+    remaining_quantity integer DEFAULT 0 NOT NULL,
+    supplier_unit_cost numeric(12,2) NOT NULL,
+    freight_cost_per_unit numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    other_costs_per_unit numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    total_unit_cost numeric(12,2) GENERATED ALWAYS AS (((supplier_unit_cost + freight_cost_per_unit) + other_costs_per_unit)) STORED NOT NULL,
+    cost_status character varying(255) DEFAULT 'pending'::character varying NOT NULL,
+    cost_validated_at timestamp(0) without time zone,
+    CONSTRAINT chk_batch_costs_non_negative CHECK (((freight_cost_per_unit >= (0)::numeric) AND (other_costs_per_unit >= (0)::numeric))),
+    CONSTRAINT chk_batch_remaining_lte_initial CHECK ((remaining_quantity <= initial_quantity)),
+    CONSTRAINT chk_batch_remaining_positive CHECK ((remaining_quantity >= 0)),
+    CONSTRAINT chk_batch_supplier_cost_positive CHECK ((supplier_unit_cost > (0)::numeric)),
+    CONSTRAINT stock_batches_cost_status_check CHECK (((cost_status)::text = ANY ((ARRAY['pending'::character varying, 'estimated'::character varying, 'validated'::character varying])::text[])))
+);
+
+
+--
+-- Name: TABLE stock_batches; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.stock_batches IS 'Lots de stock pour tracking FIFO des coûts réels';
+
+
+--
+-- Name: COLUMN stock_batches.initial_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.initial_quantity IS 'Quantité initiale du lot';
+
+
+--
+-- Name: COLUMN stock_batches.remaining_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.remaining_quantity IS 'Quantité encore disponible (diminue à chaque vente FIFO)';
+
+
+--
+-- Name: COLUMN stock_batches.supplier_unit_cost; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.supplier_unit_cost IS 'Coût unitaire payé au fournisseur (depuis stock_receipt_items)';
+
+
+--
+-- Name: COLUMN stock_batches.freight_cost_per_unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.freight_cost_per_unit IS 'Frais de transport par unité (répartis)';
+
+
+--
+-- Name: COLUMN stock_batches.other_costs_per_unit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.other_costs_per_unit IS 'Autres frais par unité (manutention, stockage, etc.)';
+
+
+--
+-- Name: COLUMN stock_batches.total_unit_cost; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.total_unit_cost IS 'Coût complet par unité utilisé pour calcul des bénéfices';
+
+
+--
+-- Name: COLUMN stock_batches.cost_status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.cost_status IS 'pending = pas réparti, estimated = recommandation calculée, validated = validé manuellement';
+
+
+--
+-- Name: COLUMN stock_batches.cost_validated_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stock_batches.cost_validated_at IS 'Date de validation des coûts';
+
+
+--
+-- Name: stock_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.stock_batches_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: stock_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.stock_batches_id_seq OWNED BY public.stock_batches.id;
 
 
 --
@@ -2636,7 +2802,7 @@ CREATE TABLE public.stock_receipt_items (
     unit_cost_ariary numeric(12,2) NOT NULL,
     notes text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT stock_receipt_items_quantity_ordered_check CHECK ((quantity_ordered > 0)),
+    CONSTRAINT stock_receipt_items_quantity_ordered_check CHECK ((quantity_ordered >= 0)),
     CONSTRAINT stock_receipt_items_quantity_received_check CHECK ((quantity_received >= 0))
 );
 
@@ -2685,7 +2851,8 @@ CREATE TABLE public.stock_receipts (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     expected_delivery_date date,
     actual_delivery_date timestamp without time zone,
-    validated_at timestamp without time zone
+    cost_validated_at timestamp with time zone,
+    cost_validated_by integer
 );
 
 
@@ -3383,6 +3550,13 @@ ALTER TABLE ONLY public.reservations ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: sale_item_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sale_item_batches ALTER COLUMN id SET DEFAULT nextval('public.sale_item_batches_id_seq'::regclass);
+
+
+--
 -- Name: sale_items id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3394,6 +3568,13 @@ ALTER TABLE ONLY public.sale_items ALTER COLUMN id SET DEFAULT nextval('public.s
 --
 
 ALTER TABLE ONLY public.sales ALTER COLUMN id SET DEFAULT nextval('public.sales_id_seq'::regclass);
+
+
+--
+-- Name: stock_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_batches ALTER COLUMN id SET DEFAULT nextval('public.stock_batches_id_seq'::regclass);
 
 
 --
@@ -3470,5 +3651,5 @@ ALTER TABLE ONLY public.variant_attribute_values ALTER COLUMN id SET DEFAULT nex
 -- PostgreSQL database dump complete
 --
 
-\unrestrict htPpf5z5Jtws1XhkOg2egeJgaq5bntI4nduj4HhiQcaCOqqIR5KzH8qJkEbdsDL
+\unrestrict UcIVCRaFTvHHIisBykNyp3eCBCJUTHoAbvNJMe3aU7htJOEYYcdeUWXFzJJfvLO
 
