@@ -25,7 +25,7 @@ const api = axios.create({
     'Accept': 'application/json',
   },
 });
-
+console.log('API URL:', api.defaults.baseURL);
 // Intercepteur requête : ajouter token
 api.interceptors.request.use(
   (config) => {

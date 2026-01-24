@@ -22,6 +22,7 @@ class ReservationResource extends JsonResource
             'completed_at' => $this->completed_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
+            'transaction_complete_id' => $this->transaction_complete_id,
             
             // Calculés
             'payment_percentage' => round($this->getPaymentPercentage(), 2),

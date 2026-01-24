@@ -14,8 +14,9 @@ class ProductVariant extends Model
         'price_adjustment',
         'stock_quantity',
         'reserved_quantity',
-        'credit_quantity',
         'low_stock_threshold',
+        'available_quantity',
+        'credit_quantity',
         'is_active',
         'image_path'
     ];
@@ -24,9 +25,9 @@ class ProductVariant extends Model
         'price_adjustment' => 'decimal:2',
         'stock_quantity' => 'integer',
         'reserved_quantity' => 'integer',
-        'credit_quantity' => 'integer',
         'low_stock_threshold' => 'integer',
         'is_active' => 'boolean',
+        'available_quantity' => 'integer',
         'image_path' => FullUrl::class,
     ];
 
@@ -50,6 +51,10 @@ class ProductVariant extends Model
     {
         return $this->hasMany(ProductVariantLocation::class, 'variant_id');
     }
+    public function batches(): HasMany
+    {
+        return $this->hasMany(StockBatch::class, 'variant_id');
+    }
 
     public function stockReceiptItems(): HasMany
     {
@@ -59,7 +64,7 @@ class ProductVariant extends Model
     // Accessors
     public function getAvailableQuantityAttribute(): int
     {
-        return max(0, $this->stock_quantity - $this->reserved_quantity - $this->credit_quantity);
+        return max(0, $this->stock_quantity - $this->reserved_quantity);
     }
 
     public function getFinalPriceAttribute(): float
@@ -93,10 +98,21 @@ class ProductVariant extends Model
     /**
      * Recalculer le stock total à partir de tous les emplacements
      */
+        // Dans ProductVariant.php
     public function recalculateTotalStock(): void
-    {
-        $totalQuantity = $this->locations()->sum('quantity');
-        $this->update(['stock_quantity' => $totalQuantity]);
+        {
+            $totalQuantity = $this->locations()->sum('quantity');
+            $totalReserved = $this->locations()->sum('reserved_quantity');
+            
+            $this->update([
+                'stock_quantity' => $totalQuantity,
+                'reserved_quantity' => $totalReserved,
+                'available_quantity' => max(0, 
+                    $totalQuantity 
+                    - $totalReserved 
+                   // ✅ IMPORTANT
+                )
+            ]);
     }
 
     /**
@@ -281,8 +297,6 @@ class ProductVariant extends Model
             })
             ->toArray();
     }
-
-
-
+   
     
 }

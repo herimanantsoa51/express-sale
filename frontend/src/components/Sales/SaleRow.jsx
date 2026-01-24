@@ -46,8 +46,8 @@ const SaleRow = ({ sale }) => {
 
       <div className={styles.cell} style={{ minWidth: '180px' }}>
         <div className={styles.customer}>
-          <span className={styles.customerName}>{sale.customer.name}</span>
-          <span className={styles.customerNumber}>{sale.customer.customer_number}</span>
+          <span className={styles.customerName}>{sale.customer?.name}</span>
+          <span className={styles.customerNumber}>{sale.customer?.customer_number}</span>
         </div>
       </div>
 

@@ -1,22 +1,28 @@
-FROM php:8.3-fpm
+FROM php:8.3-fpm-bookworm
+
+# Changer le miroir APT (Bookworm)
+RUN sed -i 's|deb.debian.org|ftp.fr.debian.org|g' \
+    /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update && apt-get install -y \
-    libpq-dev zip unzip \
- && docker-php-ext-install pdo_pgsql \
- && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    wkhtmltopdf \
+    fontconfig \
+    fonts-dejavu \
+    zip \
+    unzip \
+    && docker-php-ext-install pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www
 
-# Copier tout le projet (vendor inclus)
 COPY . .
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-COPY .env.docker .env
-
-RUN php artisan key:generate --force \
- && php artisan config:clear \
- && php artisan config:cache \
- && php artisan route:cache
+# 👇 AJOUTEZ CES LIGNES
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+USER www-data
 
 EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["/start.sh"]

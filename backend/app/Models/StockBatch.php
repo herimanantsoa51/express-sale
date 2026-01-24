@@ -14,9 +14,12 @@ class StockBatch extends Model
         'batch_number',
         'initial_quantity',
         'remaining_quantity',
+        'reserved_quantity',
         'supplier_unit_cost',
         'freight_cost_per_unit',
         'other_costs_per_unit',
+        'received_date',
+        'cost_validated_at',
         // total_unit_cost est auto-calculé (generated column)
         'cost_status',
     ];
@@ -27,6 +30,8 @@ class StockBatch extends Model
         'freight_cost_per_unit' => 'decimal:2',
         'other_costs_per_unit' => 'decimal:2',
         'total_unit_cost' => 'decimal:2',
+        'received_date' => 'datetime',
+        'cost_validated_at' => 'datetime',
     ];
     public $timestamps = false;
     // ===== BOOT: Génération automatique du batch_number =====

@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
+use App\Models\Credit;
+use App\Models\InstallmentTransaction;
+use App\Models\Reservation;
+use App\Models\CashCount;
+
 
 class InvoiceController extends Controller
 {
@@ -15,48 +20,60 @@ class InvoiceController extends Controller
     /**
      * Télécharger la facture en PDF
      */
-    public function download(Sale $sale)
+    public function downloadSale(Sale $sale)
     {
-        return $this->invoiceService->download($sale);
+        return $this->invoiceService->downloadSale($sale);
     }
-
     /**
      * Afficher la facture dans le navigateur
      */
-    public function show(Sale $sale, Request $request)
+    public function showSale(Sale $sale, Request $request)
     {
-        // Support du token dans l'URL pour nouvel onglet
-        if ($request->has('token')) {
-            $token = $request->get('token');
-            $user = \Laravel\Sanctum\PersonalAccessToken::findToken($token)?->tokenable;
-            
-            if (!$user) {
-                abort(401, 'Token invalide');
-            }
-        }
-
-        return $this->invoiceService->stream($sale);
+        return $this->invoiceService->streamSale($sale);
+    }
+    public function downloadCredit(Credit $credit)
+    {
+        return $this->invoiceService->downloadCredit($credit);
     }
 
-    /**
-     * Envoyer la facture par email (optionnel)
-     */
-    public function email(Sale $sale)
+    public function showCredit(Credit $credit, Request $request)
     {
-        if (!$sale->customer || !$sale->customer->email) {
-            return response()->json([
-                'message' => 'Client sans email'
-            ], 400);
-        }
-
-        // Sauvegarder le PDF temporairement
-        $pdfPath = $this->invoiceService->save($sale);
-
-        // TODO: Implémenter l'envoi d'email
-        // Mail::to($sale->customer->email)->send(new InvoiceMail($sale, $pdfPath));
-
-        return response()->json([
-            'message' => 'Facture envoyée par email'
-        ]);
+        return $this->invoiceService->streamCredit($credit);
     }
+
+    public function downloadPaymentReceipt(InstallmentTransaction $installmentTransaction)
+    {
+        return $this->invoiceService->downloadPaymentReceipt($installmentTransaction);
+    }
+    public function showPaymentReceipt(InstallmentTransaction $installmentTransaction, Request $request)
+    {
+        return $this->invoiceService->streamPaymentReceipt($installmentTransaction);
+    }
+    public function downloadReservation(Reservation $reservation)
+    {
+        return $this->invoiceService->downloadReservation($reservation);
+    }
+    public function showReservation(Reservation $reservation, Request $request)
+    {
+        return $this->invoiceService->streamReservation($reservation);
+    }
+    public function downloadReservationReceipt(Reservation $reservation)
+    {
+        return $this->invoiceService->downloadReservationReceipt($reservation);
+    }
+    public function showReservationReceipt(Reservation $reservation, Request $request){
+        return $this->invoiceService->streamReservationReceipt($reservation);
+    }
+    public function downloadCashCount(CashCount $cashCount)
+    {
+        return $this->invoiceService->downloadCashCount($cashCount);
+    }
+    public function showCashCount(CashCount $cashCount, Request $request)
+    {
+        return $this->invoiceService->streamCashCount($cashCount);
+    }
+
+    
+
+   
 }

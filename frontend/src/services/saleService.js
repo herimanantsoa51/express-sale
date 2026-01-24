@@ -39,8 +39,14 @@ const saleService = {
    * @returns {Promise<Object>} Réservation créée
    */
   createReservation: async (data) => {
-    const response = await api.post('/sales/reservation', data);
-    return response.data;
+    try {
+      console.log("Creating reservation with data:", data);
+      const response = await api.post('/sales/reservation', data);
+      return response.data;
+    } catch (error) {
+      console.log(error);
+    }
+    
   },
 
   /**
@@ -62,7 +68,9 @@ const saleService = {
   getCashAccounts: async () => {
     const response = await api.get('/accounts/cash-mobile-money');
     return response.data;
-  }
+  },
+
+  
 };
 
 export default saleService;

@@ -11,7 +11,8 @@ const STATUS_CONFIG = {
   recovered: { label: 'Récupéré', variant: 'success' },
   pending: { label: 'En attente', variant: 'info' },
   partial: { label: 'Partiel', variant: 'warning' },
-  paid: { label: 'Payé', variant: 'success' }
+  paid: { label: 'Payé', variant: 'success' },
+  cancelled:{label:'Annulé',variant:'danger'}
 };
 
 const StatusBadge = ({ status }) => {

@@ -262,58 +262,76 @@ class StockReceipt extends Model
     public function validate(array $itemsWithLocations): void
     {
         if ($this->status !== 'cost_allocated') {
-            throw new \Exception('La réception doit être marquée comme arrivée et cout répartit avant validation');
+            throw new \Exception(
+                'La réception doit être marquée comme arrivée et coûts répartis avant validation'
+            );
         }
-
-        DB::transaction(function () use($itemsWithLocations) {
+    
+        DB::transaction(function () use ($itemsWithLocations) {
             $this->update([
                 'status' => 'validated',
-                'cost_status'=>'validated',
-                'cost_validated_by'=>Auth::id(),
-                'cost_validated_at'=>now()
+                'cost_status' => 'validated',
+                'cost_validated_by' => Auth::id(),
+                'cost_validated_at' => now(),
             ]);
-            foreach($itemsWithLocations as $itemData){
+    
+            foreach ($itemsWithLocations as $itemData) {
                 $item = $this->items()->findOrFail($itemData['item_id']);
-                 // Assigner à un emplacement si fourni et créer le mouvement de stock
-                if (isset($itemData['location_id']) && $item->quantity_received >0) {
-                    // Ajouter le stock à l'emplacement
-                    $variantLocation = ProductVariantLocation::firstOrCreate(
-                        [
-                            'variant_id' => $item->variant_id,
-                            'location_id' => $itemData['location_id']
-                        ],
-                        ['quantity' => 0]
-                    );
-                    
-                    $variantLocation->increment('quantity', $item->quantity_received);
-
-
-                    // Recalculer le stock total de la variante
-                    $item->variant->recalculateTotalStock();
-
-                    // Créer le mouvement de stock de type 'receipt'
-                    StockMovement::create([
-                        'variant_id' => $item->variant_id,
-                        'from_location_id' => null, // Pas de source pour une réception
-                        'to_location_id' => $itemData['location_id'],
-                        'quantity' => $item->quantity_received,
-                        'movement_type' => StockMovement::TYPE_RECEIPT,
-                        'stock_receipt_id' => $this->id,
-                        'performed_by' => Auth::id(),
-                        'reason' => "Réception {$this->receipt_number}",
-                        'notes' => $item->notes,
-                    ]);
+    
+                if (!isset($itemData['location_id']) || $item->quantity_received <= 0) {
+                    continue;
                 }
+    
+                $variantLocation = ProductVariantLocation::firstOrCreate(
+                    [
+                        'variant_id' => $item->variant_id,
+                        'location_id' => $itemData['location_id'],
+                    ],
+                    ['quantity' => 0]
+                );
+    
+                $batches = StockBatch::where('stock_receipt_item_id', $item->id)
+                    ->lockForUpdate()
+                    ->get();
+    
+                foreach ($batches as $batch) {
+                    if (is_null($batch->received_date)) {
+                        $batch->received_date =
+                            $this->actual_delivery_date ?? $this->created_at;
+                    }
+    
+                    $batch->update([
+                        'cost_status' => 'validated',
+                        'cost_validated_at' => now(),
+                    ]);
+    
+                    // stock par batch
+                    $variantLocation->increment('quantity', $batch->initial_quantity);
+                }
+    
+                $item->variant->recalculateTotalStock();
+    
+                StockMovement::create([
+                    'variant_id' => $item->variant_id,
+                    'from_location_id' => null,
+                    'to_location_id' => $itemData['location_id'],
+                    'quantity' => $item->quantity_received,
+                    'movement_type' => StockMovement::TYPE_RECEIPT,
+                    'stock_receipt_id' => $this->id,
+                    'performed_by' => Auth::id(),
+                    'reason' => "Réception {$this->receipt_number}",
+                    'notes' => $item->notes,
+                ]);
             }
-
-            // Calculer et mettre à jour les scores
-            $this->updateSupplierScore();
-            
+    
+            $this->supplier->updateReliabilityScore();
+    
             if ($this->freight_forwarder_id) {
                 $this->updateFreightForwarderScore();
             }
         });
     }
+    
 
     /**
      * Mettre à jour le score du fournisseur avec système de fiabilité amélioré
@@ -344,15 +362,7 @@ class StockReceipt extends Model
                 $totalWeightedValue += $itemValue;
             }
         }
-        
-        // Mettre à jour les statistiques cumulatives
-        $supplier->increment('total_orders');
-        $supplier->increment('total_items_ordered', $totalOrdered);
-        $supplier->increment('total_items_received', $totalReceived);
-        $supplier->increment('total_value_ordered', $totalValueOrdered);
-        $supplier->increment('total_value_received', $totalValueReceived);
-        $supplier->increment('weighted_quality_sum', $weightedQualitySum);
-        $supplier->increment('total_weighted_value', $totalWeightedValue);
+      
         
         // Calculer le score avec facteur de fiabilité
         $newScore = $this->calculateReliabilityScore($supplier);
@@ -360,53 +370,7 @@ class StockReceipt extends Model
         $supplier->update(['reliability_score' => $newScore]);
     }
 
-    /**
-     * Calculer le score de fiabilité du fournisseur
-     * Prend en compte : qualité, taux de réception, et historique
-     */
-    protected function calculateReliabilityScore($supplier): float
-    {
-        // 1. SCORE DE QUALITÉ (0-10) - Basé sur les évaluations
-        $qualityScore = $supplier->total_weighted_value > 0
-            ? ($supplier->weighted_quality_sum / $supplier->total_weighted_value)
-            : 5.0;
-        
-        // 2. TAUX DE RÉCEPTION (0-10) - Quantité reçue vs commandée
-        $fulfillmentRate = $supplier->total_items_ordered > 0
-            ? ($supplier->total_items_received / $supplier->total_items_ordered)
-            : 1.0;
-        $fulfillmentScore = $fulfillmentRate * 10; // Convertir en score sur 10
-        
-        // 3. FACTEUR D'HISTORIQUE (0-1) - Confiance basée sur le nombre de commandes
-        // Plus le fournisseur a d'historique, plus on lui fait confiance
-        $totalOrders = $supplier->total_orders;
-        
-        if ($totalOrders >= 50) {
-            $historyFactor = 1.0; // Confiance totale après 50 commandes
-        } elseif ($totalOrders >= 20) {
-            $historyFactor = 0.9; // Haute confiance après 20 commandes
-        } elseif ($totalOrders >= 10) {
-            $historyFactor = 0.8; // Bonne confiance après 10 commandes
-        } elseif ($totalOrders >= 5) {
-            $historyFactor = 0.7; // Confiance moyenne après 5 commandes
-        } elseif ($totalOrders >= 3) {
-            $historyFactor = 0.6; // Confiance faible après 3 commandes
-        } else {
-            $historyFactor = 0.5; // Très faible confiance (1-2 commandes)
-        }
-        
-        // 4. CALCUL DU SCORE FINAL
-        // Score brut basé sur qualité (70%) et taux de réception (30%)
-        $rawScore = ($qualityScore * 0.7) + ($fulfillmentScore * 0.3);
-        
-        // Appliquer le facteur d'historique pour ramener vers la moyenne (5.0)
-        // Les nouveaux fournisseurs sont ramenés vers 5.0, les établis gardent leur score
-        $finalScore = ($rawScore * $historyFactor) + (5.0 * (1 - $historyFactor));
-        
-        // S'assurer que le score reste entre 0 et 10
-        return max(0, min(10, round($finalScore, 2)));
-    }
-
+   
     /**
      * Mettre à jour le score du transitaire basé uniquement sur la ponctualité
      */
@@ -484,11 +448,11 @@ class StockReceipt extends Model
 
         DB::transaction(function () {
             // Annuler toutes les transactions liées en créant des transactions inverses
-            $transactions = $this->transactions()->get();
+            // $transactions = $this->transactions()->get();
             
-            foreach ($transactions as $transaction) {
-                $transaction->reverse();
-            }
+            // foreach ($transactions as $transaction) {
+            //     $transaction->reverse();
+            // }
 
             // Mettre à jour le statut de la réception
             $this->update([

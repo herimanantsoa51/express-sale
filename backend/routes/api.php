@@ -30,7 +30,10 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\CashCountController;
 use App\Http\Controllers\NotificationController;
-
+use App\Http\Controllers\CompanyInfoController;
+use App\Http\Controllers\SystemController;
+use App\Http\Controllers\PrintController;
+use Illuminate\Routing\RouteUri;
 
 Route::get('/ping', fn () => response()->json(['status' => 'ok']));
 // toutes les routes d'auth sous le préfixe "auth""
@@ -211,7 +214,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Paiements et évaluations
         Route::post('/{stockReceipt}/move-received-variant', [StockReceiptController::class, 'moveReceivedQuantity']);
         Route::post('/{stockReceipt}/payment', [StockReceiptController::class, 'recordPayment']);
-        Route::post('/{stockReceipt}/items/{itemId}/rate', [StockReceiptController::class, 'rateItem']);
+        Route::post('/{stockReceipt}/rate', [StockReceiptController::class, 'rateReceipt']);
         Route::get('/{stockReceipt}/cost-allocations', [StockReceiptController::class, 'getCostAllocated']);
         
         // Statistiques
@@ -293,6 +296,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/immediate', [SaleController::class, 'storeImmediate']);
         Route::post('/credit', [SaleController::class, 'storeCredit']);
         Route::post('/reservation', [SaleController::class, 'storeReservation']);
+        Route::post('/immediate/cancel/{sale}',[SaleController::class, 'cancelImmediateSale']);
     });
 
     // ==================== CRÉDITS ====================
@@ -302,6 +306,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/due-soon', [SaleController::class, 'dueSoonCredits']);
         Route::get('/{id}', [SaleController::class, 'showCredit']);
         Route::post('/{creditId}/installments/{installmentId}/pay', [SaleController::class, 'payInstallment']);
+        Route::post('/cancel/{credit}', [SaleController::class, 'cancelCredit']);
     });
 
     // ==================== RÉSERVATIONS ====================
@@ -332,10 +337,30 @@ Route::middleware('auth:sanctum')->group(function () {
     
 
     Route::prefix('invoices')->middleware('auth:sanctum')->group(function () {
-        Route::get('/{sale}/download', [InvoiceController::class, 'download']);
-        Route::get('/{sale}/show', [InvoiceController::class, 'show']);
+        Route::get('/{sale}/download-sale', [InvoiceController::class, 'downloadSale']);
+        Route::get('/{credit}/download-credit', [InvoiceController::class, 'downloadCredit']);
+        Route::get('/{installmentTransaction}/download-transaction-installment', [InvoiceController::class, 'downloadPaymentReceipt']);
+        Route::get('/{reservation}/download-reservation', [InvoiceController::class, 'downloadReservation']);
+        Route::get('/{reservation}/download-reservation-receipt', [InvoiceController::class, 'downloadReservationReceipt']);
+        Route::get('/{cashCount}/download-cash-count', [InvoiceController::class, 'downloadCashCount']);
     });
+
     Route::apiResource('cash-counts', CashCountController::class)->only(['index','store','show','update']);   
+    Route::get('company-info', [CompanyInfoController::class,'index']);
+    Route::put('company-info', [CompanyInfoController::class,'update']);
+
+    Route::get('/system/info', [SystemController::class, 'getServerInfo']);
+    // routes/api.php
+    Route::prefix('print')->group(function () {
+        Route::get('/test', [PrintController::class, 'testPrinter']);
+        Route::get('/sale/{id}', [PrintController::class, 'printSale']);
+        Route::get('/credit/{credit}',[PrintController::class, 'printCredit']);
+        Route::get('/reservation/{reservation}',[PrintController::class, 'printReservation']);
+        Route::get('/reservation-receipt/{reservation}',[PrintController::class, 'printReservationReceipt']);
+        Route::get('/cash-count/{cashCount}', [PrintController::class, 'printCashCount']);
+        Route::get('/installment-transaction/{installmentTransaction}', [PrintController::class, 'printInstallmentTransaction']);
+        
+    });
 });
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('notifications')->group(function () {
@@ -350,3 +375,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/generate', [NotificationController::class, 'generate'])->middleware('admin');
     });
 });
+

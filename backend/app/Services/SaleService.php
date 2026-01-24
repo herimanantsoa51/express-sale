@@ -21,19 +21,43 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Str;
+use App\Models\SaleItemBatch;
+use App\Services\StockService;
+use App\Models\StockBatch;
+use App\Enums\SaleStatus;
 class SaleService
-{
+{   
+
+
+    public function __construct(private StockService $stockService)
+    {
+    }
     /**
      * Génère un numéro de vente unique
      * Format: VNT-YYYYMMDD-NNNN
      */
     public function generateSaleNumber(): string
     {
-        $today = now()->format('Ymd');
-        $count = Sale::whereDate('sale_date', today())->count() + 1;
-        return sprintf('VNT-%s-%04d', $today, $count);
+        $today = today();
+        $dateStr = now()->format('Ymd');
+
+        $lastSale = Sale::whereDate('sale_date', $today)
+            ->orderByDesc('sale_number') // 🔑 tri lexicographique OK
+            ->lockForUpdate()            // 🔒 ligne réelle
+            ->first();
+
+        if ($lastSale) {
+            $lastNumber = (int) substr($lastSale->sale_number, -4);
+            $next = $lastNumber + 1;
+        } else {
+            $next = 1;
+        }
+
+        return sprintf('VNT-%s-%04d', $dateStr, $next);
     }
+
+
 
     /**
      * Vérifie la disponibilité du stock pour tous les items
@@ -112,6 +136,51 @@ class SaleService
             return $item;
         }, $items);
     }
+        /**
+         * Répartit un discount total sur plusieurs items proportionnellement au montant de chaque item.
+         *
+         * @param array $items Chaque item doit avoir ['quantity' => int, 'unit_price' => float]
+         * @param float $totalDiscount Le montant total à répartir
+         * @return array Chaque item avec ['quantity', 'unit_price', 'discount_amount', 'subtotal_after_discount']
+         */
+        public function distributeDiscount(array $items, float $totalDiscount): array
+        {
+            $subtotalTotal = 0;
+
+            // 1️⃣ Calculer le subtotal de chaque item et le total
+            foreach ($items as &$item) {
+                $item['subtotal'] = $item['quantity'] * $item['unit_price'];
+                $subtotalTotal += $item['subtotal'];
+            }
+            unset($item);
+
+            if ($subtotalTotal <= 0 || $totalDiscount <= 0) {
+                // Pas de discount à répartir
+                foreach ($items as &$item) {
+                    $item['discount_amount'] = 0;
+                    $item['subtotal_after_discount'] = $item['subtotal'];
+                }
+                unset($item);
+                return $items;
+            }
+
+            // 2️⃣ Répartir le discount proportionnellement
+            $distributed = 0;
+            foreach ($items as $index => $item) {
+                if ($index === count($items) - 1) {
+                    // Ajuster le dernier item pour corriger les arrondis
+                    $itemDiscount = round($totalDiscount - $distributed, 2);
+                } else {
+                    $itemDiscount = round($totalDiscount * ($item['subtotal'] / $subtotalTotal), 2);
+                    $distributed += $itemDiscount;
+                }
+
+                $items[$index]['discount_amount'] = $itemDiscount;
+                $items[$index]['subtotal_after_discount'] = $item['subtotal'] - $itemDiscount;
+            }
+
+            return $items;
+        }
 
     /**
      * Crée une vente immédiate (payée directement)
@@ -146,11 +215,11 @@ class SaleService
                 'payment_method' => PaymentMethod::from($data['payment_method']),
                 'notes' => $data['notes'] ?? null,
             ]);
-
-            // Création des items et mouvement de stock
+            if(isset($data['discount_amount']) && $data['discount_amount']>0){
+                $data['items'] = $this->distributeDiscount($data['items'], $data['discount_amount'] ?? 0);
+            }
             foreach ($data['items'] as $item) {
-                // Créer l'item de vente
-                SaleItem::create([
+                $saleItem = SaleItem::create([
                     'sale_id' => $sale->id,
                     'variant_id' => $item['variant_id'],
                     'quantity' => $item['quantity'],
@@ -158,15 +227,21 @@ class SaleService
                     'subtotal' => $item['quantity'] * $item['unit_price'],
                     'created_at' => now(),
                 ]);
-
-                // Diminuer le stock
-                $this->decreaseStock(
-                    $item['variant_id'],
-                    $item['location_id'],
-                    $item['quantity'],
-                    $sale->id
+        
+                // ✅ FIFO avec location
+                $this->stockService->consumeFifo(
+                    saleItemId: $saleItem->id,
+                    variantId: $item['variant_id'],
+                    locationId: $item['location_id'], // ✅ AJOUTÉ
+                    quantityToSell: $item['quantity'],
+                    unitPriceAtSale: $item['unit_price'],
+                    discount: $item['discount_amount'] ?? 0,
+                    status: 'sold' // ✅ EXPLICITE
                 );
+        
+                // ⚠️ SUPPRIMER decreaseStock() car déjà fait dans consumeFifo
             }
+            
 
             // Créer la transaction financière (entrée d'argent)
             $this->createSaleTransaction(
@@ -238,10 +313,12 @@ class SaleService
                 'payment_method' => null,
                 'notes' => $data['notes'] ?? null,
             ]);
-
+            if(isset($data['discount_amount']) && $data['discount_amount']>0){
+                $data['items'] = $this->distributeDiscount($data['items'], $data['discount_amount'] ?? 0);
+            }
             // Création des items et mouvement de stock
             foreach ($data['items'] as $item) {
-                SaleItem::create([
+                $saleItem = SaleItem::create([
                     'sale_id' => $sale->id,
                     'variant_id' => $item['variant_id'],
                     'quantity' => $item['quantity'],
@@ -249,14 +326,19 @@ class SaleService
                     'subtotal' => $item['quantity'] * $item['unit_price'],
                     'created_at' => now(),
                 ]);
-
-                // Diminuer le stock (les produits sont donnés au client)
-                $this->decreaseStock(
-                    $item['variant_id'],
-                    $item['location_id'],
-                    $item['quantity'],
-                    $sale->id
+        
+                // ✅ FIFO avec location
+                $this->stockService->consumeFifo(
+                    saleItemId: $saleItem->id,
+                    variantId: $item['variant_id'],
+                    locationId: $item['location_id'], // ✅ AJOUTÉ
+                    quantityToSell: $item['quantity'],
+                    unitPriceAtSale: $item['unit_price'],
+                    discount: $item['discount_amount'] ?? 0,
+                    status: 'sold'
                 );
+        
+                // ⚠️ SUPPRIMER decreaseStock()
             }
 
             // Création du crédit
@@ -316,25 +398,20 @@ class SaleService
     public function createReservation(array $data): Sale
     {
         return DB::transaction(function () use ($data) {
-            // Enrichir les items avec les prix depuis Product.base_price
             $data['items'] = $this->enrichItemsWithPrices($data['items']);
-
-            // Validation du stock
+            
             $stockValidation = $this->validateStockAvailability($data['items']);
             if (!$stockValidation['valid']) {
                 throw new \Exception(implode('; ', $stockValidation['errors']));
             }
 
-            // Calcul des totaux
             $totals = $this->calculateTotals($data['items'], $data['discount_amount'] ?? 0);
             $depositAmount = $data['deposit_amount'] ?? 0;
 
-            // Vérifier que l'acompte ne dépasse pas le total
             if ($depositAmount > $totals['total']) {
                 throw new \Exception("L'acompte ne peut pas dépasser le montant total");
             }
 
-            // Déterminer le statut de paiement
             $paymentStatus = PaymentStatus::PENDING;
             if ($depositAmount > 0) {
                 $paymentStatus = ($depositAmount >= $totals['total']) 
@@ -342,7 +419,6 @@ class SaleService
                     : PaymentStatus::PARTIAL;
             }
 
-            // Création de la vente
             $sale = Sale::create([
                 'sale_number' => $this->generateSaleNumber(),
                 'customer_id' => $data['customer_id'],
@@ -354,13 +430,18 @@ class SaleService
                 'discount_reason' => $data['discount_reason'] ?? null,
                 'total_amount' => $totals['total'],
                 'payment_status' => $paymentStatus,
-                'payment_method' => isset($data['payment_method']) ? PaymentMethod::from($data['payment_method']) : null,
+                'payment_method' => isset($data['payment_method']) 
+                    ? PaymentMethod::from($data['payment_method']) 
+                    : null,
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            // Création des items et BLOCAGE du stock (pas de diminution réelle)
+            if (isset($data['discount_amount']) && $data['discount_amount'] > 0) {
+                $data['items'] = $this->distributeDiscount($data['items'], $data['discount_amount']);
+            }
+
             foreach ($data['items'] as $item) {
-                SaleItem::create([
+                $saleItem = SaleItem::create([
                     'sale_id' => $sale->id,
                     'variant_id' => $item['variant_id'],
                     'quantity' => $item['quantity'],
@@ -369,16 +450,20 @@ class SaleService
                     'created_at' => now(),
                 ]);
 
-                // Bloquer le stock pour la réservation (transfert vers location "réservé")
-                $this->reserveStock(
-                    $item['variant_id'],
-                    $item['location_id'],
-                    $item['quantity'],
-                    $sale->id
+                // ✅ FIFO avec status 'reserved'
+                $this->stockService->consumeFifo(
+                    saleItemId: $saleItem->id,
+                    variantId: $item['variant_id'],
+                    locationId: $item['location_id'], // ✅ LOCATION
+                    quantityToSell: $item['quantity'],
+                    unitPriceAtSale: $item['unit_price'],
+                    discount: $item['discount_amount'] ?? 0,
+                    status: 'reserved' // ✅ RESERVATION
                 );
             }
 
-            // Création de la réservation
+            // ⚠️ SUPPRIMER l'ancienne méthode reserveStock()
+
             $reservation = Reservation::create([
                 'sale_id' => $sale->id,
                 'customer_id' => $data['customer_id'],
@@ -390,7 +475,6 @@ class SaleService
                 'status' => $depositAmount > 0 ? 'confirmed' : 'pending',
             ]);
 
-            // Créer la transaction pour l'acompte si fourni
             if ($depositAmount > 0 && isset($data['account_id'])) {
                 $this->createSaleTransaction(
                     $sale,
@@ -403,10 +487,6 @@ class SaleService
             Log::info('Réservation créée', [
                 'sale_id' => $sale->id,
                 'reservation_id' => $reservation->id,
-                'customer_id' => $data['customer_id'],
-                'total' => $totals['total'],
-                'deposit' => $depositAmount,
-                'expiry_date' => $data['expiry_date'],
             ]);
 
             return $sale->load(['items.variant.product', 'customer', 'user', 'reservation', 'transactions']);
@@ -414,7 +494,23 @@ class SaleService
     }
 
     /**
-     * Payer une échéance de crédit
+     * ✅ NOUVEAU : Libérer credit_quantity quand crédit payé
+     * À appeler dans payCreditInstallment() quand le crédit est complètement soldé
+     */
+    protected function releaseCreditQuantity(Credit $credit): void
+    {
+        foreach ($credit->sale->items as $saleItem) {
+            $variant = ProductVariant::find($saleItem->variant_id);
+            if ($variant) {
+                $variant->decrement('credit_quantity', $saleItem->quantity);
+            }
+        }
+        
+        Log::info("Credit_quantity libéré pour crédit #{$credit->id}");
+    }
+
+    /**
+     * ✅ MISE À JOUR : payCreditInstallment avec libération credit_quantity
      */
     public function payCreditInstallment(int $installmentId, array $data): CreditInstallment
     {
@@ -422,7 +518,6 @@ class SaleService
             $installment = CreditInstallment::with('credit.customer')->findOrFail($installmentId);
             $credit = $installment->credit;
 
-            // Vérifier que l'échéance n'est pas déjà payée
             if ($installment->isPaid()) {
                 throw new \Exception("Cette échéance est déjà payée");
             }
@@ -432,8 +527,6 @@ class SaleService
             // Mettre à jour l'échéance
             $installment->amount_paid += $amount;
 
-
-            // Vérifier si l'échéance est complètement payée
             if ($installment->amount_paid >= $installment->amount_due) {
                 $installment->status = 'paid';
                 $installment->paid_date = now();
@@ -452,6 +545,9 @@ class SaleService
             if ($credit->amount_due <= 0) {
                 $credit->status = 'completed';
                 $credit->sale->update(['payment_status' => PaymentStatus::PAID]);
+                
+                // ✅ NOUVEAU : Libérer credit_quantity
+                $this->releaseCreditQuantity($credit);
             } else {
                 $credit->status = 'partial_paid';
                 $credit->sale->update(['payment_status' => PaymentStatus::PARTIAL]);
@@ -474,7 +570,6 @@ class SaleService
                 'amount' => $amount,
                 'payment_date' => now(),
             ]);
-            
 
             // Mettre à jour le score de fiabilité du client
             $isOnTime = !$installment->isOverdue();
@@ -489,6 +584,7 @@ class SaleService
                 'credit_id' => $credit->id,
                 'amount' => $amount,
                 'is_on_time' => $isOnTime,
+                'credit_fully_paid' => $credit->amount_due <= 0,
             ]);
 
             return $installment->load(['credit.sale']);
@@ -496,58 +592,56 @@ class SaleService
     }
 
     /**
-     * Compléter une réservation (paiement final)
+     * ✅ FINALISER RESERVATION - Simplifiée
      */
     public function completeReservation(int $reservationId, array $data): Reservation
     {
         return DB::transaction(function () use ($reservationId, $data) {
             $reservation = Reservation::with(['sale.items', 'customer'])->findOrFail($reservationId);
 
-            // Vérifier que la réservation est active
             if (!$reservation->isActive()) {
                 throw new \Exception("Cette réservation n'est plus active");
             }
 
-            // Vérifier que la réservation n'est pas expirée
             if ($reservation->isExpired()) {
                 throw new \Exception("Cette réservation a expiré");
             }
 
             $remainingAmount = $reservation->remaining_amount;
 
-            // Créer la transaction pour le paiement final
-            $this->createSaleTransaction(
+            $transaction = $this->createSaleTransaction(
                 $reservation->sale,
                 $data['account_id'],
                 $remainingAmount,
                 "Paiement final réservation #{$reservation->sale->sale_number}",
                 $data['notes'] ?? ''
             );
+            
+            // Ajoutez cette ligne pour déboguer
+            if (!$transaction || !$transaction->id) {
+                throw new \Exception("Erreur lors de la création de la transaction");
+            }
 
-            // Mettre à jour la réservation
             $reservation->deposit_amount += $remainingAmount;
             $reservation->remaining_amount = 0;
+            $reservation->transaction_complete_id = $transaction->id;
             $reservation->status = 'completed';
             $reservation->completed_at = now();
             $reservation->save();
 
-            // Mettre à jour la vente
             $reservation->sale->update([
                 'payment_status' => PaymentStatus::PAID,
             ]);
 
-            // Finaliser le stock (transférer de "réservé" vers "vendu"/sortie)
+            // ✅ Finaliser tous les items réservés
             foreach ($reservation->sale->items as $item) {
-                $this->finalizeReservedStock($item->variant_id, $item->quantity, $reservation->sale->id);
+                $this->stockService->finalizeFifo($item->id);
             }
 
-            // Mettre à jour les points de fidélité
             $reservation->customer->recordPurchase($reservation->total_amount);
 
             Log::info('Réservation complétée', [
                 'reservation_id' => $reservation->id,
-                'sale_id' => $reservation->sale_id,
-                'final_amount' => $remainingAmount,
             ]);
 
             return $reservation->load(['sale.items.variant.product', 'sale.transactions', 'customer']);
@@ -562,25 +656,21 @@ class SaleService
         return DB::transaction(function () use ($reservationId, $reason) {
             $reservation = Reservation::with(['sale.items', 'customer'])->findOrFail($reservationId);
 
-            // Vérifier que la réservation peut être annulée
             if ($reservation->isCompleted()) {
                 throw new \Exception("Une réservation complétée ne peut pas être annulée");
             }
 
-            // Libérer le stock réservé
+            // ✅ Libérer tous les items réservés
             foreach ($reservation->sale->items as $item) {
-                $this->releaseReservedStock($item->variant_id, $item->quantity, $reservation->sale->id);
+                $this->stockService->releaseFifo($item->id);
             }
 
-            // Mettre à jour la réservation
             $reservation->status = 'cancelled';
             $reservation->cancellation_reason = $reason;
             $reservation->save();
 
-            // Mettre à jour la vente
             $reservation->sale->update(['payment_status' => PaymentStatus::CANCELLED]);
 
-            // Enregistrer l'annulation pour le score du client
             $reservation->customer->recordCancelledReservation();
 
             Log::info('Réservation annulée', [
@@ -591,24 +681,23 @@ class SaleService
             return $reservation->load(['sale', 'customer']);
         });
     }
-
     /**
      * Diminue le stock d'un emplacement (pour ventes immédiates et crédits)
      */
-    protected function decreaseStock(int $variantId, int $locationId, int $quantity, int $saleId): void
-    {
+    protected function decreaseStock(
+        int $variantId,
+        int $locationId,
+        int $quantity,
+        int $saleId
+    ): void {
         $pvl = ProductVariantLocation::where('variant_id', $variantId)
             ->where('location_id', $locationId)
             ->lockForUpdate()
             ->firstOrFail();
-
-        if ($pvl->quantity < $quantity) {
-            throw new \Exception("Stock insuffisant pour la variante #{$variantId}");
-        }
-
+    
+        // 🔴 NE PAS REVALIDER LE STOCK ICI
         $pvl->decrement('quantity', $quantity);
-
-        // Créer le mouvement de stock
+    
         StockMovement::createSale(
             $variantId,
             $locationId,
@@ -617,109 +706,216 @@ class SaleService
             Auth::id(),
             "Vente #{$saleId}"
         );
-
-        // Recalculer le stock total du variant
-        $pvl->variant->recalculateTotalStock();
+    
+        $pvl->variant->refresh();
     }
+    
 
-    /**
-     * Réserve le stock (bloque pour une réservation)
-     * Le stock reste physiquement à l'emplacement mais est marqué comme réservé
-     */
-    protected function reserveStock(int $variantId, int $locationId, int $quantity, int $saleId): void
-    {
-        $pvl = ProductVariantLocation::where('variant_id', $variantId)
-            ->where('location_id', $locationId)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-        if ($pvl->quantity < $quantity) {
-            throw new \Exception("Stock insuffisant pour réserver la variante #{$variantId}");
-        }
-
-        // Diminuer le stock disponible
-        $pvl->decrement('quantity', $quantity);
-
-        // Créer un mouvement de type réservation
-        StockMovement::create([
-            'variant_id' => $variantId,
-            'from_location_id' => $locationId,
-            'to_location_id' => null, // Stock bloqué
-            'quantity' => $quantity,
-            'movement_type' => 'reservation',
-            'sale_id' => $saleId,
-            'performed_by' => Auth::id(),
-            'reason' => 'reservation',
-            'notes' => "Réservation vente #{$saleId}",
-        ]);
-
-        $pvl->variant->recalculateTotalStock();
-    }
-
-    /**
-     * Finalise le stock réservé (après complétion de la réservation)
-     */
-    protected function finalizeReservedStock(int $variantId, int $quantity, int $saleId): void
-    {
-        // Trouver le mouvement de réservation original pour récupérer l'emplacement
-        $reservationMovement = StockMovement::where('variant_id', $variantId)
-            ->where('sale_id', $saleId)
-            ->where('movement_type', 'reservation')
-            ->first();
-
-        // Créer un mouvement de finalisation avec l'emplacement d'origine
-        StockMovement::create([
-            'variant_id' => $variantId,
-            'from_location_id' => $reservationMovement?->from_location_id ?? null,
-            'to_location_id' => null, // Sortie définitive (vendu)
-            'quantity' => $quantity,
-            'movement_type' => 'sale',
-            'sale_id' => $saleId,
-            'performed_by' => Auth::id(),
-            'reason' => 'reservation_completed',
-            'notes' => "Réservation #{$saleId} complétée - stock libéré",
-        ]);
-    }
-
-    /**
-     * Libère le stock réservé (en cas d'annulation)
-     */
-    protected function releaseReservedStock(int $variantId, int $quantity, int $saleId): void
-    {
-        // Trouver le mouvement de réservation original
-        $reservationMovement = StockMovement::where('variant_id', $variantId)
-            ->where('sale_id', $saleId)
-            ->where('movement_type', 'reservation')
-            ->first();
-
-        if ($reservationMovement && $reservationMovement->from_location_id) {
-            // Remettre le stock à l'emplacement original
-            $pvl = ProductVariantLocation::firstOrCreate(
-                [
-                    'variant_id' => $variantId,
-                    'location_id' => $reservationMovement->from_location_id,
-                ],
-                ['quantity' => 0]
-            );
-
-            $pvl->increment('quantity', $quantity);
-
-            // Créer un mouvement de libération
+    protected function reserveStock(
+        int $saleItemId,
+        int $variantId,
+        int $locationId,
+        int $quantity,
+        float $itemDiscount=0,
+        float $unitPriceAtSale=0
+    ): void {
+        DB::transaction(function () use (
+            $saleItemId,
+            $variantId,
+            $locationId,
+            $quantity,
+            $itemDiscount,
+            $unitPriceAtSale,
+        ) {
+    
+            $pvl = ProductVariantLocation::where('variant_id', $variantId)
+                ->where('location_id', $locationId)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            // 1️⃣ Vérifier disponibilité réelle
+            $availableQty = $pvl->quantity - $pvl->reserved_quantity;
+            if ($availableQty < $quantity) {
+                throw new \Exception("Stock insuffisant pour réserver la variante #{$variantId}");
+            }
+    
+            // 2️⃣ Marquer la réservation au niveau location
+            $pvl->increment('reserved_quantity', $quantity);
+    
+            // 3️⃣ Préparer la répartition du discount par unité
+            $discountPerUnit = $quantity > 0
+                ? $itemDiscount / $quantity
+                : 0;
+    
+            // 4️⃣ Réservation FIFO sur les batches
+            $remaining = $quantity;
+    
+            $batches = StockBatch::where('variant_id', $variantId)
+                ->where('remaining_quantity', '>', 0)
+                ->orderBy('received_date')
+                ->lockForUpdate()
+                ->get();
+    
+            foreach ($batches as $batch) {
+                if ($remaining <= 0) break;
+    
+                $batchAvailable =
+                    $batch->remaining_quantity - ($batch->reserved_quantity ?? 0);
+    
+                if ($batchAvailable <= 0) continue;
+    
+                $toReserve = min($remaining, $batchAvailable);
+    
+                // 5️⃣ Marquer batch réservé
+                $batch->increment('reserved_quantity', $toReserve);
+    
+                // 6️⃣ Créer le lien SALE ↔ BATCH
+                SaleItemBatch::create([
+                    'sale_item_id' => $saleItemId,
+                    'batch_id' => $batch->id,
+                    'quantity' => $toReserve,
+                    'unit_price_at_sale' => $unitPriceAtSale,
+                    'discount_at_sale' => round(
+                        $discountPerUnit,
+                        2
+                    ),
+                    'location_id' => $locationId,
+                    'status' => 'reserved', // très important
+                ]);
+    
+                $remaining -= $toReserve;
+            }
+    
+            if ($remaining > 0) {
+                throw new \Exception(
+                    "Impossible de réserver la totalité de la quantité FIFO pour la variante #{$variantId}"
+                );
+            }
+    
+            // 7️⃣ Mouvement de stock (logique / audit)
             StockMovement::create([
                 'variant_id' => $variantId,
-                'from_location_id' => null,
-                'to_location_id' => $reservationMovement->from_location_id,
+                'from_location_id' => $locationId,
+                'to_location_id' => null,
                 'quantity' => $quantity,
-                'movement_type' => 'return',
-                'sale_id' => $saleId,
+                'movement_type' => 'reservation',
+                'sale_id' => SaleItem::find($saleItemId)?->sale_id,
                 'performed_by' => Auth::id(),
-                'reason' => 'reservation_cancelled',
-                'notes' => "Réservation #{$saleId} annulée - stock libéré",
+                'reason' => 'reservation',
+                'notes' => "Réservation stock (FIFO + discount réparti)",
+            ]);
+            $variant = ProductVariant::find($variantId);
+            $variant->recalculateTotalStock();
+        });
+    }
+    
+    /**
+     * Finalise le stock réservé pour une réservation (vente effective)
+     */
+    protected function finalizeReservedStock(SaleItem $saleItem): void
+    {
+        DB::transaction(function () use ($saleItem) {
+
+            
+                $variant = $saleItem->variant;
+                $pvl = $variant->locations()->lockForUpdate()->firstOrFail();
+
+            foreach (
+                $saleItem->saleItemBatches()->lockForUpdate()->get()
+                as $sib
+            ) {
+                if ($sib->status !== 'reserved') {
+                    continue;
+                }
+
+                $batch = $sib->batch;
+
+                // 🔒 SÉCURITÉ
+                if ($batch->reserved_quantity < $sib->quantity) {
+                    throw new \Exception("StockBatch incohérent");
+                }
+
+                // ✅ 1. Stock batch principal
+                $batch->decrement('reserved_quantity', $sib->quantity);
+                $batch->decrement('remaining_quantity', $sib->quantity);
+
+                // ✅ 2. Stock global variant/location
+                $pvl->decrement('reserved_quantity', $sib->quantity);
+                $pvl->decrement('quantity', $sib->quantity);
+
+                // ✅ 3. SaleItemBatch
+                $sib->update([
+                    'status' => 'sold',
+                ]);
+
+                // ✅ 4. Mouvement de stock (traçabilité)
+                StockMovement::create([
+                    'variant_id' => $saleItem->variant_id,
+                    'from_location_id' => $pvl->location_id,
+                    'to_location_id' => null,
+                    'quantity' => $sib->quantity,
+                    'movement_type' => 'sale',
+                    'sale_id' => $saleItem->sale_id,
+                    'performed_by' => Auth::id(),
+                    'reason' => 'reservation_completed',
+                    'notes' => "Batch {$batch->id} vendu",
+                ]);
+            }
+            $variant->recalculateTotalStock();
+        });
+    }
+
+
+    /**
+ * Libère le stock réservé (en cas d'annulation)
+ */
+    protected function releaseReservedStock(SaleItem $saleItem): void
+    {
+    DB::transaction(function() use ($saleItem) {
+
+        $variant = $saleItem->variant;
+        $pvl = $variant->locations()->lockForUpdate()->firstOrFail();
+        // On parcourt les SaleItemBatches réservés
+        foreach ($saleItem->saleItemBatches()->lockForUpdate()->get() as $sib) {
+            if ($sib->status !== 'reserved') {
+                continue; // déjà libéré ou vendu
+            }
+
+            $batch = $sib->batch;
+
+            if (($batch->reserved_quantity ?? 0) < $sib->quantity) {
+                throw new \Exception("StockBatch incohérent pour libération");
+            }
+
+            // 🔹 1. Stock batch principal : décrémente réservé uniquement
+            $batch->decrement('reserved_quantity', $sib->quantity);
+
+            // 🔹 2. Stock global location/variant
+            $pvl->decrement('reserved_quantity', $sib->quantity);
+
+            // 🔹 3. SaleItemBatch : statut libéré
+            $sib->update([
+                'status' => 'cancelled',
             ]);
 
-            $pvl->variant->recalculateTotalStock();
+            // 🔹 4. Mouvement de stock
+            StockMovement::create([
+                'variant_id' => $saleItem->variant_id,
+                'from_location_id' => null,
+                'to_location_id' => $pvl->id,
+                'quantity' => $sib->quantity,
+                'movement_type' => 'return',
+                'sale_id' => $saleItem->sale_id,
+                'performed_by' => Auth::id(),
+                'reason' => 'reservation_cancelled',
+                'notes' => "Réservation #{$saleItem->sale_id} annulée - stock libéré",
+            ]);
         }
-    }
+        $variant->recalculateTotalStock();
+    });
+}
+
+
 
     /**
      * Crée une transaction financière pour une vente (méthode publique pour le controller)
@@ -732,7 +928,7 @@ class SaleService
     /**
      * Crée une transaction financière pour une vente
      */
-    protected function createSaleTransaction(Sale $sale, int $accountId, float $amount, string $description,string $notes=''): AccountTransaction
+    protected function createSaleTransaction(Sale $sale, int $accountId, float $amount, string $description, string $notes = ''): AccountTransaction
     {
         $account = Account::lockForUpdate()->findOrFail($accountId);
         
@@ -745,8 +941,6 @@ class SaleService
         $balanceBefore = $account->current_balance;
         $balanceAfter = bcadd((string)$balanceBefore, (string)$amount, 2);
 
-        // Générer le numéro de référence
-
         $transaction = AccountTransaction::create([
             'account_id' => $accountId,
             'transaction_type_id' => $incomeType->id,
@@ -757,13 +951,20 @@ class SaleService
             'sale_id' => $sale->id,
             'description' => $description,
             'created_by' => Auth::id(),
-            'created_at' => now(),
             'notes' => $notes,
         ]);
+
+        // ✅ Vérifier que la transaction a bien été créée
+        if (!$transaction) {
+            throw new \Exception("Échec de la création de la transaction");
+        }
 
         // Mettre à jour le solde du compte
         $account->current_balance = $balanceAfter;
         $account->save();
+
+        // ✅ Recharger pour s'assurer d'avoir l'ID
+        $transaction->refresh();
 
         return $transaction;
     }
@@ -780,5 +981,66 @@ class SaleService
         };
 
         return sprintf('%s-%s', $prefix, $sale->sale_number);
+    }
+
+    public function cancelImmediateSale(Sale $sale)
+    {
+        return DB::transaction(function () use ($sale) {
+            if ($sale->sale_type !== SaleType::IMMEDIATE) {
+                throw new \Exception("Seules les ventes immédiates peuvent être annulées avec cette méthode.");
+            }
+            if($sale->status != SaleStatus::CONFIRMED){
+                throw new \Exception("Cette vente a deja été annulé.");
+            }
+            if ($sale->payment_status === PaymentStatus::CANCELLED) {
+                throw new \Exception("Cette vente est déjà annulée.");
+            }
+
+            // Restaurer le stock
+            $batchId = 'CAND-' . now()->format('Ymd-His') . '-' . Str::random(6);
+            foreach ($sale->items as $item) {
+                $this->stockService->restockFromSaleItem($item,$batchId);
+            }
+            Log::info('Vente immédiate annulée', [
+                'sale_id' => $sale->id,
+                'sale_number' => $sale->sale_number,
+            ]);
+            $sale->update(['status'=>'CANCELLED']);
+            return $sale->load(['items.variant.product', 'customer', 'user', 'transactions']);
+        });
+
+    }
+    public function cancelCredit(Credit $credit)
+    {   
+        return DB::transaction(function () use ($credit) {
+            $sale = $credit->sale;
+            Log::info('Annulation du crédit demandé', [
+                'credit_id' => $credit->id,
+                'sale_number' => $sale->sale_number,
+                'sale_id' => $sale->id
+            ]);
+
+            if ($sale->sale_type !== SaleType::CREDIT) {
+                throw new \Exception("Seules les ventes a credits peuvent être annulées avec cette méthode.");
+            }
+            if($sale->status != SaleStatus::CONFIRMED){
+                throw new \Exception("Cette vente a deja été annulé.");
+            }
+            if ($sale->payment_status === PaymentStatus::CANCELLED) {
+                throw new \Exception("Cette vente est déjà annulée.");
+            }
+            // Restaurer le stock
+            $batchId = 'CAND-' . now()->format('Ymd-His') . '-' . Str::random(6);
+            foreach ($sale->items as $item) {
+                $this->stockService->restockFromSaleItem($item,$batchId);
+            }
+            $credit->update(['status'=>'cancelled']);
+            Log::info('Credit annulé', [
+                'credit_id' => $credit->id,
+                'sale_number' => $sale->sale_number,
+            ]);
+            $sale->update(['status'=>'CANCELLED']);
+            return $credit->load(['sale.items.variant.product', 'customer', 'sale.transactions']);
+        });
     }
 }

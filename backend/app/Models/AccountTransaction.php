@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+
 
 /**
  * Model AccountTransaction
@@ -150,6 +152,12 @@ class AccountTransaction extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+
+    public function installmentTransation():HasOne
+    {
+        return $this->hasOne(InstallmentTransaction::class,'transaction_id');
     }
 
     /* ===================== SCOPES ===================== */
@@ -343,7 +351,10 @@ class AccountTransaction extends Model
             
             // Générer le numéro de référence automatiquement
             $referenceNumber = self::generateReferenceNumber('REVERSAL', now());
-            
+            // Dans reverse(), ligne ~300 :
+            if ($this->installmentTransation()->exists()) {
+                $this->cancelCreditInstallmentTransaction($this);
+            }
             // Créer la transaction inverse en copiant TOUS les champs de contexte
             $reversal = self::create([
                 'account_id' => $this->account_id,
@@ -371,6 +382,8 @@ class AccountTransaction extends Model
             // Mettre à jour le solde du compte
             $account->current_balance = $balanceAfter;
             $account->save();
+
+            
 
             // Si c'est un transfert, annuler aussi la transaction liée
             if ($this->isTransfer() && $this->related_transaction_id) {
@@ -797,6 +810,50 @@ class AccountTransaction extends Model
             throw $e;
         }
     }
+    private function cancelCreditInstallmentTransaction(AccountTransaction $transaction)
+    {
+            // CHARGER TOUTES les relations nécessaires en UNE SEULE requête
+            $transaction->load('installmentTransation.installment.credit');
+            
+            $installmentTransaction = $transaction->installmentTransation;
+            
+            if (!$installmentTransaction) {
+                return;
+            }
+
+            $installmentTransaction->update(['status' => 'CANCELLED']);
+
+            $creditInstallment = $installmentTransaction->installment;
+            if (!$creditInstallment) {
+                return;
+            }
+
+            $creditInstallment->decrement('amount_paid', $installmentTransaction->amount);
+            $creditInstallment->refresh();
+            
+            if ($creditInstallment->amount_paid <= 0) {
+                $creditInstallment->update(['status' => 'pending']);
+            } elseif ($creditInstallment->amount_paid < $creditInstallment->amount_due) {
+                $creditInstallment->update(['status' => 'partial']);
+            }
+
+            $credit = $creditInstallment->credit;
+            if (!$credit) {
+                return;
+            }
+
+            $credit->decrement('amount_paid', $installmentTransaction->amount);
+            $credit->increment('amount_due', $installmentTransaction->amount);
+            $credit->refresh();
+
+            if (!in_array($credit->status, ['cancelled', 'recovered', 'defaulted'])) {
+                if ($credit->amount_paid > 0) {
+                    $credit->update(['status' => 'partial_paid']);
+                } else {
+                    $credit->update(['status' => 'active']);
+                }
+            }
+    }
 
     /* ===================== ÉVÉNEMENTS ===================== */
 
@@ -816,4 +873,5 @@ class AccountTransaction extends Model
             }
         });
     }
+    
 }

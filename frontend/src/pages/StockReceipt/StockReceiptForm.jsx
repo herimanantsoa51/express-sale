@@ -769,11 +769,11 @@ const hasInsufficientFunds = () => {
             </div>
             
             <PaymentSection
-            accounts={accounts}
-            supplierPayment={supplierPayment}
-            setSupplierPayment={setSupplierPayment}
-            supplierTotal={calculateTotalInAriary()}
-          />
+              accounts={accounts}
+              supplierPayment={supplierPayment}
+              setSupplierPayment={setSupplierPayment}
+              supplierTotal={calculateTotalInAriary()}
+            />
           </div>
         )}
       </div>

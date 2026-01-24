@@ -199,13 +199,7 @@ public function index(Request $request)
                 ->sum('sale_items.quantity');
             
             // 2. Quantités en réservation (réservations non finalisées)
-            $reservedQuantity = DB::table('sale_items')
-                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->join('reservations', 'sales.id', '=', 'reservations.sale_id')
-                ->where('sale_items.variant_id', $variant->id)
-                ->where('sales.sale_type', 'reservation')
-                ->whereIn('reservations.status', ['pending', 'confirmed', 'partial_paid'])
-                ->sum('sale_items.quantity');
+            $reservedQuantity = $variant->reserved_quantity;
             
             // 3. Quantités en crédit actif (crédits non payés complètement)
             $creditQuantity = DB::table('sale_items')
@@ -245,8 +239,8 @@ public function index(Request $request)
                 ];
             });
             
-            $totalStock = $variant->locations->sum('quantity') + $reservedQuantity;
-            $availableStock = $totalStock - $reservedQuantity ;
+            $totalStock = $variant->stock_quantity;
+            $availableStock = $variant->available_quantity;
             
             return [
                 'id' => $variant->id,
@@ -517,7 +511,7 @@ public function index(Request $request)
                 'products.is_active',
                 'categories.name as category_name',
                 'subcategories.name as subcategory_name',
-                DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0) as total_stock'),
+                DB::raw('COALESCE(SUM(product_variants.available_quantity), 0) as total_stock'),
                 DB::raw('COUNT(DISTINCT product_variants.id) as variants_count')
             ])
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
@@ -663,7 +657,7 @@ public function index(Request $request)
                         'attributes' => $variant->attributeValues->map(function ($attributeValue) {
                             return [
                                 'type_id' => $attributeValue->attributeType->id ?? null,
-                                'type_name' => $attributeValue->attributeType->name ?? null,
+                                'type_name' => $attributeValue->attributeType->display_name ?? null,
                                 'value_id' => $attributeValue->attributeValue->id ?? null,
                                 'value' => $attributeValue->attributeValue->value ?? null
                             ];
@@ -672,7 +666,8 @@ public function index(Request $request)
                             return [
                                 'location_id' => $location->location->id ?? null,
                                 'location_name' => $location->location->name ?? null,
-                                'quantity' => (int) $location->quantity,
+                                'code'=>$location->location->code ?? null,
+                                'quantity' => (int) $location->quantity -$location->reserved_quantity,
                                 'full_path' => $location->location->getFullPath() ?? null
                             ];
                         })->toArray()

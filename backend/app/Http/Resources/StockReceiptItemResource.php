@@ -5,9 +5,6 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-
-
-
 class StockReceiptItemResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -40,16 +37,25 @@ class StockReceiptItemResource extends JsonResource
             'quantity_variance' => $this->quantity_variance,
             'quantity_variance_percentage' => round($this->quantity_variance_percentage, 2),
             'unit_cost_ariary' => (float) $this->unit_cost_ariary,
-            'total_cost' => (float) $this->quantity_ordered * $this->unit_cost_ariary,
+            'total_cost' => (float) $this->total_cost,
             'notes' => $this->notes,
+            
+            // Qualité globale de l'item
+            'quality_rating' => $this->quality_rating,
+            'quality_level' => $this->quality_level,
+            'quality_notes' => $this->quality_notes,
+            
+            // Conformité des attributs
             'ratings' => StockReceiptItemRatingResource::collection($this->whenLoaded('ratings')),
-            'quality_summary' => $this->when(
-                $this->relationLoaded('ratings') && $this->ratings->isNotEmpty(),
-                fn() => $this->getQualitySummary()
-            ),
             'conformity' => $this->when(
-                $this->relationLoaded('ratings') && $this->ratings->isNotEmpty(),
-                fn() => $this->getAttributeConformityRate()
+                $this->relationLoaded('ratings'),
+                fn() => $this->getConformityRate()
+            ),
+            
+            // Résumé complet
+            'summary' => $this->when(
+                $this->relationLoaded('ratings'),
+                fn() => $this->getSummary()
             )
         ];
     }

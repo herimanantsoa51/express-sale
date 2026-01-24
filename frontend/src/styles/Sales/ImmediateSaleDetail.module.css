@@ -34,6 +34,26 @@
     transform: translateX(-2px);
   }
   
+  /* === BOUTON ANNULATION === */
+  .cancelButton {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .cancelButton:hover {
+    background: var(--danger-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  
   /* === GRILLE PRINCIPALE === */
   .grid {
     display: grid;

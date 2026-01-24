@@ -10,11 +10,15 @@ class SaleItemBatch extends Model
         'sale_item_id',
         'batch_id',
         'quantity',
+        'status',
         'unit_price_at_sale',
+        'location_id',
+        'discount_at_sale'
     ];
 
     protected $casts = [
         'unit_price_at_sale' => 'decimal:2',
+        'discount_at_sale' => 'decimal:2',
     ];
 
     // ===== RELATIONS =====
@@ -27,6 +31,10 @@ class SaleItemBatch extends Model
     public function batch(): BelongsTo
     {
         return $this->belongsTo(StockBatch::class, 'batch_id');
+    }
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'location_id');
     }
 
     // ===== ACCESSORS (Calculs dynamiques) =====

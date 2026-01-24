@@ -7,58 +7,215 @@
    import { 
      Search, ShoppingCart, Plus, Minus, Trash2, 
      User, Package, Check, ChevronDown, Filter, X, 
-     Banknote, Smartphone, MapPin, AlertCircle, AlertTriangle
+     Banknote, Smartphone, MapPin, AlertCircle, AlertTriangle,
+     Eye, EyeOff
    } from 'lucide-react';
+   import { toast } from 'react-toastify';
    import productService from '../../services/productService';
    import saleService from '../../services/saleService';
    import ClientQuickCreateForm from '../../components/ClientQuickCreateForm';
    import './QuickSalePage.css';
+import customerService from '../../services/customerService';
    
    const QuickSalePage = () => {
-     const navigate = useNavigate();
-     
-     // Mode de vente
-     const [saleMode, setSaleMode] = useState('immediate');
-     
-     // États produits & filtres
-     const [products, setProducts] = useState([]);
-     const [productsLoading, setProductsLoading] = useState(false);
-     const [productSearch, setProductSearch] = useState('');
-     const [categories, setCategories] = useState([]);
-     const [selectedCategory, setSelectedCategory] = useState(null);
-     const [selectedSubcategory, setSelectedSubcategory] = useState(null);
-     const [selectedProduct, setSelectedProduct] = useState(null);
-     
-     // États client
-     const [customerSearch, setCustomerSearch] = useState('');
-     const [customerSuggestions, setCustomerSuggestions] = useState([]);
-     const [selectedCustomer, setSelectedCustomer] = useState(null);
-     const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-     const [showClientModal, setShowClientModal] = useState(false);
-     
-     // États panier
-     const [cart, setCart] = useState([]);
-     const [discount, setDiscount] = useState({ amount: 0, reason: '' });
-     const [showDiscountReason, setShowDiscountReason] = useState(false);
-     
-     // États paiement
-     const [paymentMethod, setPaymentMethod] = useState('cash');
-     const [accounts, setAccounts] = useState([]);
-     const [selectedAccount, setSelectedAccount] = useState(null);
-     
-     // États crédit
-     const [installments, setInstallments] = useState([]);
-     const [dueDate, setDueDate] = useState('');
-     
-     // États réservation
-     const [expiryDate, setExpiryDate] = useState('');
-     const [depositAmount, setDepositAmount] = useState(0);
-     
-     // États UI
-     const [submitting, setSubmitting] = useState(false);
-     const [submitError, setSubmitError] = useState(null);
-     const [successMessage, setSuccessMessage] = useState(null);
-     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const navigate = useNavigate();
+
+    // Constantes
+    const STORAGE_KEY = 'quick_sale_draft';
+    const MAX_STORAGE_TIME = 2 * 60 * 60 * 1000; // 2 heures
+    
+    // Fonction pour charger depuis localStorage
+    const loadFromStorage = useCallback(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return null;
+        
+        const data = JSON.parse(saved);
+        
+        // Vérifier si les données ne sont pas trop vieilles
+        const savedAt = new Date(data.savedAt);
+        const now = new Date();
+        const age = now - savedAt;
+        
+        if (age > MAX_STORAGE_TIME) {
+          console.log('🗑️ Données trop vieilles, suppression...');
+          localStorage.removeItem(STORAGE_KEY);
+          return null;
+        }
+        
+        console.log('📂 Données restaurées depuis le stockage');
+        return data;
+      } catch (error) {
+        console.error('❌ Erreur chargement localStorage:', error);
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
+    }, []);
+    
+    // Mode de vente
+    const [saleMode, setSaleMode] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.saleMode || 'immediate';
+    });
+    
+    // États produits & filtres
+    const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(false);
+    const [productSearch, setProductSearch] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.productSearch || '';
+    });
+    const [categories, setCategories] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedCategory || null;
+    });
+    const [selectedSubcategory, setSelectedSubcategory] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedSubcategory || null;
+    });
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    
+    // États client
+    const [customerSearch, setCustomerSearch] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.customerSearch || '';
+    });
+    const [customerSuggestions, setCustomerSuggestions] = useState([]);
+    const [selectedCustomer, setSelectedCustomer] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedCustomer || null;
+    });
+    const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+    const [showClientModal, setShowClientModal] = useState(false);
+    const [showCustomerSearch, setShowCustomerSearch] = useState(true);
+    
+    // États panier
+    const [cart, setCart] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.cart || [];
+    });
+    const [discount, setDiscount] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.discount || { amount: 0, reason: '' };
+    });
+    const [showDiscountReason, setShowDiscountReason] = useState(false);
+    
+    // États paiement
+    const [paymentMethod, setPaymentMethod] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.paymentMethod || 'cash';
+    });
+    const [accounts, setAccounts] = useState([]);
+    const [selectedAccount, setSelectedAccount] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedAccount || null;
+    });
+    
+    // États crédit
+    const [installments, setInstallments] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.installments || [];
+    });
+    const [dueDate, setDueDate] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.dueDate || '';
+    });
+    
+    // États réservation
+    const [expiryDate, setExpiryDate] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.expiryDate || '';
+    });
+    const [depositAmount, setDepositAmount] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.depositAmount || 0;
+    });
+    
+    // États UI
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [lastSaved, setLastSaved] = useState(null);
+    
+    // Fonction pour sauvegarder l'état dans localStorage
+    const saveToStorage = useCallback((data) => {
+      try {
+        const saveData = {
+          ...data,
+          savedAt: new Date().toISOString(),
+          version: '1.0'
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+        setLastSaved(new Date().toISOString());
+        console.log('✅ Données sauvegardées');
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde localStorage:', error);
+      }
+    }, []);
+    
+    // Fonction pour effacer le localStorage
+    const clearStorage = useCallback(() => {
+      localStorage.removeItem(STORAGE_KEY);
+      console.log('🧹 Stockage nettoyé');
+    }, []);
+    
+    // Sauvegarde automatique quand les données importantes changent
+    useEffect(() => {
+      const saveData = {
+        cart,
+        selectedCustomer,
+        customerSearch,
+        saleMode,
+        discount,
+        selectedAccount,
+        paymentMethod,
+        installments,
+        dueDate,
+        expiryDate,
+        depositAmount,
+        productSearch,
+        selectedCategory,
+        selectedSubcategory
+      };
+      
+      // Délai pour éviter de sauvegarder trop souvent
+      const saveTimer = setTimeout(() => {
+        saveToStorage(saveData);
+      }, 1000); // Sauvegarde 1 seconde après le dernier changement
+      
+      return () => clearTimeout(saveTimer);
+    }, [
+      cart, selectedCustomer, customerSearch, saleMode, discount,
+      selectedAccount, paymentMethod, installments, dueDate,
+      expiryDate, depositAmount, productSearch, selectedCategory, selectedSubcategory
+    ]);
+    
+    // Restaurer depuis localStorage au chargement
+    useEffect(() => {
+      const saved = loadFromStorage();
+      
+      if (saved && saved.cart && saved.cart.length > 0) {
+        // Vous pouvez ajouter une notification toast optionnelle
+        toast.info(`Vente en cours restaurée (${saved.cart.length} articles)`);
+        
+        // Restaurer le timestamp de la dernière sauvegarde
+        if (saved.savedAt) {
+          setLastSaved(saved.savedAt);
+        }
+      }
+    }, []);
+     // Cacher la recherche client en mode vente rapide
+     useEffect(() => {
+       if (saleMode === 'immediate') {
+         setShowCustomerSearch(false);
+         setSelectedCustomer(null);
+         setCustomerSearch('');
+       } else {
+         setShowCustomerSearch(true);
+       }
+     }, [saleMode]);
    
      // Debounce pour recherche client
      useEffect(() => {
@@ -93,7 +250,7 @@
        loadCategories();
        loadAccounts();
      }, []);
-   
+      
      const loadProducts = async () => {
        try {
          setProductsLoading(true);
@@ -107,6 +264,7 @@
          setProducts(response.data || []);
        } catch (error) {
          console.error('Erreur chargement produits:', error);
+         toast.error('Erreur lors du chargement des produits');
        } finally {
          setProductsLoading(false);
        }
@@ -118,6 +276,7 @@
          setCategories(response.data || []);
        } catch (error) {
          console.error('Erreur chargement catégories:', error);
+         toast.error('Erreur lors du chargement des catégories');
        }
      };
    
@@ -128,6 +287,7 @@
          setShowCustomerDropdown(true);
        } catch (error) {
          console.error('Erreur recherche clients:', error);
+         toast.error('Erreur lors de la recherche de clients');
        }
      };
    
@@ -153,6 +313,7 @@
          }
        } catch (error) {
          console.error('Erreur chargement comptes:', error);
+         toast.error('Erreur lors du chargement des comptes');
        }
      };
    
@@ -160,10 +321,23 @@
        setSelectedCustomer(customer);
        setCustomerSearch(customer.name);
        setShowCustomerDropdown(false);
+       toast.success(`Client ${customer.name} sélectionné`);
      }, []);
    
+     
      const handleAddToCart = useCallback((product, variant, location, quantity) => {
        if (quantity <= 0) return;
+
+        // // Validation supplémentaire
+        // if (saleMode !== 'reservation' && location.code !== 'MAGASIN-PRINCIPAL') {
+        //   toast.error("Seul le MAGASIN-PRINCIPAL est autorisé pour ce type de vente");
+        //   return;
+        // }
+
+        // if (saleMode !== 'reservation' && location.quantity <= 0) {
+        //   toast.error("Stock épuisé au MAGASIN-PRINCIPAL");
+        //   return;
+        // }
    
        const cartItem = {
          variant_id: variant.id,
@@ -172,6 +346,7 @@
          product_name: product.name,
          variant_sku: variant.sku,
          location_name: location.location_name,
+         location_code: location.location_code,
          unit_price: product.base_price,
          image_url: variant.image_path || product.image_url,
          attributes: variant.attributes,
@@ -194,11 +369,14 @@
        });
        
        setSelectedProduct(null);
+       toast.success(`${quantity} ${product.name} ajouté au panier`);
      }, []);
    
      const handleUpdateCartQuantity = useCallback((index, newQuantity) => {
        if (newQuantity <= 0) {
+         const itemName = cart[index].product_name;
          setCart(prev => prev.filter((_, i) => i !== index));
+         toast.info(`${itemName} retiré du panier`);
        } else {
          setCart(prev => {
            const updated = [...prev];
@@ -207,11 +385,13 @@
            return updated;
          });
        }
-     }, []);
+     }, [cart]);
    
      const handleRemoveFromCart = useCallback((index) => {
+       const itemName = cart[index].product_name;
        setCart(prev => prev.filter((_, i) => i !== index));
-     }, []);
+       toast.info(`${itemName} retiré du panier`);
+     }, [cart]);
    
      const subtotal = useMemo(() => {
        return cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
@@ -221,25 +401,45 @@
        return Math.max(0, subtotal - (discount.amount || 0));
      }, [subtotal, discount]);
    
-     const handleSubmitSale = async () => {
-       if (!selectedCustomer) {
-         setSubmitError('Veuillez sélectionner un client');
-         return;
-       }
+     
    
+     const handleSubmitSale = async () => {
        if (cart.length === 0) {
-         setSubmitError('Le panier est vide');
+         toast.error('Le panier est vide');
          return;
        }
    
        if (!selectedAccount) {
-         setSubmitError('Veuillez sélectionner un compte');
+         toast.error('Veuillez sélectionner un compte');
          return;
        }
    
        try {
          setSubmitting(true);
          setSubmitError(null);
+   
+         let customer = selectedCustomer;
+         
+         // Si mode vente rapide et pas de client sélectionné, créer un client anonyme
+         if (saleMode === 'immediate' && !customer) {
+           try {
+            const response = await customerService.create({
+              name: "Anonyme",
+              is_extra_customer: false
+            });
+            
+            // CORRECTION ICI : Prenez le data de la réponse
+            customer = response.data; 
+             toast.success('Client anonyme créé');
+           } catch (error) {
+              console.log(error);
+             toast.error('Erreur lors de la création du client anonyme');
+             return;
+           }
+         } else if (!customer) {
+           toast.error('Veuillez sélectionner un client');
+           return;
+         }
    
          const items = cart.map(item => ({
            variant_id: item.variant_id,
@@ -248,28 +448,28 @@
          }));
    
          const basePayload = {
-           customer_id: selectedCustomer.id,
+           customer_id: customer.id,
            account_id: selectedAccount,
            payment_method: paymentMethod,
            discount_amount: discount.amount || 0,
            discount_reason: discount.reason || null,
            items
          };
-   
          let response;
-   
+         
          if (saleMode === 'immediate') {
            response = await saleService.createImmediate(basePayload);
+           console.log(response);
          } else if (saleMode === 'credit') {
           console.log(installments)
           const installmentsTotal = installments.reduce((sum, inst) => sum + parseFloat(inst.amount || 0), 0);
           if(installments.length > 0) {
             if (Math.abs(installmentsTotal - total) > 0.01) {
-              setSubmitError(`La somme des échéances (${installmentsTotal.toLocaleString()} Ar) doit être égale au total (${total.toLocaleString()} Ar)`);
+              toast.error(`La somme des échéances (${installmentsTotal.toLocaleString()} Ar) doit être égale au total (${total.toLocaleString()} Ar)`);
               return;
             }
           }
-
+   
           const payload = {
             ...basePayload,
             due_date: dueDate,
@@ -291,10 +491,14 @@
            });
          }
    
+         toast.success(response.message);
          setSuccessMessage(response.message);
          setShowConfirmModal(false);
+         clearStorage();
+         await loadProducts();
          
          setTimeout(() => {
+          setSaleMode('immediate');
            setCart([]);
            setSelectedCustomer(null);
            setCustomerSearch('');
@@ -305,7 +509,9 @@
          }, 2000);
    
        } catch (error) {
-         setSubmitError(error.response?.data?.message || 'Erreur lors de la création de la vente');
+         const errorMsg = error.response?.data?.message || 'Erreur lors de la création de la vente';
+         toast.error(errorMsg);
+         setSubmitError(errorMsg);
        } finally {
          setSubmitting(false);
        }
@@ -315,6 +521,7 @@
        setSelectedCustomer(newClient);
        setCustomerSearch(newClient.name);
        setShowClientModal(false);
+       toast.success(`Client ${newClient.name} créé avec succès`);
      };
    
      const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
@@ -358,74 +565,166 @@
    
          <div className="quick-sale-container">
            <main className="quick-sale-main">
-             <section className="customer-section glass-panel">
-               <div className="customer-search-wrapper">
-                 <User size={18} strokeWidth={2} />
-                 <input
-                   type="text"
-                   placeholder="Rechercher un client..."
-                   value={customerSearch}
-                   onChange={(e) => setCustomerSearch(e.target.value)}
-                   onFocus={() => customerSuggestions.length > 0 && setShowCustomerDropdown(true)}
-                   className="customer-search-input"
-                 />
-                 {selectedCustomer && (
-                   <button 
-                     className="customer-clear"
-                     onClick={() => {
-                       setSelectedCustomer(null);
-                       setCustomerSearch('');
-                     }}
-                     aria-label="Effacer"
+             {/* Section client avec toggle pour vente rapide */}
+             {saleMode === 'immediate' ? (
+               <section className="customer-section glass-panel">
+                 <div className="customer-toggle-header">
+                   <button
+                     className="btn-toggle-customer"
+                     onClick={() => setShowCustomerSearch(!showCustomerSearch)}
                    >
-                     <X size={16} />
+                     {showCustomerSearch ? <EyeOff size={16} /> : <Eye size={16} />}
+                     {showCustomerSearch ? 'Cacher' : 'Afficher'} la recherche client
                    </button>
-                 )}
-               </div>
-   
-               {showCustomerDropdown && customerSuggestions.length > 0 && (
-                 <div className="customer-dropdown">
-                   {customerSuggestions.map((customer) => (
-                     <button
-                       key={customer.id}
-                       className="customer-suggestion"
-                       onClick={() => handleSelectCustomer(customer)}
-                     >
-                       <div className="customer-info">
-                         <span className="customer-name">{customer.name}</span>
-                         <span className="customer-code">{customer.customer_number}</span>
-                       </div>
-                       {customer.loyalty_points > 0 && (
-                         <span className="customer-points">
-                           {customer.loyalty_points.toLocaleString()} pts
-                         </span>
-                       )}
-                     </button>
-                   ))}
+                   {!showCustomerSearch && (
+                     <div className="anonymous-customer-info">
+                       <span className="anonymous-badge">Vente anonyme</span>
+                       <p className="anonymous-hint">Un client anonyme sera automatiquement créé</p>
+                     </div>
+                   )}
                  </div>
-               )}
    
-               <div className="customer-actions">
-                 <button 
-                   className="btn-new-customer"
-                   onClick={() => setShowClientModal(true)}
-                 >
-                   <Plus size={16} strokeWidth={2} />
-                   Nouveau client
-                 </button>
-                 {selectedCustomer && (
-                   <button 
-                     className="btn-view-customer"
-                     onClick={() => {
-                       sessionStorage.setItem('saleInProgress', JSON.stringify({ cart, customer: selectedCustomer }));
-                       navigate(`/clients/${selectedCustomer.id}`);
-                     }}
-                   >
-                     Voir fiche →
-                   </button>
+                 {showCustomerSearch && (
+                   <>
+                     <div className="customer-search-wrapper">
+                       <User size={18} strokeWidth={2} />
+                       <input
+                         type="text"
+                         placeholder="Rechercher un client..."
+                         value={customerSearch}
+                         onChange={(e) => setCustomerSearch(e.target.value)}
+                         onFocus={() => customerSuggestions.length > 0 && setShowCustomerDropdown(true)}
+                         className="customer-search-input"
+                       />
+                       {selectedCustomer && (
+                         <button 
+                           className="customer-clear"
+                           onClick={() => {
+                             setSelectedCustomer(null);
+                             setCustomerSearch('');
+                           }}
+                           aria-label="Effacer"
+                         >
+                           <X size={16} />
+                         </button>
+                       )}
+                     </div>
+   
+                     {showCustomerDropdown && customerSuggestions.length > 0 && (
+                       <div className="customer-dropdown">
+                         {customerSuggestions.map((customer) => (
+                           <button
+                             key={customer.id}
+                             className="customer-suggestion"
+                             onClick={() => handleSelectCustomer(customer)}
+                           >
+                             <div className="customer-info">
+                               <span className="customer-name">{customer.name}</span>
+                               <span className="customer-code">{customer.customer_number}</span>
+                             </div>
+                             {customer.loyalty_points > 0 && (
+                               <span className="customer-points">
+                                 {customer.loyalty_points.toLocaleString()} pts
+                               </span>
+                             )}
+                           </button>
+                         ))}
+                       </div>
+                     )}
+   
+                     <div className="customer-actions">
+                       <button 
+                         className="btn-new-customer"
+                         onClick={() => setShowClientModal(true)}
+                       >
+                         <Plus size={16} strokeWidth={2} />
+                         Nouveau client
+                       </button>
+                       {selectedCustomer && (
+                         <button 
+                           className="btn-view-customer"
+                           onClick={() => {
+                             sessionStorage.setItem('saleInProgress', JSON.stringify({ cart, customer: selectedCustomer }));
+                             navigate(`/clients/${selectedCustomer.id}`);
+                           }}
+                         >
+                           Voir fiche →
+                         </button>
+                       )}
+                     </div>
+                   </>
                  )}
-               </div>
-             </section>
+               </section>
+             ) : (
+               <section className="customer-section glass-panel">
+                 <div className="customer-search-wrapper">
+                   <User size={18} strokeWidth={2} />
+                   <input
+                     type="text"
+                     placeholder="Rechercher un client..."
+                     value={customerSearch}
+                     onChange={(e) => setCustomerSearch(e.target.value)}
+                     onFocus={() => customerSuggestions.length > 0 && setShowCustomerDropdown(true)}
+                     className="customer-search-input"
+                   />
+                   {selectedCustomer && (
+                     <button 
+                       className="customer-clear"
+                       onClick={() => {
+                         setSelectedCustomer(null);
+                         setCustomerSearch('');
+                       }}
+                       aria-label="Effacer"
+                     >
+                       <X size={16} />
+                     </button>
+                   )}
+                 </div>
+   
+                 {showCustomerDropdown && customerSuggestions.length > 0 && (
+                   <div className="customer-dropdown">
+                     {customerSuggestions.map((customer) => (
+                       <button
+                         key={customer.id}
+                         className="customer-suggestion"
+                         onClick={() => handleSelectCustomer(customer)}
+                       >
+                         <div className="customer-info">
+                           <span className="customer-name">{customer.name}</span>
+                           <span className="customer-code">{customer.customer_number}</span>
+                         </div>
+                         {customer.loyalty_points > 0 && (
+                           <span className="customer-points">
+                             {customer.loyalty_points.toLocaleString()} pts
+                           </span>
+                         )}
+                       </button>
+                     ))}
+                   </div>
+                 )}
+   
+                 <div className="customer-actions">
+                   <button 
+                     className="btn-new-customer"
+                     onClick={() => setShowClientModal(true)}
+                   >
+                     <Plus size={16} strokeWidth={2} />
+                     Nouveau client
+                   </button>
+                   {selectedCustomer && (
+                     <button 
+                       className="btn-view-customer"
+                       onClick={() => {
+                         sessionStorage.setItem('saleInProgress', JSON.stringify({ cart, customer: selectedCustomer }));
+                         navigate(`/clients/${selectedCustomer.id}`);
+                       }}
+                     >
+                       Voir fiche →
+                     </button>
+                   )}
+                 </div>
+               </section>
+             )}
    
              <div className="filters-section">
                <div className="product-search-wrapper-compact">
@@ -508,6 +807,7 @@
                      product={product}
                      index={index}
                      onClick={() => setSelectedProduct(product)}
+                     saleMode={saleMode}
                    />
                  ))
                )}
@@ -590,54 +890,50 @@
                    </div>
                  </div>
                    
-
-                { saleMode != 'credit' && (
+                 {(saleMode !== 'credit' || (saleMode === 'credit' && installments.length === 0)) && (
                    <div className="payment-method">
-                    <label>Méthode de paiement</label>
-                    <div className="payment-options">
-                      <button
-                        className={`payment-option ${paymentMethod === 'cash' ? 'active' : ''}`}
-                        onClick={() => setPaymentMethod('cash')}
-                      >
-                        <Banknote size={18} />
-                        <span>Espèces</span>
-                      </button>
-                      <button
-                        className={`payment-option ${paymentMethod === 'mobile_money' ? 'active' : ''}`}
-                        onClick={() => setPaymentMethod('mobile_money')}
-                      >
-                        <Smartphone size={18} />
-                        <span>Mobile Money</span>
-                      </button>
-                    </div>
-    
-                    {accounts.length > 0 ? (
-                      <div className="custom-select-wrapper">
-                        <select
-                          value={selectedAccount || ''}
-                          onChange={(e) => setSelectedAccount(parseInt(e.target.value))}
-                          className="custom-select"
-                        >
-                          {accounts.map(account => (
-                            <option key={account.id} value={account.id}>
-                              {account.name} {account.account_number ? `• ${account.account_number}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="select-icon" />
-                      </div>
-                    ) : (
-                      <div className="no-account-warning">
-                        <AlertCircle size={16} />
-                        <span>Aucun compte {paymentMethod === 'cash' ? 'espèces' : 'mobile money'} disponible</span>
-                      </div>
-                    )}
-                  </div>
-                  )
-
-                }
-                
+                     <label>Méthode de paiement</label>
+                     <div className="payment-options">
+                       <button
+                         className={`payment-option ${paymentMethod === 'cash' ? 'active' : ''}`}
+                         onClick={() => setPaymentMethod('cash')}
+                       >
+                         <Banknote size={18} />
+                         <span>Espèces</span>
+                       </button>
+                       <button
+                         className={`payment-option ${paymentMethod === 'mobile_money' ? 'active' : ''}`}
+                         onClick={() => setPaymentMethod('mobile_money')}
+                       >
+                         <Smartphone size={18} />
+                         <span>Mobile Money</span>
+                       </button>
+                     </div>
    
+                     {accounts.length > 0 ? (
+                       <div className="custom-select-wrapper">
+                         <select
+                           value={selectedAccount || ''}
+                           onChange={(e) => setSelectedAccount(parseInt(e.target.value))}
+                           className="custom-select"
+                         >
+                           {accounts.map(account => (
+                             <option key={account.id} value={account.id}>
+                               {account.name} {account.account_number ? `• ${account.account_number}` : ''}
+                             </option>
+                           ))}
+                         </select>
+                         <ChevronDown size={16} className="select-icon" />
+                       </div>
+                     ) : (
+                       <div className="no-account-warning">
+                         <AlertCircle size={16} />
+                         <span>Aucun compte {paymentMethod === 'cash' ? 'espèces' : 'mobile money'} disponible</span>
+                       </div>
+                     )}
+                   </div>
+                 )}
+                 
                  {saleMode === 'credit' && (
                    <div className="credit-options">
                      <label>Date limite</label>
@@ -649,7 +945,7 @@
                        min={new Date().toISOString().split('T')[0]}
                      />
    
-                     <label>Échéances</label>
+                     <label>Échéances (optionnel)</label>
                      {installments.map((inst, idx) => (
                        <div key={idx} className="installment-row">
                          <input
@@ -734,7 +1030,7 @@
                  <button
                    className={`btn-submit ${saleMode}`}
                    onClick={() => setShowConfirmModal(true)}
-                   disabled={submitting || !selectedCustomer || cart.length === 0 || !selectedAccount}
+                   disabled={submitting || (saleMode !== 'immediate' && !selectedCustomer) || cart.length === 0 || !selectedAccount}
                  >
                    <Check size={18} strokeWidth={2.5} />
                    {saleMode === 'immediate' && 'Valider la vente'}
@@ -758,6 +1054,7 @@
              product={selectedProduct}
              onClose={() => setSelectedProduct(null)}
              onAddToCart={handleAddToCart}
+             saleMode={saleMode}
            />
          )}
    
@@ -765,7 +1062,7 @@
            <ConfirmModal
              saleMode={saleMode}
              total={total}
-             customer={selectedCustomer}
+             customer={saleMode === 'immediate' ? { name: 'Client Anonyme (à créer)' } : selectedCustomer}
              itemCount={cart.length}
              onConfirm={handleSubmitSale}
              onCancel={() => setShowConfirmModal(false)}
@@ -775,15 +1072,26 @@
        </div>
      );
    };
-   
+  
+   const isAvailableForQuickSale = (product) => {
+    // Vérifie si au moins une variante a du stock au MAGASIN-PRINCIPAL
+    return product.variants?.some(variant => 
+      variant.locations?.some(loc => 
+        loc.location_code === 'MAGASIN-PRINCIPAL' && loc.quantity > 0
+      )
+    );
+  };
    // Composant carte produit
-   const ProductCard = ({ product, index, onClick }) => {
+   const ProductCard = ({ product, index, onClick,saleMode }) => {
+    const available = isAvailableForQuickSale(product);
+    const isDisabled = saleMode !== 'reservation' && !available;
      return (
        <div
-         className="product-card"
-         style={{ animationDelay: `${index * 40}ms` }}
-         onClick={onClick}
+        className={`product-card ${isDisabled ? 'disabled' : ''}`}
+        style={{ animationDelay: `${index * 40}ms` }}
+        onClick={ onClick }
        >
+          
          <div className="product-image">
            {product.image_url ? (
              <img src={product.image_url} alt={product.name} loading="lazy" />
@@ -804,150 +1112,302 @@
        </div>
      );
    };
-   
-   // Modal de sélection produit
-   const ProductModal = ({ product, onClose, onAddToCart }) => {
-     const [selectedVariant, setSelectedVariant] = useState(null);
-     const [selectedLocation, setSelectedLocation] = useState(null);
-     const [quantity, setQuantity] = useState(1);
-   
-     useEffect(() => {
-       if (product.variants && product.variants.length > 0) {
-         setSelectedVariant(product.variants[0]);
-       }
-     }, [product]);
-   
-     useEffect(() => {
-       if (selectedVariant?.locations && selectedVariant.locations.length > 0) {
-         setSelectedLocation(selectedVariant.locations[0]);
-         setQuantity(1);
-       }
-     }, [selectedVariant]);
-   
-     const handleAdd = () => {
-       if (selectedVariant && selectedLocation && quantity > 0) {
-         onAddToCart(product, selectedVariant, selectedLocation, quantity);
-       }
-     };
-   
-     const maxQuantity = selectedLocation?.quantity || 0;
-   
-     return (
-       <div className="product-modal-overlay" onClick={onClose}>
-         <div className="product-modal" onClick={(e) => e.stopPropagation()}>
-           <div className="product-modal-header">
-             <h2>{product.name}</h2>
-             <button className="modal-close-btn" onClick={onClose}>
-               <X size={20} />
-             </button>
-           </div>
-   
-           <div className="product-modal-content">
-             <div className="modal-price">{product.base_price.toLocaleString()} Ar</div>
-   
-             {product.variants && product.variants.length > 0 && (
-               <div className="modal-section">
-                 <h3>Choisir une variante</h3>
-                 <div className="variants-grid-modal">
-                   {product.variants.map((variant) => (
-                     <button
-                       key={variant.id}
-                       className={`variant-card ${selectedVariant?.id === variant.id ? 'active' : ''}`}
-                       onClick={() => setSelectedVariant(variant)}
-                     >
-                       {variant.image_path && (
-                         <img src={variant.image_path} alt="" className="variant-image" />
-                       )}
-                       <div className="variant-info-modal">
-                         <span className="variant-sku-modal">{variant.sku}</span>
-                         <div className="variant-attrs-modal">
-                           {variant.attributes.map(attr => (
-                             <span key={attr.type_id} className="attr-badge">
-                               <strong>{attr.type_name}:</strong> {attr.value}
-                             </span>
-                           ))}
-                         </div>
-                         <span className="variant-stock-modal">
-                           <Package size={14} />
-                           {variant.stock_quantity} unités
-                         </span>
-                       </div>
-                     </button>
-                   ))}
-                 </div>
-               </div>
-             )}
-   
-             {selectedVariant && selectedVariant.locations && selectedVariant.locations.length > 0 && (
-               <div className="modal-section">
-                 <h3>Choisir un emplacement</h3>
-                 <div className="locations-grid-modal">
-                   {selectedVariant.locations.map((location) => (
-                     <button
-                       key={location.location_id}
-                       className={`location-card ${selectedLocation?.location_id === location.location_id ? 'active' : ''}`}
-                       onClick={() => setSelectedLocation(location)}
-                       disabled={location.quantity === 0}
-                     >
-                       <MapPin size={16} />
-                       <div>
-                         <span className="location-name-modal">{location.location_name}</span>
-                         <span className="location-qty-modal">{location.quantity} disponibles</span>
-                       </div>
-                     </button>
-                   ))}
-                 </div>
-               </div>
-             )}
-   
-             {selectedVariant && selectedLocation && (
-               <div className="modal-section">
-                 <h3>Quantité</h3>
-                 <div className="quantity-selector-modal">
-                   <button
-                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                     disabled={quantity <= 1}
-                   >
-                     <Minus size={18} />
-                   </button>
-                   <input
-                     type="number"
-                     value={quantity}
-                     onChange={(e) => {
-                       const val = parseInt(e.target.value) || 1;
-                       setQuantity(Math.min(Math.max(1, val), maxQuantity));
-                     }}
-                     min="1"
-                     max={maxQuantity}
-                   />
-                   <button
-                     onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-                     disabled={quantity >= maxQuantity}
-                   >
-                     <Plus size={18} />
-                   </button>
-                 </div>
-               </div>
-             )}
-           </div>
-   
-           <div className="product-modal-footer">
-             <button className="btn-cancel-modal" onClick={onClose}>
-               Annuler
-             </button>
-             <button
-               className="btn-add-modal"
-               onClick={handleAdd}
-               disabled={!selectedVariant || !selectedLocation || quantity <= 0 || quantity > maxQuantity}
-             >
-               <ShoppingCart size={18} />
-               Ajouter au panier
-             </button>
-           </div>
-         </div>
-       </div>
-     );
-   };
+   const findMainLocation = (locations, mode) => {
+    // En mode réservation, on peut choisir n'importe quel emplacement
+    if (mode === 'reservation') {
+      // Retourne le premier emplacement avec stock, ou null
+      return locations.find(loc => loc.quantity > 0) || null;
+    }
+    
+    // Pour vente rapide et crédit : EXCLUSIVEMENT MAGASIN-PRINCIPAL avec stock
+    const mainLocation = locations.find(loc => 
+      loc.code === 'MAGASIN-PRINCIPAL' && loc.quantity > 0
+    );
+    
+    return mainLocation || null; // Retourne null si pas disponible
+  };
+  const ProductModal = ({ product, onClose, onAddToCart, saleMode }) => {
+    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [quantity, setQuantity] = useState(1);
+    const [selectedLocation, setSelectedLocation] = useState(null);
+    
+    useEffect(() => {
+      if (product.variants && product.variants.length > 0) {
+        const firstVariant = product.variants[0];
+        setSelectedVariant(firstVariant);
+        
+        // Déterminer l'emplacement par défaut selon le mode
+        const mainLocation = findMainLocation(firstVariant.locations, saleMode);
+        setSelectedLocation(mainLocation);
+      }
+    }, [product, saleMode]);
+  
+    // Calculer le stock total par emplacement (toutes variantes confondues)
+    const stockByLocation = useMemo(() => {
+      const locationMap = {};
+      
+      product.variants?.forEach(variant => {
+        variant.locations?.forEach(location => {
+          const key = location.location_id;
+          if (!locationMap[key]) {
+            locationMap[key] = {
+              ...location,
+              total_quantity: 0
+            };
+          }
+          locationMap[key].total_quantity += location.quantity;
+        });
+      });
+      
+      return Object.values(locationMap);
+    }, [product]);
+  
+    // Quand une variante change, mettre à jour l'emplacement sélectionné
+    useEffect(() => {
+      if (selectedVariant) {
+        const mainLocation = findMainLocation(selectedVariant.locations, saleMode);
+        setSelectedLocation(mainLocation);
+        setQuantity(1); // Réinitialiser la quantité
+      }
+    }, [selectedVariant, saleMode]);
+  
+    const handleAdd = () => {
+      if (selectedVariant && selectedLocation) {
+        onAddToCart(product, selectedVariant, selectedLocation, quantity);
+      }
+    };
+  
+    const maxQuantity = selectedLocation?.quantity || 0;
+  
+    const canAddToCart = selectedVariant && selectedLocation && quantity > 0 && quantity <= maxQuantity;
+  
+    return (
+      <div className="product-modal-overlay" onClick={onClose}>
+        <div className="product-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="product-modal-header">
+            <h2>{product.name}</h2>
+            <button className="modal-close-btn" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
+  
+          <div className="product-modal-content">
+            <div className="modal-price">{product.base_price.toLocaleString()} Ar</div>
+  
+            {/* SECTION 1: RÉSUMÉ DES STOCKS PAR EMPLACEMENT */}
+            <div className="modal-section">
+              <h3>
+                <MapPin size={16} />
+                Stocks par emplacement (total)
+              </h3>
+              <div className="global-stock-summary">
+                {stockByLocation.length === 0 ? (
+                  <div className="no-stock-message">
+                    <AlertCircle size={16} />
+                    <span>Aucun stock disponible</span>
+                  </div>
+                ) : (
+                  <div className="location-grid-summary">
+                    {stockByLocation.map(location => (
+                      <div 
+                        key={location.location_id}
+                        className={`location-summary-card ${location.code === 'MAGASIN-PRINCIPAL' ? 'main-location' : ''}`}
+                      >
+                        <div className="location-summary-header">
+                          <MapPin size={14} />
+                          <div className="location-summary-info">
+                            <span className="location-name">{location.location_name}</span>
+                            <span className="location-code">{location.code}</span>
+                          </div>
+                          {location.code === 'MAGASIN-PRINCIPAL' && (
+                            <span className="main-location-badge">Principal</span>
+                          )}
+                        </div>
+                        <div className="location-stock-total">
+                          <Package size={14} />
+                          <span className="stock-number">{location.total_quantity}</span>
+                          <span className="stock-label">unités totales</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+  
+            {/* SECTION 2: SÉLECTION DE VARIANTE */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="modal-section">
+                <h3>Choisir une variante</h3>
+                <div className="variants-grid-modal">
+                  {product.variants.map((variant) => {
+                    const variantMainLocation = findMainLocation(variant.locations, saleMode);
+                    const isAvailable = variantMainLocation !== null;
+                    
+                    return (
+                      <button
+                        key={variant.id}
+                        className={`variant-card ${selectedVariant?.id === variant.id ? 'active' : ''} ${!isAvailable && saleMode !== 'reservation' ? 'unavailable' : ''}`}
+                        onClick={() => setSelectedVariant(variant)}
+                        disabled={!isAvailable && saleMode !== 'reservation'}
+                      >
+                        {variant.image_path && (
+                          <img src={variant.image_path} alt="" className="variant-image" />
+                        )}
+                        <div className="variant-info-modal">
+                          <div className="variant-header">
+                            <span className="variant-sku-modal">{variant.sku}</span>
+                            {!isAvailable && saleMode !== 'reservation' && (
+                              <span className="unavailable-badge">
+                                <AlertTriangle size={12} />
+                                Indisponible
+                              </span>
+                            )}
+                          </div>
+                          <div className="variant-attrs-modal">
+                            {variant.attributes.map(attr => (
+                              <span key={attr.type_id} className="attr-badge">
+                                <strong>{attr.type_name}:</strong> {attr.value}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+  
+            {/* SECTION 3: STOCKS DE LA VARIANTE SÉLECTIONNÉE */}
+            {selectedVariant && selectedVariant.locations && (
+              <div className="modal-section">
+                <h3>Stocks de cette variante</h3>
+                <div className="variant-locations-detail">
+                  {selectedVariant.locations.map(location => {
+                    const isSelected = selectedLocation?.location_id === location.location_id;
+                    const isMainLocation = location.code === 'MAGASIN-PRINCIPAL';
+                    const canSelect = saleMode === 'reservation' || isMainLocation;
+                    
+                    return (
+                      <div 
+                        key={location.location_id}
+                        className={`variant-location-row ${isSelected ? 'selected' : ''} ${!canSelect && saleMode !== 'reservation' ? 'disabled' : ''}`}
+                        onClick={() => {
+                          if (canSelect || saleMode === 'reservation') {
+                            setSelectedLocation(location);
+                          }
+                        }}
+                      >
+                        <div className="location-info">
+                          <MapPin size={14} />
+                          <div>
+                            <span className="location-name">{location.location_name}</span>
+                            <span className="location-code">{location.code}</span>
+                          </div>
+                          {isMainLocation && (
+                            <span className="main-tag">Principal</span>
+                          )}
+                        </div>
+                        <div className="location-stock">
+                          <Package size={14} />
+                          <span className={`stock-count ${location.quantity === 0 ? 'out-of-stock' : ''}`}>
+                            {location.quantity} unités
+                          </span>
+                          {saleMode === 'reservation' && (
+                            <button 
+                              className={`select-location-btn ${isSelected ? 'selected' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedLocation(location);
+                              }}
+                            >
+                              {isSelected ? '✓ Sélectionné' : 'Sélectionner'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+  
+            {/* SECTION 4: QUANTITÉ */}
+            {selectedLocation && selectedLocation.quantity > 0 && (
+              <div className="modal-section">
+                <h3>Quantité</h3>
+                <div className="selected-location-info">
+                  <div className="selected-location-badge">
+                    <MapPin size={14} />
+                    <span>
+                      <strong>{selectedLocation.location_name}</strong>
+                      {selectedLocation.code === 'MAGASIN-PRINCIPAL' && ' (Magasin principal)'}
+                    </span>
+                    <span className="stock-info">{selectedLocation.quantity} disponibles</span>
+                  </div>
+                </div>
+                <div className="quantity-selector-modal">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      setQuantity(Math.min(Math.max(1, val), maxQuantity));
+                    }}
+                    min="1"
+                    max={maxQuantity}
+                  />
+                  <button
+                    onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                    disabled={quantity >= maxQuantity}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+  
+            {/* MESSAGE D'AVERTISSEMENT */}
+            {!selectedLocation || selectedLocation.quantity === 0 ? (
+              <div className="modal-warning">
+                <AlertTriangle size={16} />
+                <span>
+                  {saleMode !== 'reservation' 
+                    ? "Cette variante n'est pas disponible en vente rapide/crédit (stock épuisé au MAGASIN-PRINCIPAL)"
+                    : "Aucun stock disponible pour la réservation"
+                  }
+                </span>
+              </div>
+            ) : null}
+          </div>
+  
+          <div className="product-modal-footer">
+            <button className="btn-cancel-modal" onClick={onClose}>
+              Annuler
+            </button>
+            <button
+              className={`btn-add-modal ${!canAddToCart ? 'disabled' : ''}`}
+              onClick={handleAdd}
+              disabled={!canAddToCart}
+            >
+              <ShoppingCart size={18} />
+              {saleMode === 'reservation'
+                ? `Réserver (${selectedLocation?.location_name || 'Sélectionner'})`
+                : `Ajouter au panier (${selectedLocation?.code === 'MAGASIN-PRINCIPAL' ? 'Magasin principal' : selectedLocation?.location_name})`
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
    
    // Composant item panier
    const CartItem = ({ item, index, onUpdateQuantity, onRemove }) => {
@@ -967,6 +1427,9 @@
            <p className="cart-item-location">
              <MapPin size={12} />
              {item.location_name}
+             {item.location_code === 'MAGASIN-PRINCIPAL' && (
+               <span className="main-location-tag"> (Principal)</span>
+             )}
            </p>
            <p className="cart-item-price">
              {item.unit_price.toLocaleString()} Ar × {item.quantity} = {(item.unit_price * item.quantity).toLocaleString()} Ar
@@ -1001,7 +1464,7 @@
      );
    };
    
-   // Nouveau composant: Modal de confirmation
+   // Modal de confirmation
    const ConfirmModal = ({ saleMode, total, customer, itemCount, onConfirm, onCancel, submitting }) => {
      const getModeText = () => {
        switch(saleMode) {
@@ -1033,7 +1496,7 @@
            <div className="confirm-modal-details">
              <div className="confirm-detail-row">
                <span className="detail-label">Client</span>
-               <span className="detail-value">{customer.name}</span>
+               <span className="detail-value">{customer?.name || 'Client Anonyme (à créer)'}</span>
              </div>
              <div className="confirm-detail-row">
                <span className="detail-label">Articles</span>

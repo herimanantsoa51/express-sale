@@ -25,6 +25,7 @@ class StoreCustomerRequest extends FormRequest
             'credit_limit' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
+            'is_extra_customer' => 'boolean',
         ];
     }
 

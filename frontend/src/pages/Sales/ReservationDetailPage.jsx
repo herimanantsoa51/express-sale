@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, CreditCard, X, AlertTriangle, Clock, Calendar, 
-  User, Package, Receipt, Wallet, Loader2, Image
+  User, Package, Receipt, Wallet, Loader2, Image, Download, CheckCircle2,Printer
 } from 'lucide-react';
 import reservationsService from '../../services/reservationsService';
 import StatusBadge from '../../components/reservations/StatusBadge';
 import PaymentModal from '../../components/reservations/PaymentModal';
 import { formatCurrency, formatDate, calculatePercentage, daysUntil } from '../../utils/formatters';
+import invoiceService from '../../services/invoiceService';
 import './ReservationDetailPage.css';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import printService from '../../services/printService';
 
 const ReservationDetailPage = () => {
   const { id } = useParams();
@@ -18,6 +22,10 @@ const ReservationDetailPage = () => {
   const [error, setError] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [isPrintingInvoice,setIsPrintingInvoice]=useState(false);
+  const [isPrintingReceipt,setIsPrintingReceipt]=useState(false);
 
   useEffect(() => {
     fetchReservation();
@@ -43,12 +51,46 @@ const ReservationDetailPage = () => {
       await fetchReservation();
       setIsPaymentModalOpen(false);
     } catch (err) {
+
+      console.error(err);
       throw err;
     } finally {
       setActionLoading(false);
     }
   };
 
+  const handlePrintInvoice=async()=>{
+    if (isPrintingInvoice) return;
+    setIsPrintingInvoice(true);
+    toast.info('Envoi de la facture à l\'imprimante...');
+    try {
+      await printService.printReservation(reservation.id);
+      toast.success('Facture envoyée à l\'imprimante');
+    } catch (error) {
+      console.log(error);
+      toast.error('Erreur lors de l\'impression de la facture');
+    } finally {
+      setIsPrintingInvoice(false);
+    }
+  };
+  const handlePrintReceipt=async(e)=>{
+    e.stopPropagation();
+    if (isPrintingReceipt) return;
+    setIsPrintingReceipt(true);
+    toast.info('Envoi du reçu à l\'imprimante...');
+    try {
+      await printService.printReservationReceipt(
+        reservation.id,
+        reservation.sale_info.sale_number
+      );
+      toast.success('Reçu envoyé à l\'imprimante');
+    } catch (error) {
+      console.log(error);
+      toast.error('Erreur lors de l\'impression du reçu');
+    } finally {
+      setIsPrintingReceipt(false);
+    }
+  };
   const handleCancel = async () => {
     const reason = window.prompt('Raison de l\'annulation :');
     if (!reason) return;
@@ -61,6 +103,47 @@ const ReservationDetailPage = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleDownloadReceipt = async (e) => {
+    e.stopPropagation();
+    if (isDownloadingReceipt) return;
+    setIsDownloadingReceipt(true);
+    toast.info('Téléchargement du reçu en cours...');
+    try {
+      await invoiceService.downloadReservationReceipt(
+        reservation.id,
+        reservation.sale_info.sale_number
+      );
+      toast.success('Reçu téléchargé avec succès');
+    } catch (error) {
+      console.log(error);
+      toast.error('Erreur lors du téléchargement du reçu');
+    } finally {
+      setIsDownloadingReceipt(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (isDownloadingInvoice) return;
+    setIsDownloadingInvoice(true);
+    toast.info('Téléchargement de la facture en cours...');
+    try {
+      await invoiceService.downloadReservation(
+        reservation.id,
+        reservation.sale_info.sale_number
+      );
+      toast.success('Facture téléchargée avec succès');
+    } catch (error) {
+      console.log(error);
+      toast.error('Erreur lors du téléchargement de la facture');
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
+  };
+
+  const handleTransactionClick = (transactionId) => {
+    navigate(`/transactions/${transactionId}`);
   };
 
   if (loading) {
@@ -108,6 +191,32 @@ const ReservationDetailPage = () => {
           <StatusBadge status={reservation.status} />
         </div>
         <div className="reservation-detail-header__actions">
+          <button 
+            className="action-btn action-btn--secondary" 
+            onClick={handleDownloadInvoice}
+            disabled={isDownloadingInvoice}
+            title="Télécharger la facture de réservation"
+          >
+            {isDownloadingInvoice ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            <span>Télécharger</span>
+          </button>
+          <button 
+            className="action-btn action-btn--secondary" 
+            onClick={handlePrintInvoice}
+            disabled={isPrintingInvoice}
+            title="Imprimer la facture de réservation"
+          >
+            {isPrintingInvoice ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <Printer size={18} />
+            )}
+            <span>Imprimer</span>
+          </button>
           {canComplete && (
             <button className="action-btn action-btn--primary" onClick={() => setIsPaymentModalOpen(true)} disabled={actionLoading}>
               <CreditCard size={18} /><span>Compléter</span>
@@ -131,6 +240,13 @@ const ReservationDetailPage = () => {
       {isExpired && (
         <div className="reservation-alert reservation-alert--danger">
           <Clock size={20} /><span>Réservation expirée</span>
+        </div>
+      )}
+
+      {reservation.status === 'cancelled' && reservation.cancellation_reason && (
+        <div className="reservation-alert reservation-alert--danger">
+          <X size={20} />
+          <span>Annulée : {reservation.cancellation_reason}</span>
         </div>
       )}
 
@@ -196,19 +312,85 @@ const ReservationDetailPage = () => {
 
           {transactions.length > 0 && (
             <div className="detail-card">
-              <h2 className="detail-card__title"><Receipt size={18} /><span>Paiements ({transactions.length})</span></h2>
+              <h2 className="detail-card__title">
+                <Receipt size={18} />
+                <span>Paiements ({transactions.length})</span>
+              </h2>
               <div className="transactions-list">
-                {transactions.map((tx, idx) => (
-                  <div key={idx} className="transaction-row">
-                    <div className="transaction-icon"><Wallet size={16} /></div>
-                    <div className="transaction-info">
-                      <div className="transaction-date">{formatDate(tx.transaction_date)}</div>
-                      <div className="transaction-account">{tx.account?.name}</div>
-                      {tx.notes && <div className="transaction-notes">{tx.notes}</div>}
+                {transactions.map((tx, idx) => {
+                  const isComplete = tx.id === reservation.transaction_complete_id;
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`transaction-row ${isComplete ? 'transaction-row--complete' : ''} transaction-row--clickable`}
+                      onClick={() => handleTransactionClick(tx.id)}
+                    >
+                      <div className="transaction-icon">
+                        <Wallet size={16} />
+                      </div>
+                      
+                      <div className="transaction-info">
+                        <div className="transaction-date">
+                          {formatDate(tx.transaction_date)}
+                        </div>
+                        <div className="transaction-account">
+                          {tx.account?.name}
+                        </div>
+                        
+                        {isComplete && (
+                          <div className="transaction-footer">
+                            <span className="transaction-complete-badge">
+                              <CheckCircle2 size={12} />
+                              Paiement final
+                            </span>
+                            <button
+                              className="download-btn"
+                              onClick={handleDownloadReceipt}
+                              disabled={isDownloadingReceipt}
+                              title="Télécharger le reçu"
+                            >
+                              {isDownloadingReceipt ? (
+                                <>
+                                  <Loader2 size={14} className="spin" />
+                                  <span>Téléchargement...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={14} />
+                                  <span>Télécharger</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              className="download-btn"
+                              onClick={handlePrintReceipt}
+                              disabled={isPrintingReceipt}
+                              title="Imprimer le reçu"
+                            >
+                              {isPrintingReceipt ? (
+                                <>
+                                  <Loader2 size={14} className="spin" />
+                                  <span>Téléchargement...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Printer size={14} />
+                                  <span>Imprimer</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="transaction-amount">
+                        +{formatCurrency(tx.amount)}
+                      </div>
                     </div>
-                    <div className="transaction-amount">+{formatCurrency(tx.amount)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

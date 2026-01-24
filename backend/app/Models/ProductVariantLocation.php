@@ -11,12 +11,14 @@ class ProductVariantLocation extends Model
     protected $fillable = [
         'variant_id',
         'location_id',
+        'reserved_quantity',
         'quantity',
         'notes'
     ];
 
     protected $casts = [
         'quantity' => 'integer',
+        'reserved_quantity' => 'integer',
     ];
 
     // Relations

@@ -83,7 +83,16 @@ class SalesStatisticsController extends Controller
      */
     private function calculatePaymentStatusByType(array $period): array
     {
-        // 1. VENTES IMMÉDIATES - Utilise sales.payment_status
+        // Helper pour extraire count et amount en toute sécurité
+        $getStat = function($collection, $key) {
+            $item = $collection->get($key);
+            return [
+                'count' => (int) ($item->count ?? 0),
+                'amount' => (float) ($item->amount ?? 0),
+            ];
+        };
+    
+        // 1. VENTES IMMÉDIATES
         $immediateStats = Sale::selectRaw("
                 payment_status,
                 COUNT(*) as count,
@@ -94,8 +103,8 @@ class SalesStatisticsController extends Controller
             ->groupBy('payment_status')
             ->get()
             ->keyBy('payment_status');
-
-        // 2. CRÉDITS - Utilise credits.status
+    
+        // 2. CRÉDITS
         $creditStats = Credit::selectRaw("
                 credits.status,
                 COUNT(*) as count,
@@ -106,8 +115,8 @@ class SalesStatisticsController extends Controller
             ->groupBy('credits.status')
             ->get()
             ->keyBy('status');
-
-        // 3. RÉSERVATIONS - Utilise reservations.status
+    
+        // 3. RÉSERVATIONS
         $reservationStats = Reservation::selectRaw("
                 reservations.status,
                 COUNT(*) as count,
@@ -118,134 +127,85 @@ class SalesStatisticsController extends Controller
             ->groupBy('reservations.status')
             ->get()
             ->keyBy('status');
-
+    
         return [
             'immediate' => [
-                'paid' => [
-                    'count' => (int) ($immediateStats->get('paid')->count ?? 0),
-                    'amount' => (float) ($immediateStats->get('paid')->amount ?? 0),
-                ],
-                'partial' => [
-                    'count' => (int) ($immediateStats->get('partial')->count ?? 0),
-                    'amount' => (float) ($immediateStats->get('partial')->amount ?? 0),
-                ],
-                'pending' => [
-                    'count' => (int) ($immediateStats->get('pending')->count ?? 0),
-                    'amount' => (float) ($immediateStats->get('pending')->amount ?? 0),
-                ],
-                'cancelled' => [
-                    'count' => (int) ($immediateStats->get('cancelled')->count ?? 0),
-                    'amount' => (float) ($immediateStats->get('cancelled')->amount ?? 0),
-                ],
+                'paid' => $getStat($immediateStats, 'paid'),
+                'partial' => $getStat($immediateStats, 'partial'),
+                'pending' => $getStat($immediateStats, 'pending'),
+                'cancelled' => $getStat($immediateStats, 'cancelled'),
             ],
             'credit' => [
-                'active' => [
-                    'count' => (int) ($creditStats->get('active')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('active')->amount ?? 0),
-                ],
-                'partial_paid' => [
-                    'count' => (int) ($creditStats->get('partial_paid')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('partial_paid')->amount ?? 0),
-                ],
-                'completed' => [
-                    'count' => (int) ($creditStats->get('completed')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('completed')->amount ?? 0),
-                ],
-                'overdue' => [
-                    'count' => (int) ($creditStats->get('overdue')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('overdue')->amount ?? 0),
-                ],
-                'defaulted' => [
-                    'count' => (int) ($creditStats->get('defaulted')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('defaulted')->amount ?? 0),
-                ],
-                'recovered' => [
-                    'count' => (int) ($creditStats->get('recovered')->count ?? 0),
-                    'amount' => (float) ($creditStats->get('recovered')->amount ?? 0),
-                ],
+                'active' => $getStat($creditStats, 'active'),
+                'partial_paid' => $getStat($creditStats, 'partial_paid'),
+                'completed' => $getStat($creditStats, 'completed'),
+                'overdue' => $getStat($creditStats, 'overdue'),
+                'defaulted' => $getStat($creditStats, 'defaulted'),
+                'recovered' => $getStat($creditStats, 'recovered'),
             ],
             'reservation' => [
-                'pending' => [
-                    'count' => (int) ($reservationStats->get('pending')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('pending')->amount ?? 0),
-                ],
-                'confirmed' => [
-                    'count' => (int) ($reservationStats->get('confirmed')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('confirmed')->amount ?? 0),
-                ],
-                'partial_paid' => [
-                    'count' => (int) ($reservationStats->get('partial_paid')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('partial_paid')->amount ?? 0),
-                ],
-                'completed' => [
-                    'count' => (int) ($reservationStats->get('completed')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('completed')->amount ?? 0),
-                ],
-                'expired' => [
-                    'count' => (int) ($reservationStats->get('expired')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('expired')->amount ?? 0),
-                ],
-                'cancelled' => [
-                    'count' => (int) ($reservationStats->get('cancelled')->count ?? 0),
-                    'amount' => (float) ($reservationStats->get('cancelled')->amount ?? 0),
-                ],
+                'pending' => $getStat($reservationStats, 'pending'),
+                'confirmed' => $getStat($reservationStats, 'confirmed'),
+                'partial_paid' => $getStat($reservationStats, 'partial_paid'),
+                'completed' => $getStat($reservationStats, 'completed'),
+                'expired' => $getStat($reservationStats, 'expired'),
+                'cancelled' => $getStat($reservationStats, 'cancelled'),
             ],
         ];
     }
 
-            /**
-             * Calcule le total payé (toutes sources confondues)
-             */
-            private function getTotalPaid(array $period): float
-            {
-                // Ventes immédiates payées
-                $immediatePaid = Sale::where('sale_type', 'immediate')
-                    ->where('payment_status', 'paid')
-                    ->whereBetween('sale_date', [$period['start'], $period['end']])
-                    ->sum('total_amount');
+        /**
+         * Calcule le total payé (toutes sources confondues)
+         */
+        private function getTotalPaid(array $period): float
+        {
+            // Ventes immédiates payées
+            $immediatePaid = Sale::where('sale_type', 'immediate')
+                ->where('sales.payment_status', 'paid')  // ✅ Préfixé
+                ->whereBetween('sale_date', [$period['start'], $period['end']])
+                ->sum('total_amount');
 
-                // Crédits complétés (entièrement payés)
-                $creditsPaid = Credit::where('status', 'completed')
-                    ->join('sales', 'credits.sale_id', '=', 'sales.id')
-                    ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
-                    ->sum('credits.total_amount');
+            // Crédits complétés (entièrement payés)
+            $creditsPaid = Credit::where('credits.status', 'completed')  // ✅ Préfixé
+                ->join('sales', 'credits.sale_id', '=', 'sales.id')
+                ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
+                ->sum('credits.total_amount');
 
-                // Réservations complétées
-                $reservationsPaid = Reservation::where('status', 'completed')
-                    ->join('sales', 'reservations.sale_id', '=', 'sales.id')
-                    ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
-                    ->sum('reservations.total_amount');
+            // Réservations complétées
+            $reservationsPaid = Reservation::where('reservations.status', 'completed')  // ✅ Préfixé
+                ->join('sales', 'reservations.sale_id', '=', 'sales.id')
+                ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
+                ->sum('reservations.total_amount');
 
-                return (float) ($immediatePaid + $creditsPaid + $reservationsPaid);
-            }
+            return (float) ($immediatePaid + $creditsPaid + $reservationsPaid);
+        }
 
-            /**
-             * Calcule le total en attente (toutes sources confondues)
-             */
-            private function getTotalPending(array $period): float
-            {
-                // Ventes immédiates pending ou partial
-                $immediatePending = Sale::where('sale_type', 'immediate')
-                    ->whereIn('payment_status', ['pending', 'partial'])
-                    ->whereBetween('sale_date', [$period['start'], $period['end']])
-                    ->sum('total_amount');
+        /**
+         * Calcule le total en attente (toutes sources confondues)
+         */
+        private function getTotalPending(array $period): float
+        {
+            // Ventes immédiates pending ou partial
+            $immediatePending = Sale::where('sale_type', 'immediate')
+                ->whereIn('sales.payment_status', ['pending', 'partial'])  // ✅ Préfixé
+                ->whereBetween('sale_date', [$period['start'], $period['end']])
+                ->sum('total_amount');
 
-                // Crédits actifs (montant restant dû)
-                $creditsPending = Credit::whereIn('status', ['active', 'partial_paid', 'overdue'])
-                    ->join('sales', 'credits.sale_id', '=', 'sales.id')
-                    ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
-                    ->sum('credits.amount_due');
+            // Crédits actifs (montant restant dû)
+            $creditsPending = Credit::whereIn('credits.status', ['active', 'partial_paid', 'overdue'])  // ✅ Préfixé
+                ->join('sales', 'credits.sale_id', '=', 'sales.id')
+                ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
+                ->sum('credits.amount_due');
 
-                // Réservations actives (montant restant)
-                $reservationsPending = Reservation::whereIn('status', ['pending', 'confirmed', 'partial_paid'])
-                    ->join('sales', 'reservations.sale_id', '=', 'sales.id')
-                    ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
-                    ->sum('reservations.remaining_amount');
+            // Réservations actives (montant restant)
+            $reservationsPending = Reservation::whereIn('reservations.status', ['pending', 'confirmed', 'partial_paid'])  // ✅ Préfixé
+                ->join('sales', 'reservations.sale_id', '=', 'sales.id')
+                ->whereBetween('sales.sale_date', [$period['start'], $period['end']])
+                ->sum('reservations.remaining_amount');
 
-                return (float) ($immediatePending + $creditsPending + $reservationsPending);
-            }
-
-    
+            return (float) ($immediatePending + $creditsPending + $reservationsPending);
+        }
+            
 
         
         /**

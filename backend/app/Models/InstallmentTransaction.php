@@ -17,6 +17,7 @@ class InstallmentTransaction extends Model
         'transaction_id',
         'amount',
         'payment_date',
+        'status'
     ];
 
     protected $casts = [

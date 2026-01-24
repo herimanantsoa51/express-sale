@@ -41,11 +41,13 @@ class CustomerResource extends JsonResource
             ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
+            
 
             // Relations (chargées conditionnellement)
             'sales_count' => $this->when(isset($this->sales_count), $this->sales_count),
             'credits_count' => $this->when(isset($this->credits_count), $this->credits_count),
             'reservations_count' => $this->when(isset($this->reservations_count), $this->reservations_count),
+            'is_extra_customer' => $this->is_extra_customer,    
         
         ];
     }

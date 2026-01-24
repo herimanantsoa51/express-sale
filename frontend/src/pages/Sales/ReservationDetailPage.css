@@ -1,12 +1,11 @@
 /* ============================================
    RESERVATION DETAIL PAGE
    ============================================ */
-
-.reservation-detail-page {
-  padding: var(--spacing-lg);
-  max-width: 1200px;
-  margin: 0 auto;
-}
+   .reservation-detail-page {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
 
 /* === HEADER === */
 
@@ -18,7 +17,16 @@
   gap: var(--spacing-md);
   flex-wrap: wrap;
 }
-
+.transaction-complete-badge{
+  display: inline-block;
+  margin-top: var(--spacing-xs);
+  padding: 2px 6px;
+  background-color: var(--success-light);
+  color: var(--success);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: 4px;
+}
 .back-btn {
   display: flex;
   align-items: center;
@@ -308,6 +316,12 @@
 
 /* === TRANSACTIONS === */
 
+
+
+/* === TRANSACTIONS === */
+
+/* === TRANSACTIONS === */
+
 .transactions-list {
   display: flex;
   flex-direction: column;
@@ -321,6 +335,11 @@
   padding: var(--spacing-sm);
   background: var(--bg-secondary);
   border-radius: var(--border-radius);
+}
+
+.transaction-row--complete {
+  background: var(--success-light);
+  border: 1px solid var(--success);
 }
 
 .transaction-icon {
@@ -362,6 +381,70 @@
   font-weight: var(--font-weight-bold);
   color: var(--success);
 }
+
+.transaction-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: 6px;
+}
+
+.transaction-complete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background-color: var(--success);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: 4px;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: white;
+  border: 1px solid var(--success);
+  color: var(--success);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.download-btn:hover:not(:disabled) {
+  background: var(--success);
+  color: white;
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 600px) {
+  .transaction-footer {
+    flex-wrap: wrap;
+  }
+}
+
+
 
 /* === AMOUNTS === */
 
@@ -498,4 +581,68 @@
   .item-price {
     margin-left: 72px;
   }
+}
+/* Ajoutez ces styles à votre ReservationDetailPage.css */
+
+/* === BOUTON SECONDAIRE === */
+.action-btn--secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.action-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* === TRANSACTIONS CLIQUABLES === */
+.transaction-row--clickable {
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.transaction-row--clickable:hover {
+  background: var(--bg-tertiary);
+  transform: translateX(2px);
+}
+
+.transaction-row--complete.transaction-row--clickable:hover {
+  background: var(--success-light);
+  border-color: var(--success);
+}
+
+/* Empêcher la propagation du clic sur les boutons à l'intérieur */
+.transaction-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.download-btn {
+  position: relative;
+  z-index: 2;
+}
+
+/* Effet visuel pour indiquer que c'est cliquable */
+.transaction-row--clickable::after {
+  content: '›';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity var(--transition-speed);
+}
+
+.transaction-row--clickable:hover::after {
+  opacity: 1;
+}
+
+/* Ajustement pour les transactions avec footer */
+.transaction-row--complete {
+  position: relative;
+  padding-right: 32px;
 }

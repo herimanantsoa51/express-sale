@@ -3,10 +3,13 @@
 // Carte transaction élégante
 // ============================================
 
-import { CreditCard, TrendingUp, TrendingDown } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Sales/TransactionCard.module.css';
 
 const TransactionCard = ({ transaction }) => {
+  const navigate = useNavigate();
+
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0,
@@ -24,7 +27,10 @@ const TransactionCard = ({ transaction }) => {
   };
 
   return (
-    <div className={styles.container}>
+    <div 
+      className={styles.container}
+      onClick={() => navigate(`/transactions/${transaction.id}`)}
+    >
       <div className={styles.header}>
         <div className={styles.icon}>
           <CreditCard size={18} />
@@ -50,26 +56,11 @@ const TransactionCard = ({ transaction }) => {
           </span>
         </div>
 
-        <div className={styles.balances}>
-          <div className={styles.balanceRow}>
-            <div className={styles.balanceLabel}>
-              <TrendingDown size={14} />
-              <span>Avant</span>
-            </div>
-            <span className={styles.balanceValue}>
-              {formatAmount(transaction.balance_before)} Ar
-            </span>
-          </div>
-
-          <div className={styles.balanceRow}>
-            <div className={styles.balanceLabel}>
-              <TrendingUp size={14} />
-              <span>Après</span>
-            </div>
-            <span className={`${styles.balanceValue} ${styles.success}`}>
-              {formatAmount(transaction.balance_after)} Ar
-            </span>
-          </div>
+        <div className={styles.amount}>
+          <span className={styles.amountLabel}>Montant</span>
+          <span className={styles.amountValue}>
+            {formatAmount(transaction.amount)} Ar
+          </span>
         </div>
 
         <div className={styles.type}>

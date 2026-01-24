@@ -7,7 +7,6 @@ import {
   CheckSquare,
   Loader2,
   AlertCircle,
-  BadgeCheck,
   Save,
   Box,
   FileText,
@@ -116,12 +115,12 @@ const ConfirmationModal = ({ isOpen, onConfirm, onCancel, itemsCount }) => {
         <div className="modal-icon-rating warning">
           <AlertTriangle size={48} />
         </div>
-        <h3 className="modal-title-rating">Confirmer l'évaluation</h3>
+        <h3 className="modal-title-rating">Confirmer et valider la réception</h3>
         <p className="modal-text-rating">
-          Vous êtes sur le point d'enregistrer l'évaluation de <strong>{itemsCount} article{itemsCount > 1 ? 's' : ''}</strong>.
+          Vous êtes sur le point d'enregistrer l'évaluation de <strong>{itemsCount} article{itemsCount > 1 ? 's' : ''}</strong> et de <strong>valider la réception</strong>.
         </p>
         <p className="modal-warning-text">
-          ⚠️ Une fois validée, cette évaluation ne pourra plus être modifiée.
+          ⚠️ Cette action est irréversible. Les batches seront créés automatiquement.
         </p>
         <div className="modal-actions-rating">
           <button className="btn btn-secondary" onClick={onCancel}>
@@ -130,7 +129,7 @@ const ConfirmationModal = ({ isOpen, onConfirm, onCancel, itemsCount }) => {
           </button>
           <button className="btn btn-primary" onClick={onConfirm}>
             <Check size={16} />
-            Confirmer l'évaluation
+            Confirmer et valider
           </button>
         </div>
       </div>
@@ -161,11 +160,9 @@ const StockReceiptRating = () => {
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
   const [ratingsData, setRatingsData] = useState({});
   const [touchedRatings, setTouchedRatings] = useState({});
-  const [isSaved, setIsSaved] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -174,7 +171,7 @@ const StockReceiptRating = () => {
   const STORAGE_KEY = `receipt_rating_progress_${id}`;
 
   useEffect(() => {
-    if (receipt && !isSaved) {
+    if (receipt) {
       const progressData = {
         ratingsData,
         touchedRatings,
@@ -183,7 +180,7 @@ const StockReceiptRating = () => {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(progressData));
     }
-  }, [ratingsData, touchedRatings, receipt, isSaved, STORAGE_KEY, id]);
+  }, [ratingsData, touchedRatings, receipt, STORAGE_KEY, id]);
 
   const loadSavedProgress = () => {
     try {
@@ -209,16 +206,13 @@ const StockReceiptRating = () => {
     fetchReceipt();
   }, [id]);
 
-  // Gérer l'ouverture automatique du modal de transfert via URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('openTransferModal') === 'true' && receipt?.items?.length > 0) {
-      // Trouver le premier item avec quantity_received > 0
       const itemToTransfer = receipt.items.find(item => item.quantity_received > 0);
       if (itemToTransfer) {
         setSelectedItemForTransfer(itemToTransfer);
         setShowTransferModal(true);
-        // Nettoyer l'URL
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
       }
@@ -245,18 +239,14 @@ const StockReceiptRating = () => {
       const savedProgress = loadSavedProgress();
       
       if (savedProgress) {
-        const resume = window.confirm(
-          'Une évaluation en cours a été trouvée. Voulez-vous reprendre où vous en étiez ?'
-        );
-        
-        if (resume) {
-          setRatingsData(savedProgress.ratingsData);
-          setTouchedRatings(savedProgress.touchedRatings);
-          setError(null);
-          return;
-        }
+        // Reprendre automatiquement la progression sauvegardée
+        setRatingsData(savedProgress.ratingsData);
+        setTouchedRatings(savedProgress.touchedRatings);
+        setError(null);
+        return;
       }
 
+      // Initialiser de nouvelles évaluations
       const initialRatings = {};
       const initialTouched = {};
       (response.data.items || []).forEach(item => {
@@ -268,7 +258,8 @@ const StockReceiptRating = () => {
             attribute_type_id: attr.attribute_id,
             attribute_type: attr.type,
             attribute_value: attr.value,
-            conformity_rating: 7
+            conformity_rating: 7,
+            notes: ''
           }))
         };
         
@@ -289,7 +280,6 @@ const StockReceiptRating = () => {
   };
 
   const handleQualityRatingChange = (itemId, value) => {
-    if (isSaved) return;
     setRatingsData(prev => ({
       ...prev,
       [itemId]: {
@@ -308,7 +298,6 @@ const StockReceiptRating = () => {
   };
 
   const handleAttributeRatingChange = (itemId, attrIndex, value) => {
-    if (isSaved) return;
     setRatingsData(prev => ({
       ...prev,
       [itemId]: {
@@ -331,7 +320,6 @@ const StockReceiptRating = () => {
   };
 
   const handleNotesChange = (itemId, value) => {
-    if (isSaved) return;
     setRatingsData(prev => ({
       ...prev,
       [itemId]: {
@@ -342,10 +330,6 @@ const StockReceiptRating = () => {
   };
 
   const handleOpenTransferModal = (item) => {
-    if (isSaved) {
-      alert('Les évaluations sont déjà enregistrées. Vous ne pouvez plus effectuer de transfert.');
-      return;
-    }
     setSelectedItemForTransfer(item);
     setShowTransferModal(true);
   };
@@ -356,40 +340,13 @@ const StockReceiptRating = () => {
       setShowTransferModal(false);
       setSelectedItemForTransfer(null);
       
+      // Recharger les données
       await fetchReceipt();
       
-      alert(`Transfert effectué avec succès ! ${transferData.quantity} unité(s) transférée(s).`);
     } catch (err) {
       console.error('Error transferring variant:', err);
       alert(err.response?.data?.message || 'Erreur lors du transfert');
     }
-  };
-
-  // Calculer la moyenne de conformité des attributs pour un type d'attribut donné
-  const calculateAttributeConformityAverage = (attributeTypeId) => {
-    const orderedItems = receipt?.items.filter(item => item.quantity_ordered > 0) || [];
-    const ratings = [];
-    
-    orderedItems.forEach(item => {
-      const itemRating = ratingsData[item.id];
-      if (itemRating?.attribute_ratings) {
-        const attrRating = itemRating.attribute_ratings.find(
-          ar => ar.attribute_type_id === attributeTypeId
-        );
-        if (attrRating) {
-          ratings.push(attrRating.conformity_rating);
-        }
-      }
-    });
-    
-    if (ratings.length === 0) return 7; // Valeur par défaut
-    return Math.round(ratings.reduce((sum, r) => sum + r, 0) / ratings.length);
-  };
-
-  const calculateAverageConformity = (attributeRatings) => {
-    if (!attributeRatings || attributeRatings.length === 0) return 7;
-    const sum = attributeRatings.reduce((acc, attr) => acc + attr.conformity_rating, 0);
-    return Math.round(sum / attributeRatings.length);
   };
 
   const getTotalRatingsStats = () => {
@@ -400,94 +357,81 @@ const StockReceiptRating = () => {
       const itemTouched = touchedRatings[item.id];
       if (!itemTouched) return;
 
+      // Qualité obligatoire pour tous les items
       total++;
       if (itemTouched.quality) completed++;
 
-      const attrCount = item.variant?.attributes?.length || 0;
-      total += attrCount;
-      
-      // Vérifier que attributes existe avant de filtrer
-      if (itemTouched.attributes && Array.isArray(itemTouched.attributes)) {
-        completed += itemTouched.attributes.filter(t => t).length;
+      // Conformité des attributs obligatoire SEULEMENT si quantity_ordered > 0
+      if (item.quantity_ordered > 0) {
+        const attrCount = item.variant?.attributes?.length || 0;
+        total += attrCount;
+        
+        if (itemTouched.attributes && Array.isArray(itemTouched.attributes)) {
+          completed += itemTouched.attributes.filter(t => t).length;
+        }
       }
     });
 
     return { total, completed, isComplete: total > 0 && completed === total };
   };
 
-  const handleSaveAllRatings = () => {
+  const handleSaveAndValidate = () => {
     const stats = getTotalRatingsStats();
     
     if (!stats.isComplete) {
-      alert(`Veuillez compléter toutes les évaluations avant d'enregistrer. (${stats.completed}/${stats.total} complétées)`);
+      alert(`Veuillez compléter toutes les évaluations avant de valider. (${stats.completed}/${stats.total} complétées)`);
       return;
     }
     
+    // Ouvrir directement le modal de confirmation
     setShowConfirmModal(true);
   };
 
-  const confirmSaveRatings = async () => {
+  const confirmSaveAndValidate = async () => {
     setShowConfirmModal(false);
     
     try {
       setSaving(true);
       
-      for (const item of receipt.items) {
+      // Préparer les données pour tous les items
+      const items = receipt.items.map(item => {
         const itemRating = ratingsData[item.id];
-        if (!itemRating) continue;
-
-        const ratings = [];
         
-        ratings.push({
-          quality_rating: itemRating.quality_rating,
-          attribute_conformity_rating: calculateAverageConformity(itemRating.attribute_ratings),
-          quality_notes: itemRating.quality_notes || null
-        });
+        // Pour les items non commandés (transférés), mettre conformity à 5/10 par défaut
+        const isUnordered = item.quantity_ordered === 0;
         
-        itemRating.attribute_ratings.forEach(attrRating => {
-          if (attrRating.attribute_type_id) {
-            ratings.push({
-              attribute_type_id: attrRating.attribute_type_id,
-              attribute_conformity_rating: attrRating.conformity_rating,
-              quality_rating: itemRating.quality_rating,
-              quality_notes: null
-            });
-          }
-        });
+        return {
+          item_id: item.id,
+          quality_rating: itemRating?.quality_rating || 7,
+          quality_notes: itemRating?.quality_notes || null,
+          attribute_ratings: (itemRating?.attribute_ratings || []).map(ar => ({
+            attribute_type_id: ar.attribute_type_id,
+            conformity_rating: isUnordered ? 5.0 : ar.conformity_rating,
+            notes: isUnordered ? 'Variant transféré - conformité non évaluée' : (ar.notes || null)
+          }))
+        };
+      });
 
-        await stockReceiptService.rateItem(id, item.id, { ratings });
-      }
+      // UN SEUL APPEL API : évalue + valide + crée batches
+      await stockReceiptService.rateReceipt(id, { items });
       
-      setIsSaved(true);
-      setShowSuccessToast(true);
+      // Supprimer la progression du localStorage après succès
       clearSavedProgress();
+      
+      setShowSuccessToast(true);
+      
+      // Redirection après succès
+      setTimeout(() => {
+        navigate(`/reapprovisionnements/${id}`, { 
+          state: { message: 'Réception évaluée et validée avec succès' } 
+        });
+      }, 1500);
       
     } catch (err) {
       console.error('Error saving ratings:', err);
       alert(err.response?.data?.message || 'Erreur lors de la sauvegarde des évaluations');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleValidateReceipt = async () => {
-    if (!isSaved) {
-      alert('Vous devez d\'abord enregistrer les évaluations avant de valider la réception.');
-      return;
-    }
-
-    try {
-      setValidating(true);
-      await stockReceiptService.markAsRated(id);
-      clearSavedProgress();
-      navigate(`/reapprovisionnements/${id}`, { 
-        state: { message: 'Réception évalué avec succès' } 
-      });
-    } catch (err) {
-      console.error('Error validating receipt:', err);
-      alert(err.response?.data?.message || 'Erreur lors de la validation de la réception');
-    } finally {
-      setValidating(false);
     }
   };
 
@@ -566,104 +510,52 @@ const StockReceiptRating = () => {
           </div>
         </div>
         <div className="rating-header-right">
-          {!isSaved ? (
-            <button 
-              className="btn btn-primary"
-              onClick={handleSaveAllRatings}
-              disabled={saving || !ratingsStats.isComplete}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="spinner" size={16} />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Enregistrer toutes les évaluations
-                </>
-              )}
-            </button>
-          ) : (
-            <button 
-              className="btn btn-success"
-              onClick={handleValidateReceipt}
-              disabled={validating}
-            >
-              {validating ? (
-                <>
-                  <Loader2 className="spinner" size={16} />
-                  Validation...
-                </>
-              ) : (
-                <>
-                  <BadgeCheck size={16} />
-                  Valider la réception
-                </>
-              )}
-            </button>
-          )}
+          <button 
+            className="btn btn-primary"
+            onClick={handleSaveAndValidate}
+            disabled={saving || !ratingsStats.isComplete}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="spinner" size={16} />
+                Validation...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                Enregistrer et valider
+              </>
+            )}
+          </button>
         </div>
       </header>
 
-      {!isSaved && (
-        <div className="progress-section">
-          <ProgressIndicator 
-            current={ratingsStats.completed} 
-            total={ratingsStats.total} 
-          />
-          {!ratingsStats.isComplete && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-              <p className="progress-hint">
-                <AlertCircle size={16} />
-                Vous devez évaluer tous les critères avant de pouvoir enregistrer
-              </p>
-              <button 
-                onClick={() => {
-                  if (window.confirm('⚠️ Réinitialiser complètement et recharger ?\n\nCela va :\n- Effacer toute la progression sauvegardée\n- Recharger la page\n- Recalculer correctement les évaluations requises\n\nToutes les évaluations non sauvegardées seront perdues.')) {
-                    clearSavedProgress();
-                    window.location.reload();
-                  }
-                }}
-                className="btn btn-secondary"
-                style={{ fontSize: '12px', padding: '6px 12px' }}
-              >
-                🔄 Réinitialiser la progression (si bloqué)
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {isSaved && (
-        <div className="locked-notice-rating">
-          <CheckSquare size={20} />
-          <div>
-            <strong>Évaluations enregistrées</strong>
-            <p className="locked-notice-text">
-              Les évaluations ont été enregistrées et ne peuvent plus être modifiées. Vous pouvez maintenant valider la réception.
-            </p>
-          </div>
-        </div>
-      )}
+      <div className="progress-section">
+        <ProgressIndicator 
+          current={ratingsStats.completed} 
+          total={ratingsStats.total} 
+        />
+        {!ratingsStats.isComplete && (
+          <p className="progress-hint">
+            <AlertCircle size={16} />
+            Vous devez évaluer tous les critères avant de pouvoir valider
+          </p>
+        )}
+      </div>
 
       <div className="rating-main-content">
         <div className="items-grid-rating">
           {receipt.items.map((item, itemIndex) => {
             const itemRating = ratingsData[item.id] || {};
             const itemTouched = touchedRatings[item.id] || { quality: false, attributes: [] };
-            const isUnorderedVariant = item.quantity_ordered === 0;
             
-            // Pour les variants non commandés, on ne vérifie que la qualité
-            const itemComplete = isUnorderedVariant 
-              ? itemTouched.quality
-              : (itemTouched.quality && 
+            const itemComplete = itemTouched.quality && 
                  itemTouched.attributes && 
                  Array.isArray(itemTouched.attributes) &&
-                 itemTouched.attributes.every(t => t));
+                 itemTouched.attributes.every(t => t);
             
             return (
-              <div key={item.id} className={`item-rating-card ${isSaved ? 'saved' : ''} ${itemComplete ? 'complete' : ''}`}>
+              <div key={item.id} className={`item-rating-card ${itemComplete ? 'complete' : ''}`}>
                 <div className="item-header-rating">
                   <div className="item-icon-rating">
                     <Box size={24} />
@@ -672,6 +564,12 @@ const StockReceiptRating = () => {
                     <div className="item-number-badge">Article {itemIndex + 1}/{receipt.items.length}</div>
                     <h3 className="item-name-rating">
                       {item.variant?.product?.name || 'Article sans nom'}
+                      {item.quantity_ordered === 0 && (
+                        <span className="item-unordered-badge">
+                          <AlertCircle size={12} />
+                          Transféré
+                        </span>
+                      )}
                     </h3>
                     <div className="item-meta-rating">
                       <span className="item-sku">{item.variant?.sku || 'N/A'}</span>
@@ -681,17 +579,12 @@ const StockReceiptRating = () => {
                     </div>
                   </div>
                   <div className="item-badges-rating">
-                    {isSaved ? (
-                      <span className="saved-badge">
-                        <CheckSquare size={16} />
-                        Évalué
-                      </span>
-                    ) : itemComplete ? (
+                    {itemComplete && (
                       <span className="complete-badge">
                         <Check size={16} />
                         Complet
                       </span>
-                    ) : null}
+                    )}
                   </div>
                 </div>
 
@@ -710,7 +603,17 @@ const StockReceiptRating = () => {
                   </div>
                 )}
 
-                {!isSaved && item.quantity_received > 0 && (
+                {item.quantity_ordered === 0 && (
+                  <div className="unordered-variant-notice">
+                    <AlertCircle size={16} />
+                    <div>
+                      <strong>Variant transféré</strong>
+                      <p>Cet article a été reçu suite à un transfert. Seule la qualité globale doit être évaluée. La conformité des attributs sera automatiquement notée 5/10.</p>
+                    </div>
+                  </div>
+                )}
+
+                {item.quantity_received > 0 && item.quantity_ordered > 0 && (
                   <div className="transfer-section-rating">
                     <button 
                       className="btn-transfer-rating"
@@ -731,12 +634,11 @@ const StockReceiptRating = () => {
                   value={itemRating.quality_rating || 7}
                   onChange={(val) => handleQualityRatingChange(item.id, val)}
                   description="Évaluez la qualité globale du produit reçu"
-                  disabled={isSaved}
                   touched={itemTouched.quality}
                   required={true}
                 />
 
-                {itemRating.attribute_ratings && itemRating.attribute_ratings.length > 0 && (
+                {itemRating.attribute_ratings && itemRating.attribute_ratings.length > 0 && item.quantity_ordered > 0 && (
                   <div className="attribute-ratings-section">
                     <h4 className="section-title-rating">
                       <CheckSquare size={18} />
@@ -762,7 +664,6 @@ const StockReceiptRating = () => {
                           label={`Conformité ${attrRating.attribute_type}`}
                           value={attrRating.conformity_rating}
                           onChange={(val) => handleAttributeRatingChange(item.id, idx, val)}
-                          disabled={isSaved}
                           touched={itemTouched.attributes[idx]}
                           required={true}
                         />
@@ -781,7 +682,6 @@ const StockReceiptRating = () => {
                     onChange={(e) => handleNotesChange(item.id, e.target.value)}
                     placeholder="Décrivez les défauts observés, remarques sur la qualité, etc."
                     className="notes-textarea-rating"
-                    disabled={isSaved}
                   />
                 </div>
               </div>
@@ -790,57 +690,36 @@ const StockReceiptRating = () => {
         </div>
 
         <div className="action-buttons-rating">
-          {!isSaved && (
-            <button 
-              className="btn btn-primary btn-large-rating"
-              onClick={handleSaveAllRatings}
-              disabled={saving || !ratingsStats.isComplete}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="spinner" size={20} />
-                  Enregistrement en cours...
-                </>
-              ) : (
-                <>
-                  <Save size={20} />
-                  Enregistrer toutes les évaluations ({ratingsStats.completed}/{ratingsStats.total})
-                </>
-              )}
-            </button>
-          )}
-          {isSaved && (
-            <button 
-              className="btn btn-success btn-large-rating"
-              onClick={handleValidateReceipt}
-              disabled={validating}
-            >
-              {validating ? (
-                <>
-                  <Loader2 className="spinner" size={20} />
-                  évaluation en cours...
-                </>
-              ) : (
-                <>
-                  <BadgeCheck size={20} />
-                  Evaluer la réception
-                </>
-              )}
-            </button>
-          )}
+          <button 
+            className="btn btn-primary btn-large-rating"
+            onClick={handleSaveAndValidate}
+            disabled={saving || !ratingsStats.isComplete}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="spinner" size={20} />
+                Validation en cours...
+              </>
+            ) : (
+              <>
+                <Save size={20} />
+                Enregistrer et valider ({ratingsStats.completed}/{ratingsStats.total})
+              </>
+            )}
+          </button>
         </div>
       </div>
 
       <ConfirmationModal
         isOpen={showConfirmModal}
-        onConfirm={confirmSaveRatings}
+        onConfirm={confirmSaveAndValidate}
         onCancel={() => setShowConfirmModal(false)}
         itemsCount={receipt.items.length}
       />
       
       {showSuccessToast && (
         <SuccessToast
-          message="Évaluations enregistrées avec succès !"
+          message="Réception validée avec succès !"
           onClose={() => setShowSuccessToast(false)}
         />
       )}

@@ -66,6 +66,12 @@ class SaleItem extends Model
         return $this->belongsTo(ProductVariant::class);
     }
 
+    public function saleItemBatches()
+    {
+        return $this->hasMany(SaleItemBatch::class);
+    }
+
+
     /**
      * Scopes pour analyses
      */

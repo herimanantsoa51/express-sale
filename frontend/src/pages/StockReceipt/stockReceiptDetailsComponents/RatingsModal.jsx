@@ -7,24 +7,24 @@ import {
   User,
   Calendar,
   FileText,
-  Award,
+  Package,
   TrendingUp,
-  Percent,
-  Hash
+  Percent
 } from 'lucide-react';
 
 const RatingsModal = ({ isOpen, onClose, item }) => {
   if (!isOpen || !item) return null;
 
-  const { quality_summary, ratings, conformity } = item;
+  const { summary, conformity, ratings } = item;
   const productName = item.variant?.product?.name || 'Article';
   const sku = item.variant?.sku || 'N/A';
 
-  const getQualityLevel = (rating) => {
-    if (rating >= 9) return { label: 'Excellent', color: 'success' };
-    if (rating >= 7) return { label: 'Bon', color: 'info' };
-    if (rating >= 5) return { label: 'Moyen', color: 'warning' };
-    return { label: 'Faible', color: 'danger' };
+  const getQualityColor = (rating) => {
+    if (!rating) return 'secondary';
+    if (rating >= 9) return 'success';
+    if (rating >= 7) return 'info';
+    if (rating >= 5) return 'warning';
+    return 'danger';
   };
 
   const formatDate = (dateString) => {
@@ -44,7 +44,7 @@ const RatingsModal = ({ isOpen, onClose, item }) => {
           <div className="modal-header-content">
             <Star size={24} className="modal-icon" strokeWidth={2} fill="var(--primary)" />
             <div>
-              <h3 className="modal-title">Évaluations de qualité</h3>
+              <h3 className="modal-title">Évaluation de la réception</h3>
               <p className="modal-subtitle">{productName} • {sku}</p>
             </div>
           </div>
@@ -54,81 +54,89 @@ const RatingsModal = ({ isOpen, onClose, item }) => {
         </div>
         
         <div className="modal-body">
-          {/* Résumé global */}
-          {quality_summary && (
+          {/* Qualité globale et quantités */}
+          {summary && (
             <div className="ratings-summary-section">
               <h4 className="ratings-section-title">
-                <Award size={16} strokeWidth={2} />
-                Résumé général
+                <Package size={16} strokeWidth={2} />
+                Informations générales
               </h4>
+              
               <div className="ratings-summary-grid">
-                <div className="rating-summary-card">
-                  <div className="rating-summary-icon success">
+                {/* Qualité globale */}
+                <div className="rating-summary-card highlight">
+                  <div className={`rating-summary-icon ${getQualityColor(summary.quality_rating)}`}>
                     <Star size={20} strokeWidth={2} fill="currentColor" />
                   </div>
                   <div className="rating-summary-content">
-                    <span className="rating-summary-value">{quality_summary.overall_score?.toFixed(1) || 0}/10</span>
-                    <span className="rating-summary-label">Score global</span>
+                    <span className="rating-summary-value">
+                      {summary.quality_rating ? `${summary.quality_rating}/10` : 'Non évalué'}
+                    </span>
+                    <span className="rating-summary-label">Qualité globale</span>
+                    {summary.quality_level && (
+                      <span className="rating-summary-sublabel">{summary.quality_level}</span>
+                    )}
                   </div>
                 </div>
                 
+                {/* Conformité */}
                 <div className="rating-summary-card">
-                  <div className="rating-summary-icon info">
-                    <TrendingUp size={20} strokeWidth={2} />
-                  </div>
-                  <div className="rating-summary-content">
-                    <span className="rating-summary-value">{quality_summary.average_quality_rating?.toFixed(1) || 0}/10</span>
-                    <span className="rating-summary-label">Qualité moyenne</span>
-                  </div>
-                </div>
-                
-                <div className="rating-summary-card">
-                  <div className="rating-summary-icon warning">
+                  <div className={`rating-summary-icon ${summary.conformity_rate >= 80 ? 'success' : summary.conformity_rate >= 60 ? 'warning' : 'danger'}`}>
                     <CheckCircle2 size={20} strokeWidth={2} />
                   </div>
                   <div className="rating-summary-content">
-                    <span className="rating-summary-value">{quality_summary.attribute_conformity_rate || 0}%</span>
+                    <span className="rating-summary-value">{summary.conformity_rate}%</span>
                     <span className="rating-summary-label">Conformité</span>
+                    <span className="rating-summary-sublabel">
+                      {summary.conforming_attributes}/{summary.total_attributes} attributs
+                    </span>
                   </div>
                 </div>
                 
+                {/* Quantité reçue */}
+                <div className="rating-summary-card">
+                  <div className={`rating-summary-icon ${summary.quantity_rate >= 100 ? 'success' : summary.quantity_rate >= 95 ? 'info' : 'warning'}`}>
+                    <TrendingUp size={20} strokeWidth={2} />
+                  </div>
+                  <div className="rating-summary-content">
+                    <span className="rating-summary-value">{summary.quantity_rate}%</span>
+                    <span className="rating-summary-label">Taux de réception</span>
+                    <span className="rating-summary-sublabel">
+                      {summary.quantity_received}/{summary.quantity_ordered} unités
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Coût total */}
                 <div className="rating-summary-card">
                   <div className="rating-summary-icon primary">
                     <Percent size={20} strokeWidth={2} />
                   </div>
                   <div className="rating-summary-content">
-                    <span className="rating-summary-value">{quality_summary.quantity_fulfillment_rate || 0}%</span>
-                    <span className="rating-summary-label">Taux réception</span>
+                    <span className="rating-summary-value">
+                      {summary.total_cost?.toLocaleString('fr-FR')} Ar
+                    </span>
+                    <span className="rating-summary-label">Coût total</span>
                   </div>
                 </div>
               </div>
 
-              {/* Quantités */}
-              <div className="ratings-quantities">
-                <div className="quantity-item">
-                  <Hash size={14} strokeWidth={2} />
-                  <span>Commandé: <strong>{quality_summary.quantity_ordered || 0}</strong></span>
+              {/* Notes sur la qualité */}
+              {summary.quality_notes && (
+                <div className="rating-detail-notes">
+                  <FileText size={14} strokeWidth={2} />
+                  <p><strong>Notes :</strong> {summary.quality_notes}</p>
                 </div>
-                <div className="quantity-item">
-                  <Hash size={14} strokeWidth={2} />
-                  <span>Reçu: <strong>{quality_summary.quantity_received || 0}</strong></span>
-                </div>
-                {quality_summary.quantity_variance !== 0 && (
-                  <div className={`quantity-item ${quality_summary.quantity_variance < 0 ? 'negative' : 'positive'}`}>
-                    <Hash size={14} strokeWidth={2} />
-                    <span>Variance: <strong>{quality_summary.quantity_variance > 0 ? '+' : ''}{quality_summary.quantity_variance || 0}</strong></span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
 
-          {/* Détails de conformité */}
+          {/* Détails de conformité par attribut
           {conformity && conformity.details && conformity.details.length > 0 && (
             <div className="ratings-conformity-section">
               <h4 className="ratings-section-title">
                 <CheckCircle2 size={16} strokeWidth={2} />
-                Conformité des attributs
+                Conformité des attributs ({conformity.conforming}/{conformity.total})
               </h4>
               <div className="conformity-list">
                 {conformity.details.map((detail, index) => (
@@ -143,12 +151,68 @@ const RatingsModal = ({ isOpen, onClose, item }) => {
                     <div className="conformity-content">
                       <span className="conformity-name">{detail.display_name}</span>
                       <div className="conformity-rating">
-                        <span className={`conformity-badge ${detail.is_conforming ? 'success' : 'danger'}`}>
-                          {parseFloat(detail.rating).toFixed(1)}/10
-                        </span>
-                        <span className="conformity-status">
-                          {detail.is_conforming ? 'Conforme' : 'Non conforme'}
-                        </span>
+                        {detail.rating ? (
+                          <>
+                            <span className={`conformity-badge ${detail.is_conforming ? 'success' : 'danger'}`}>
+                              {parseFloat(detail.rating).toFixed(1)}/10
+                            </span>
+                            <span className="conformity-status">{detail.conformity_level}</span>
+                          </>
+                        ) : (
+                          <span className="conformity-badge secondary">Non évalué</span>
+                        )}
+                      </div>
+                      {detail.notes && (
+                        <p className="conformity-notes">{detail.notes}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )} */}
+
+          {/* Historique des évaluations */}
+          {ratings && ratings.length > 0 && (
+            <div className="ratings-details-section">
+              <h4 className="ratings-section-title">
+                <FileText size={16} strokeWidth={2} />
+                Historique des évaluations ({ratings.length})
+              </h4>
+              <div className="ratings-list">
+                {ratings.map((rating) => (
+                  <div key={rating.id} className="rating-detail-card">
+                    <div className="rating-detail-header">
+                      <div className="rating-detail-type">
+                        <CheckCircle2 size={14} strokeWidth={2} />
+                        <span>{rating.attribute_type.display_name}</span>
+                      </div>
+                      <div className={`rating-detail-score ${rating.is_conforming ? 'success' : 'danger'}`}>
+                        {rating.conformity_rating}/10
+                      </div>
+                    </div>
+
+                    <div className="rating-detail-metrics">
+                      <span className={`rating-metric-badge ${rating.is_conforming ? 'success' : 'danger'}`}>
+                        {rating.conformity_level}
+                      </span>
+                    </div>
+
+                    {rating.notes && (
+                      <div className="rating-detail-notes">
+                        <FileText size={12} strokeWidth={2} />
+                        <p>{rating.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="rating-detail-footer">
+                      <div className="rating-detail-user">
+                        <User size={12} strokeWidth={2} />
+                        <span>{rating.rated_by?.name || 'Inconnu'}</span>
+                      </div>
+                      <div className="rating-detail-date">
+                        <Calendar size={12} strokeWidth={2} />
+                        <span>{formatDate(rating.created_at)}</span>
                       </div>
                     </div>
                   </div>
@@ -157,85 +221,10 @@ const RatingsModal = ({ isOpen, onClose, item }) => {
             </div>
           )}
 
-          {/* Liste des évaluations détaillées */}
-          {ratings && ratings.length > 0 && (
-            <div className="ratings-details-section">
-              <h4 className="ratings-section-title">
-                <FileText size={16} strokeWidth={2} />
-                Évaluations détaillées ({ratings.length})
-              </h4>
-              <div className="ratings-list">
-                {ratings.map((rating) => {
-                  const qualityLevel = getQualityLevel(rating.quality_rating);
-                  
-                  return (
-                    <div key={rating.id} className="rating-detail-card">
-                      <div className="rating-detail-header">
-                        <div className="rating-detail-type">
-                          {rating.attribute_type ? (
-                            <>
-                              <CheckCircle2 size={14} strokeWidth={2} />
-                              <span>{rating.attribute_type.display_name}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Star size={14} strokeWidth={2} />
-                              <span>Évaluation générale</span>
-                            </>
-                          )}
-                        </div>
-                        <div className={`rating-detail-score ${qualityLevel.color}`}>
-                          <Star size={12} strokeWidth={2} fill="currentColor" />
-                          {rating.overall_rating?.toFixed(1) || 0}/10
-                        </div>
-                      </div>
-
-                      <div className="rating-detail-metrics">
-                        <div className="rating-metric">
-                          <span className="rating-metric-label">Qualité</span>
-                          <span className={`rating-metric-value ${qualityLevel.color}`}>
-                            {rating.quality_rating}/10
-                          </span>
-                        </div>
-                        
-                        {rating.attribute_type && (
-                          <div className="rating-metric">
-                            <span className="rating-metric-label">Conformité</span>
-                            <span className={`rating-metric-value ${rating.is_conforming ? 'success' : 'danger'}`}>
-                              {rating.attribute_conformity_rating}/10
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {rating.quality_notes && (
-                        <div className="rating-detail-notes">
-                          <FileText size={12} strokeWidth={2} />
-                          <p>{rating.quality_notes}</p>
-                        </div>
-                      )}
-
-                      <div className="rating-detail-footer">
-                        <div className="rating-detail-user">
-                          <User size={12} strokeWidth={2} />
-                          <span>{rating.rated_by?.name || 'Inconnu'}</span>
-                        </div>
-                        <div className="rating-detail-date">
-                          <Calendar size={12} strokeWidth={2} />
-                          <span>{formatDate(rating.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {(!ratings || ratings.length === 0) && (
+          {(!summary || !summary.has_ratings) && (
             <div className="ratings-empty-state">
               <Star size={48} strokeWidth={1.5} />
-              <p>Aucune évaluation disponible</p>
+              <p>Aucune évaluation disponible pour cet article</p>
             </div>
           )}
         </div>

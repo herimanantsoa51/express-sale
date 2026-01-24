@@ -10,10 +10,13 @@
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-speed) var(--transition-timing);
+    cursor: pointer;
   }
   
   .container:hover {
     box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--primary);
   }
   
   .header {

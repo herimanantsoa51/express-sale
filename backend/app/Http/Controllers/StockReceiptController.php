@@ -8,7 +8,7 @@ use App\Http\Requests\StoreStockReceiptRequest;
 use App\Http\Requests\UpdateStockReceiptRequest;
 use App\Http\Requests\MarkAsShippedRequest;
 use App\Http\Requests\MarkAsArrivedRequest;
-use App\Http\Requests\RateStockReceiptItemRequest;
+use App\Http\Requests\RateStockReceiptRequest;
 use App\Http\Resources\StockReceiptResource;
 use App\Http\Resources\StockReceiptCollection;
 use App\Models\ExpenseCategory;
@@ -368,31 +368,60 @@ class StockReceiptController extends Controller
             ], 500);
         }
     }
+   
     /**
-     * Évaluer la qualité d'un item
-     * POST /api/stock-receipts/{id}/items/{itemId}/rate
+     * Évaluer tous les items d'une réception et marquer comme évaluée
+     * POST /api/stock-receipts/{id}/rate
      */
-    public function rateItem(RateStockReceiptItemRequest $request, StockReceipt $stockReceipt, int $itemId): JsonResponse
+    public function rateReceipt(RateStockReceiptRequest $request, StockReceipt $stockReceipt): JsonResponse
     {
-        $item = $stockReceipt->items()->findOrFail($itemId);
-
         try {
-            DB::transaction(function () use ($request, $item) {
-                foreach ($request->ratings as $ratingData) {
-                    $item->addRating($ratingData);
+            DB::transaction(function () use ($request, $stockReceipt) {
+                // 1. Enregistrer toutes les évaluations
+                foreach ($request->items as $itemData) {
+                    $item = $stockReceipt->items()->findOrFail($itemData['item_id']);
+                    
+                    // Mettre à jour la qualité globale de l'item
+                    $item->updateQuality(
+                        $itemData['quality_rating'],
+                        $itemData['quality_notes'] ?? null
+                    );
+
+                    // Créer les ratings de conformité pour chaque attribut
+                    if (!empty($itemData['attribute_ratings'])) {
+                        foreach ($itemData['attribute_ratings'] as $attrRating) {
+                            $item->addAttributeRating(
+                                $attrRating['attribute_type_id'],
+                                $attrRating['conformity_rating'],
+                                $attrRating['notes'] ?? null
+                            );
+                        }
+                    }
                 }
+                
+                // 2. Mettre à jour la note du fournisseur (moyenne simple)
+                if ($stockReceipt->supplier) {
+                    $stockReceipt->supplier->updateReliabilityScore();
+                }
+                
+                // 3. Marquer la réception comme évaluée
+                $stockReceipt->update(['status' => 'rated']);
+                
+                // 4. Créer les batches
+                $stockReceipt->createBatches();
             });
 
-            $item->load(['ratings.attributeType', 'ratings.ratedBy']);
+            // Recharger avec les relations
+            $stockReceipt->load([
+                'items.ratings.attributeType',
+                'items.ratings.ratedBy',
+                'items.variant.product'
+            ]);
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Évaluation enregistrée avec succès',
-                'data' => [
-                    'item' => $item,
-                    'quality_summary' => $item->getQualitySummary(),
-                    'conformity' => $item->getAttributeConformityRate()
-                ]
+                'message' => 'Réception évaluée et validée avec succès',
+                'data' => new StockReceiptResource($stockReceipt)
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -566,8 +595,8 @@ class StockReceiptController extends Controller
         $conformityRates = [];
         
         foreach ($items as $item) {
-            $qualityRatings[] = $item->getAverageQualityRating();
-            $conformityRates[] = $item->getAttributeConformityRate()['rate'];
+            $qualityRatings[] = $item->quality_rating ?? 0;
+            $conformityRates[] = $item->getConformityRate()['rate'];
         }
         
         $averageQuality = count($qualityRatings) > 0 ? array_sum($qualityRatings) / count($qualityRatings) : 0;
@@ -979,90 +1008,78 @@ class StockReceiptController extends Controller
         }
     }
 
-    public function moveReceivedQuantity(
-        Request $request,
-        $stockReceiptId
-    ) {
-        $data = $request->validate([
-            'from_variant_id' => 'required|exists:product_variants,id',
-            'to_variant_id'   => 'required|exists:product_variants,id',
-            'quantity'        => 'required|integer|min:1',
-        ]);
-    
-        if ($data['from_variant_id'] === $data['to_variant_id']) {
-            return response()->json([
-                'message' => 'Les variants doivent être différents'
-            ], 422);
-        }
-    
-        try {
-            return DB::transaction(function () use ($data, $stockReceiptId) {
-    
-                $receipt = StockReceipt::with('items')
-                    ->findOrFail($stockReceiptId);
-    
-                // if ($receipt->status !== 'validated' || $receipt->delivery_status !== 'arrived') {
-                //     throw new \Exception(
-                //         'La réception est déjà finalisée'
-                //     );
-                // }
-    
-                // 🔹 Ligne source (commandée)
-                $sourceItem = $receipt->items
-                    ->where('variant_id', $data['from_variant_id'])
-                    ->first();
-    
-                if (!$sourceItem) {
-                    throw new \Exception(
-                        'Variant source introuvable dans la réception'
-                    );
-                }
-    
-                if ($sourceItem->quantity_received < $data['quantity']) {
-                    throw new \Exception(
-                        'Quantité reçue insuffisante'
-                    );
-                }
-    
-                // 🔹 Diminuer la quantité reçue
-                $sourceItem->decrement(
-                    'quantity_received',
-                    $data['quantity']
-                );
-    
-                // 🔹 Ligne destination (livrée)
-                $destinationItem = $receipt->items
-                    ->where('variant_id', $data['to_variant_id'])
-                    ->first();
-    
-                if ($destinationItem) {
-                    $destinationItem->increment(
-                        'quantity_received',
-                        $data['quantity']
-                    );
-                } else {
-                    StockReceiptItem::create([
-                        'stock_receipt_id' => $receipt->id,
-                        'variant_id' => $data['to_variant_id'],
-                        'quantity_ordered' => 0,
-                        'quantity_received' => $data['quantity'],
-                        'unit_cost_ariary' => $sourceItem->unit_cost_ariary,
-                    ]);
-                }
-    
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Quantité corrigée avant création des batches',
-                ]);
-            });
-    
-        } catch (\Exception $e) {
-            return response()->json([   
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ], 422);
-        }
+    public function moveReceivedQuantity(Request $request, $stockReceiptId)
+{
+    // 🔹 Valider les données reçues
+    $data = $request->validate([
+        'from_variant_id' => 'required|exists:product_variants,id',
+        'to_variant_id'   => 'required|exists:product_variants,id',
+        'quantity'        => 'required|integer|min:1',
+    ]);
+
+    // Vérifier que ce ne sont pas les mêmes variants
+    if ($data['from_variant_id'] === $data['to_variant_id']) {
+        return response()->json([
+            'message' => 'Les variants doivent être différents'
+        ], 422);
     }
+
+    try {
+        return DB::transaction(function () use ($data, $stockReceiptId) {
+
+            // 🔹 Charger la réception
+            $receipt = StockReceipt::findOrFail($stockReceiptId);
+
+            // 🔹 Charger le variant source depuis la DB
+            $sourceItem = StockReceiptItem::where('stock_receipt_id', $receipt->id)
+                ->where('variant_id', $data['from_variant_id'])
+                ->first();
+
+            if (!$sourceItem) {
+                throw new \Exception('Variant source introuvable dans la réception');
+            }
+
+            if ($sourceItem->quantity_received < $data['quantity']) {
+                throw new \Exception('Quantité reçue insuffisante');
+            }
+
+            // 🔹 Décrémenter la quantité reçue du source
+            $sourceItem->quantity_received -= $data['quantity'];
+            $sourceItem->save();
+
+            // 🔹 Charger ou créer le variant destination
+            $destinationItem = StockReceiptItem::where('stock_receipt_id', $receipt->id)
+                ->where('variant_id', $data['to_variant_id'])
+                ->first();
+
+            if ($destinationItem) {
+                $destinationItem->quantity_received += $data['quantity'];
+                $destinationItem->save();
+            } else {
+                StockReceiptItem::create([
+                    'stock_receipt_id' => $receipt->id,
+                    'variant_id' => $data['to_variant_id'],
+                    'quantity_ordered' => 0,
+                    'quantity_received' => $data['quantity'],
+                    'unit_cost_ariary' => $sourceItem->unit_cost_ariary,
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Quantité corrigée avant création des batches',
+            ]);
+        });
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 422);
+    }
+}
+
+    
 
     public function getCostAllocated(StockReceipt $stockReceipt)
     {

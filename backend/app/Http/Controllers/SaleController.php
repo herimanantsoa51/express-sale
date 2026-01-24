@@ -26,15 +26,18 @@ use App\Http\Resources\ImmediateSaleListResource;
 use App\Http\Resources\ImmediateSaleDetailResource;
 use Carbon\Carbon;
 use App\Http\Resources\ReservationListResource;
+use App\Services\PosPrintService;
 
 
 class SaleController extends Controller
 {
     protected SaleService $saleService;
+    protected PosPrintService $posPrintService;
 
-    public function __construct(SaleService $saleService)
+    public function __construct(SaleService $saleService,PosPrintService $posPrintService)
     {
         $this->saleService = $saleService;
+        $this->posPrintService = $posPrintService;
     }
 
     /**
@@ -83,7 +86,6 @@ class SaleController extends Controller
         if ($request->has('search') && $request->search !== '') {
             $query->where('sale_number', 'ILIKE', "%{$request->search}%");
         }
-
         // Tri
         $sortBy = $request->get('sort_by', 'sale_date');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -125,18 +127,26 @@ class SaleController extends Controller
         ]);
     }
 
+    
     /**
      * POST /api/sales/immediate
-     * Créer une vente immédiate (payée)
+     * Créer une vente immédiate
      */
     public function storeImmediate(StoreImmediateSaleRequest $request): JsonResponse
     {
         try {
             $sale = $this->saleService->createImmediateSale($request->validated());
 
+            // Impression automatique si activée
+            $printResult = $this->posPrintService->autoPrintIfEnabled(
+                'immediate_sale',
+                fn() => $this->posPrintService->printSale($sale)
+            );
+
             return response()->json([
                 'message' => 'Vente créée avec succès',
                 'data' => new SaleResource($sale),
+                'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
             Log::error('Erreur création vente immédiate', [
@@ -166,11 +176,22 @@ class SaleController extends Controller
         try {
             $sale = $this->saleService->createCreditSale($request->validated());
 
+            // Impression automatique si activée
+            $printResult = $this->posPrintService->autoPrintIfEnabled(
+                'credit',
+                fn() => $this->posPrintService->printCredit($sale->credit)
+            );
+
             return response()->json([
                 'message' => 'Vente à crédit créée avec succès',
                 'data' => new SaleResource($sale),
+                'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
+            Log::error('Erreur création vente crédit', [
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'message' => 'Erreur lors de la création de la vente à crédit',
                 'error' => $e->getMessage(),
@@ -187,11 +208,22 @@ class SaleController extends Controller
         try {
             $sale = $this->saleService->createReservation($request->validated());
 
+            // Impression automatique si activée
+            $printResult = $this->posPrintService->autoPrintIfEnabled(
+                'reservation',
+                fn() => $this->posPrintService->printReservation($sale->reservation)
+            );
+
             return response()->json([
                 'message' => 'Réservation créée avec succès',
                 'data' => new SaleResource($sale),
+                'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
+            Log::error('Erreur création réservation', [
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'message' => 'Erreur lors de la création de la réservation',
                 'error' => $e->getMessage(),
@@ -366,48 +398,50 @@ class SaleController extends Controller
     }
 
     public function showCredit(int $id): JsonResponse
-{
-    $credit = Credit::with([
-        // ===== CREDIT =====
-        'sale:id,sale_number,subtotal,discount_amount,total_amount,discount_reason',
-        'customer:id,name,phone',
+    {
+        $credit = Credit::with([
+            // ===== CREDIT =====
+            'sale:id,sale_number,subtotal,discount_amount,total_amount,discount_reason',
+            'customer:id,name,phone',
 
-        // ===== SALE ITEMS =====
-        // CORRECTION ICI : image_url au lieu de image_path
-        'sale.items.variant.product:id,name,image_url',
-        'sale.items.variant.attributeValues.attributeValue.attributeType:id,name,display_name',
+            // ===== SALE ITEMS =====
+            // CORRECTION ICI : image_url au lieu de image_path
+            'sale.items.variant.product:id,name,image_url',
+            'sale.items.variant.attributeValues.attributeValue.attributeType:id,name,display_name',
 
-        // ===== INSTALLMENTS =====
-        'installments:id,credit_id,installment_number,due_date,amount_due,amount_paid,status',
+            // ===== INSTALLMENTS =====
+            'installments:id,credit_id,installment_number,due_date,amount_due,amount_paid,status',
 
-        // ===== INSTALLMENT TRANSACTIONS =====
-        'installments.installmentTransactions:id,installment_id,transaction_id,amount,payment_date',
+            // ===== INSTALLMENT TRANSACTIONS =====
+            'installments.installmentTransactions:id,installment_id,transaction_id,amount,payment_date',
 
-        // ===== ACCOUNT TRANSACTIONS =====
-        'installments.installmentTransactions.transaction' => function ($q) {
-            $q->select(
-                'id',
-                'account_id',
-                'transaction_type_id',
-                'amount',
-                'notes',
-                'balance_before',
-                'balance_after',
-                'transaction_date',
-                'created_by'
-            )->with([
-                'account:id,name,account_type_id',
-                'account.accountType:id,display_name',
-                'transactionType:id,name,category',
-                'creator:id,name',
-            ]);
-        },
-    ])->findOrFail($id);
+            // ===== ACCOUNT TRANSACTIONS =====
+            'installments.installmentTransactions.transaction' => function ($q) {
+                $q->select(
+                    'id',
+                    'account_id',
+                    'transaction_type_id',
+                    'reference_number',
+                    'amount',
+                    'notes',
+                    'balance_before',
+                    'balance_after',
+                    'transaction_date',
+                    'created_by',
+                    'reversed_transaction_id'
+                )->with([
+                    'account:id,name,account_type_id',
+                    'account.accountType:id,display_name',
+                    'transactionType:id,name,category',
+                    'creator:id,name',
+                ]);
+            },
+        ])->findOrFail($id);
 
-    return response()->json([
-        'data' => new CreditResource($credit),
-    ]);
-}
+        return response()->json([
+            'data' => new CreditResource($credit),
+        ]);
+    }
 
     /**
      * POST /api/credits/{creditId}/installments/{installmentId}/pay
@@ -423,11 +457,36 @@ class SaleController extends Controller
 
             $installment = $this->saleService->payCreditInstallment($installmentId, $request->validated());
 
+            // ✅ Impression automatique si activée
+            // Charger la dernière transaction de paiement
+            $installmentTransaction = $installment->installmentTransactions()
+                ->with([
+                    'transaction.account.accountType',
+                    'transaction.creator'
+                ])
+                ->latest()
+                ->first();
+
+            $printResult = null;
+            if ($installmentTransaction) {
+                $printResult = $this->posPrintService->autoPrintIfEnabled(
+                    'credit_payment',
+                    fn() => $this->posPrintService->printCreditPayment($installmentTransaction)
+                );
+            }
+
             return response()->json([
                 'message' => 'Paiement enregistré avec succès',
                 'data' => new CreditInstallmentResource($installment),
+                'print_info' => $printResult,
             ]);
         } catch (\Exception $e) {
+            Log::error('Erreur paiement échéance', [
+                'credit_id' => $creditId,
+                'installment_id' => $installmentId,
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'message' => 'Erreur lors du paiement',
                 'error' => $e->getMessage(),
@@ -627,7 +686,7 @@ class SaleController extends Controller
             'data' => new ReservationResource($reservation),
         ]);
     }
-    /**
+     /**
      * POST /api/reservations/{id}/complete
      * Compléter une réservation (paiement final)
      */
@@ -636,11 +695,23 @@ class SaleController extends Controller
         try {
             $reservation = $this->saleService->completeReservation($id, $request->validated());
 
+            // ✅ Impression automatique si activée
+            $printResult = $this->posPrintService->autoPrintIfEnabled(
+                'reservation_complete',
+                fn() => $this->posPrintService->printReservationReceipt($reservation)
+            );
+
             return response()->json([
                 'message' => 'Réservation complétée avec succès',
                 'data' => new ReservationResource($reservation),
+                'print_info' => $printResult,
             ]);
         } catch (\Exception $e) {
+            Log::error('Erreur complétion réservation', [
+                'reservation_id' => $id,
+                'message' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'message' => 'Erreur lors de la complétion de la réservation',
                 'error' => $e->getMessage(),
@@ -843,6 +914,34 @@ class SaleController extends Controller
 
         return new ImmediateSaleDetailResource($sale);
     }
+    public function cancelImmediateSale(Sale $sale): JsonResponse
+    {
+        try {
+            $sale = $this->saleService->cancelImmediateSale($sale);
 
+            return response()->json([
+                'message' => 'Vente immédiate annulée avec succès',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de l\'annulation de la réservation immédiate',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+    public function cancelCredit(Credit $credit): JsonResponse
+    {
+        try {
+            $credit = $this->saleService->cancelCredit($credit);
 
+            return response()->json([
+                'message' => 'Vente à crédit annulée avec succès',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de l\'annulation de la vente à crédit',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }

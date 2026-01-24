@@ -12,8 +12,11 @@ import CustomerSection from '../../components/Sales/CustomerSection';
 import SellerSection from '../../components/Sales/SellerSection';
 import TransactionCard from '../../components/Sales/TransactionCard';
 import SaleItemCard from '../../components/Sales/SaleItemCard';
-import InvoiceActions from '../../components/Sales/InvoiceActions'; // 👈 NOUVEAU
+import InvoiceActions from '../../components/Sales/InvoiceActions';
+import CancelSaleModal from '../../components/Sales/CancelSaleModal';
+import TransactionSuggestionModal from '../../components/Sales/TransactionSuggestionModal';
 import styles from '../../styles/Sales/ImmediateSaleDetail.module.css';
+import {toast} from 'react-toastify'
 
 const ImmediateSaleDetail = () => {
   const { id } = useParams();
@@ -21,6 +24,9 @@ const ImmediateSaleDetail = () => {
   const [sale, setSale] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const fetchSaleDetail = async () => {
@@ -37,6 +43,37 @@ const ImmediateSaleDetail = () => {
 
     fetchSaleDetail();
   }, [id]);
+
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await immediateSaleService.cancelImmediateSale(id);
+      
+      // Rafraîchir les données
+      const response = await immediateSaleService.getDetail(id);
+      setSale(response.data);
+
+      // Fermer le modal de confirmation
+      setShowCancelModal(false);
+      
+      // Ouvrir le modal de suggestion de transaction
+      setShowTransactionModal(true);
+      toast.success('Annulée avec succès');
+    } catch (err) {
+      toast.error('Erreur');
+      console.error(err);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleGoToTransaction = () => {
+    navigate(`/transactions/${sale.transaction.id}`);
+  };
 
   if (loading) {
     return (
@@ -81,11 +118,21 @@ const ImmediateSaleDetail = () => {
         <div className={styles.rightColumn}>
           <TransactionCard transaction={sale.transaction} />
           
-          {/* 👇 NOUVEAU : Boutons de facture */}
           <InvoiceActions 
             saleId={sale.id}
+            saleNumber={sale.sale_number}
             hasCustomerEmail={!!sale.customer?.email}
           />
+
+          {/* Bouton d'annulation */}
+          {sale.status === 'CONFIRMED' && (
+            <button 
+              onClick={handleCancelClick}
+              className={styles.cancelButton}
+            >
+              Annuler la vente
+            </button>
+          )}
         </div>
       </div>
 
@@ -98,6 +145,23 @@ const ImmediateSaleDetail = () => {
           ))}
         </div>
       </div>
+
+      {/* Modal de confirmation d'annulation */}
+      <CancelSaleModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancel}
+        saleNumber={sale.sale_number}
+        isLoading={isCancelling}
+      />
+
+      {/* Modal de suggestion de transaction */}
+      <TransactionSuggestionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        onGoToTransaction={handleGoToTransaction}
+        transactionRef={sale.transaction.reference_number}
+      />
     </div>
   );
 };

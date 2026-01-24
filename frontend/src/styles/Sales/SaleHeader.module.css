@@ -4,38 +4,37 @@
    ============================================ */
 
    .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     padding: var(--spacing-xl);
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-sm);
+    gap: var(--spacing-xl);
   }
   
-  .top {
+  .left {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-xl);
-    padding-bottom: var(--spacing-lg);
-    border-bottom: 1px solid var(--border-color);
+    flex-direction: column;
+    gap: var(--spacing-md);
   }
   
-  .number {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-size: var(--font-size-xl);
+  .title {
+    font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
-    color: var(--primary);
-    font-family: var(--font-mono);
-    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin: 0;
   }
   
-  .number svg {
-    color: var(--primary);
+  .meta {
+    display: flex;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
   }
   
-  .date {
+  .metaItem {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -43,79 +42,85 @@
     color: var(--text-secondary);
   }
   
-  .date svg {
+  .metaItem svg {
     color: var(--text-tertiary);
   }
   
-  /* === MONTANTS === */
-  .amounts {
+  .number {
+    font-family: var(--font-mono);
+    font-weight: var(--font-weight-semibold);
+    color: var(--primary);
+  }
+  
+  .right {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: var(--spacing-md);
   }
   
-  .amountRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .label {
-    font-size: var(--font-size-md);
-    color: var(--text-secondary);
-    font-weight: var(--font-weight-normal);
-  }
-  
-  .value {
-    font-size: var(--font-size-lg);
+  .status {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
     font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
-    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
   
-  .discount {
+  .statusConfirmed {
+    background: var(--success-light);
     color: var(--success);
   }
   
-  .total {
-    margin-top: var(--spacing-sm);
-    padding-top: var(--spacing-lg);
-    border-top: 1px solid var(--border-color);
+  .statusCancelled {
+    background: var(--danger-light);
+    color: var(--danger);
   }
   
-  .total .label {
-    font-size: var(--font-size-lg);
+  .amount {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  
+  .amountLabel {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
   }
   
-  .total .value {
-    font-size: var(--font-size-xl);
+  .amountValue {
+    font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-bold);
+    font-family: var(--font-mono);
     color: var(--primary);
   }
   
   /* === RESPONSIVE === */
   @media (max-width: 768px) {
     .container {
-      padding: var(--spacing-lg);
-    }
-  
-    .top {
       flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+  
+    .right {
       align-items: flex-start;
-      gap: var(--spacing-sm);
+      width: 100%;
     }
   
-    .number {
-      font-size: var(--font-size-lg);
+    .amount {
+      align-items: flex-start;
     }
   
-    .value {
-      font-size: var(--font-size-md);
+    .title {
+      font-size: var(--font-size-xl);
     }
   
-    .total .value {
-      font-size: var(--font-size-lg);
+    .amountValue {
+      font-size: var(--font-size-xl);
     }
   }

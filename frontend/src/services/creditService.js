@@ -50,6 +50,16 @@ const creditService = {
       console.error('Erreur lors du paiement:', error);
       throw error;
     }
+  },
+
+  cancelCredit: async(creditId)=>{
+    try {
+      const response = await api.post(`/credits/cancel/${creditId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation du crédit:', error);
+      throw error;
+    }
   }
 };
 

@@ -19,7 +19,9 @@ class InstallmentTransactionResource extends JsonResource
             // IDENTITÉ
             // =====================
             'id' => $this->transaction->id,
-
+            'installment_transaction_id' => $this->id,
+            'reference' => $this->transaction->reference_number,   
+            'status'=> $this->transaction->reversed_transaction_id ? 'cancelled' : 'confirmed',
             // =====================
             // MONTANTS
             // =====================
@@ -31,18 +33,10 @@ class InstallmentTransactionResource extends JsonResource
                 ' '
             ) . ' Ar',
 
-            'balance_before' => (float) $this->transaction->balance_before,
-            'balance_after' => (float) $this->transaction->balance_after,
-
             // =====================
             // DATES
             // =====================
             'transaction_date' => $this->transaction->transaction_date?->toISOString(),
-
-            // =====================
-            // MÉTA
-            // =====================
-            'notes' => $this->transaction->notes,
 
             // =====================
             // ACCOUNT

@@ -57,6 +57,7 @@ class Customer extends Model
         'credit_limit',
         'notes',
         'is_active',
+        'is_extra_customer',
     ];
 
     protected $casts = [
@@ -64,6 +65,7 @@ class Customer extends Model
         'credit_limit' => 'decimal:2',
         'loyalty_points' => 'integer',
         'is_active' => 'boolean',
+        'is_extra_customer' => 'boolean',
     ];
 
     /**
@@ -112,6 +114,11 @@ class Customer extends Model
     public function scopeReliable($query, float $minScore = 7.0)
     {
         return $query->where('reliability_score', '>=', $minScore);
+    }
+
+    public function scopeExtraCustomers($query)
+    {
+        return $query->where('is_extra_customer', true);
     }
 
     /**

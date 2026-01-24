@@ -1,117 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, XCircle, Loader2, Package, AlertCircle } from 'lucide-react';
+import { MapPin, XCircle, Loader2, Package } from 'lucide-react';
 import './LocationModal.css';
 
 const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading }) => {
-  const [itemsData, setItemsData] = useState([]);
-  const [expandedItems, setExpandedItems] = useState({});
+  const [globalLocationId, setGlobalLocationId] = useState(null);
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (items && isOpen) {
-      const initialData = items.map(item => ({
-        item_id: item.id,
-        quantity_received: item.quantity_received || 0,
-        location_id: item.location_id || null,
-        notes: item.notes || ''
-      }));
-      setItemsData(initialData);
+    if (isOpen && items && items.length > 0) {
+      // Initialiser avec le location_id du premier item s'il existe
+      const firstLocationId = items[0]?.location_id || null;
+      setGlobalLocationId(firstLocationId);
     }
   }, [items, isOpen]);
 
-  const handleLocationChange = (index, locationId) => {
-    const newData = [...itemsData];
-    // Convertir en nombre pour être cohérent
-    newData[index].location_id = locationId ? Number(locationId) : null;
-    setItemsData(newData);
-  };
-
-  const handleNotesChange = (index, value) => {
-    const newData = [...itemsData];
-    newData[index].notes = value;
-    setItemsData(newData);
-  };
-
-  const toggleItemExpand = (index) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
-
-  // Fonction pour formater l'affichage d'un emplacement
-  const formatLocationDisplay = (location) => {
-    if (!location) return '';
-    
-    const parts = [];
-    
-    // Nom principal
-    parts.push(location.name);
-    
-    // Code entre parenthèses
-    if (location.code) {
-      parts.push(`(${location.code})`);
-    }
-    
-    // Entrepôt
-    if (location.warehouse) {
-      parts.push(`- ${location.warehouse}`);
-    }
-    
-    return parts.join(' ');
-  };
-
-  const getLocationDisplay = (locationId) => {
-    if (!locationId && locationId !== 0) return 'Non spécifié';
-    
-    // Chercher l'emplacement (les IDs sont des nombres)
-    const location = locations.find(loc => {
-      // Comparer en convertissant les deux en nombres
-      const locId = Number(loc.id);
-      const searchId = Number(locationId);
-      return locId === searchId;
-    });
-    
-    if (!location) {
-      console.warn('Emplacement non trouvé pour ID:', locationId);
-      return 'Emplacement inconnu';
-    }
-    
-    return formatLocationDisplay(location);
-  };
-
-  // Fonction pour obtenir les statistiques d'un emplacement
-  const getLocationStats = (locationId) => {
-    if (!locationId && locationId !== 0) return null;
-    
-    const location = locations.find(loc => {
-      const locId = Number(loc.id);
-      const searchId = Number(locationId);
-      return locId === searchId;
-    });
-    
-    return location?.statistics || null;
+  const handleLocationChange = (locationId) => {
+    setGlobalLocationId(locationId ? Number(locationId) : null);
   };
 
   const validateForm = () => {
-    const invalidItems = itemsData.filter(item => 
-      !item.location_id && item.location_id !== 0
-    );
-    return invalidItems.length === 0;
+    return globalLocationId !== null && globalLocationId !== '';
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
-      alert('Veuillez sélectionner un emplacement pour tous les articles');
+      alert('Veuillez sélectionner un emplacement');
       return;
     }
     
-    const validItems = itemsData.filter(item => 
-      item.item_id && 
-      (item.location_id || item.location_id === 0) && 
-      item.quantity_received > 0
-    );
+    // Créer un item pour chaque article avec le même emplacement
+    const validItems = items
+      .filter(item => item.quantity_received > 0)
+      .map(item => ({
+        item_id: item.id,
+        quantity_received: item.quantity_received,
+        location_id: globalLocationId,
+        notes: notes || ''
+      }));
     
     if (validItems.length === 0) {
       alert('Aucun article valide à valider');
@@ -123,10 +50,8 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
 
   if (!isOpen) return null;
 
-  // Calcul du nombre d'articles configurés
-  const configuredCount = itemsData.filter(item => 
-    item.location_id || item.location_id === 0
-  ).length;
+  const totalItems = items.length;
+  const hasLocation = globalLocationId !== null && globalLocationId !== '';
 
   return (
     <div className="lm-overlay" onClick={onClose}>
@@ -138,9 +63,9 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
               <MapPin size={24} strokeWidth={2} />
             </div>
             <div className="lm-header-text">
-              <h3 className="lm-title">Validation finale</h3>
+              <h3 className="lm-title">Validation de réception</h3>
               <p className="lm-subtitle">
-                Sélectionnez les emplacements de stockage pour chaque article
+                Sélectionnez l'emplacement de stockage pour tous les articles
               </p>
             </div>
           </div>
@@ -159,17 +84,64 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
                 </div>
                 <div className="lm-summary-content">
                   <span className="lm-summary-label">Articles à valider</span>
-                  <span className="lm-summary-value">{items.length}</span>
+                  <span className="lm-summary-value">{totalItems}</span>
                 </div>
               </div>
 
               <div className="lm-summary-card">
-                <div className="lm-summary-icon success">
+                <div className={`lm-summary-icon ${hasLocation ? 'success' : ''}`}>
                   <MapPin size={20} strokeWidth={2} />
                 </div>
                 <div className="lm-summary-content">
-                  <span className="lm-summary-label">Emplacements</span>
-                  <span className="lm-summary-value">{locations.length}</span>
+                  <span className="lm-summary-label">Emplacement</span>
+                  <span className="lm-summary-value">
+                    {hasLocation ? '✓' : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Location Selector */}
+            <div className="lm-location-section">
+              <div className="lm-section-header">
+                <MapPin size={18} strokeWidth={2} />
+                <h4>Emplacement de stockage</h4>
+              </div>
+              
+              <div className="lm-input-wrapper">
+                <label className="lm-input-label">
+                  Tous les articles seront stockés au même emplacement *
+                </label>
+                <select
+                  value={globalLocationId || ''}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                  className="lm-select"
+                  required
+                >
+                  <option value="">Sélectionnez un emplacement</option>
+                  {locations.map(location => (
+                    <option key={location.id} value={location.id}>
+                      {location.name || `Emplacement #${location.id}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div className="lm-input-wrapper">
+                <label className="lm-input-label">
+                  Notes (optionnel)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="lm-textarea"
+                  placeholder="Notes supplémentaires pour cette réception..."
+                  rows="3"
+                  maxLength="500"
+                />
+                <div className="lm-char-count">
+                  {notes.length}/500 caractères
                 </div>
               </div>
             </div>
@@ -178,121 +150,35 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
             <div className="lm-items-container">
               <div className="lm-items-header">
                 <Package size={18} strokeWidth={2} />
-                <h4>Configuration des emplacements ({configuredCount}/{items.length})</h4>
+                <h4>Articles à réceptionner ({totalItems})</h4>
               </div>
 
               <div className="lm-items-list">
-                {items.map((item, index) => {
-                  const itemData = itemsData[index] || {};
-                  const received = itemData.quantity_received || 0;
-                  const hasLocation = itemData.location_id || itemData.location_id === 0;
-                  const isExpanded = expandedItems[index];
-                  const locationStats = getLocationStats(itemData.location_id);
+                {items.map((item) => {
+                  const received = item.quantity_received || 0;
                   
                   return (
-                    <div key={item.id} className={`lm-item ${isExpanded ? 'expanded' : ''}`}>
-                      {/* Item Header */}
-                      <div className="lm-item-header" onClick={() => toggleItemExpand(index)}>
-                        <div className="lm-item-info">
-                          <div className="lm-item-icon">
-                            <Package size={16} strokeWidth={2} />
-                          </div>
-                          <div className="lm-item-details">
-                            <span className="lm-item-name">
-                              {item.variant?.product?.name || 'Article sans nom'}
-                            </span>
-                            <span className="lm-item-sku">
-                              {item.variant?.sku || 'N/A'}
-                            </span>
-                          </div>
+                    <div key={item.id} className="lm-item">
+                      <div className="lm-item-info">
+                        <div className="lm-item-icon">
+                          <Package size={16} strokeWidth={2} />
                         </div>
-
-                        <div className="lm-item-status">
-                          <div className="lm-item-qty">
-                            <span className="lm-qty-label">Reçu</span>
-                            <span className="lm-qty-value">{received}</span>
-                          </div>
-                          <div className={`lm-location-status ${hasLocation ? 'success' : 'warning'}`}>
-                            <MapPin size={14} strokeWidth={2} />
-                            <span>
-                              {hasLocation 
-                                ? getLocationDisplay(itemData.location_id)
-                                : 'À configurer'
-                              }
+                        <div className="lm-item-details">
+                          <span className="lm-item-name">
+                            {item.variant?.product?.name || 'Article sans nom'}
+                          </span>
+                          {item.variant?.sku && (
+                            <span className="lm-item-sku">
+                              {item.variant.sku}
                             </span>
-                          </div>
-                          <button 
-                            className="lm-item-expand"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              toggleItemExpand(index); 
-                            }}
-                            type="button"
-                          >
-                            {isExpanded ? '−' : '+'}
-                          </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <div className="lm-item-expanded">
-                          {/* Location Selector */}
-                          <div className="lm-input-section">
-                            <div className="lm-input-wrapper">
-                              <label className="lm-input-label">
-                                <MapPin size={14} strokeWidth={2} />
-                                Emplacement de stockage *
-                              </label>
-                              <select
-                                value={itemData.location_id || ''}
-                                onChange={(e) => handleLocationChange(index, e.target.value)}
-                                className="lm-select"
-                                required
-                              >
-                                <option value="">Sélectionnez un emplacement</option>
-                                {locations.map(location => (
-                                  <option key={location.id} value={location.id}>
-                                    {formatLocationDisplay(location)}
-                                    {location.statistics && (
-                                      ` - ${location.statistics.occupancy_percentage}% occupé`
-                                    )}
-                                  </option>
-                                ))}
-                              </select>
-                              
-                              {/* Aide au choix */}
-                              {hasLocation && locationStats && (
-                                <div className="lm-location-hint">
-                                  <small>
-                                    📦 {locationStats.available_quantity || 0} unités disponibles • 
-                                    📊 {locationStats.occupancy_percentage || 0}% rempli • 
-                                    🚛 {locationStats.movement_count || 0} mouvements
-                                  </small>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Notes */}
-                            <div className="lm-input-wrapper">
-                              <label className="lm-input-label">
-                                Notes (optionnel)
-                              </label>
-                              <textarea
-                                value={itemData.notes || ''}
-                                onChange={(e) => handleNotesChange(index, e.target.value)}
-                                className="lm-textarea"
-                                placeholder="Notes supplémentaires..."
-                                rows="2"
-                                maxLength="500"
-                              />
-                              <div className="lm-char-count">
-                                {itemData.notes?.length || 0}/500 caractères
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <div className="lm-item-qty">
+                        <span className="lm-qty-label">Reçu</span>
+                        <span className="lm-qty-value">{received}</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -300,7 +186,7 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
             </div>
           </div>
 
-          {/* Footer - FIXED POSITION */}
+          {/* Footer */}
           <div className="lm-footer">
             <div className="lm-footer-content">
               <button 
@@ -324,7 +210,7 @@ const LocationModal = ({ isOpen, onClose, items, locations, onSubmit, isLoading 
                 ) : (
                   <>
                     <MapPin size={16} strokeWidth={2.5} />
-                    Valider la réception ({configuredCount}/{items.length})
+                    Valider la réception
                   </>
                 )}
               </button>

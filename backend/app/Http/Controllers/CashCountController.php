@@ -8,15 +8,23 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\PosPrintService;
 
 class CashCountController extends Controller
 {
     /**
-     * 📌 Liste paginée des comptages de caisse
+     *  Liste paginée des comptages de caisse
      * Filtres:
      * - from_date
      * - to_date
      */
+    protected PosPrintService $posPrintService;
+
+
+    public function __construct()
+    {
+        $this->posPrintService = new PosPrintService();
+    }   
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 10);
@@ -142,6 +150,10 @@ class CashCountController extends Controller
     }
 
 
+     /**
+     * POST /api/cash-counts
+     * Créer un comptage de caisse
+     */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -153,7 +165,6 @@ class CashCountController extends Controller
         ]);
 
         return DB::transaction(function () use ($data) {
-
             // Création du comptage principal
             $cashCount = CashCount::create([
                 'count_date' => $data['count_date'],
@@ -182,9 +193,19 @@ class CashCountController extends Controller
                 'total_amount' => $total,
             ]);
 
+            // Charger les relations pour l'impression
+            $cashCount->load(['creator', 'denominations']);
+
+            // ✅ Impression automatique si activée
+            $printResult = $this->posPrintService->autoPrintIfEnabled(
+                'cash_count',
+                fn() => $this->posPrintService->printCashCount($cashCount)
+            );
+
             return response()->json([
                 'message' => 'Comptage enregistré avec succès',
-                'data' => $cashCount->load('denominations'),
+                'data' => $cashCount,
+                'print_info' => $printResult,
             ], 201);
         });
     }

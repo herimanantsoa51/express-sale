@@ -15,6 +15,8 @@ class StockReceiptItem extends Model
         'quantity_ordered',
         'quantity_received',
         'unit_cost_ariary',
+        'quality_rating',
+        'quality_notes',
         'notes'
     ];
 
@@ -22,6 +24,7 @@ class StockReceiptItem extends Model
         'quantity_ordered' => 'integer',
         'quantity_received' => 'integer',
         'unit_cost_ariary' => 'decimal:2',
+        'quality_rating' => 'decimal:2',
     ];
 
     public $timestamps = false;
@@ -61,38 +64,30 @@ class StockReceiptItem extends Model
         return ($this->quantity_variance / $this->quantity_ordered) * 100;
     }
 
-    /**
-     * Calculer la note de qualité moyenne de cet item
-     */
-    public function getAverageQualityRating(): float
+    public function getQualityLevelAttribute(): string
     {
-        if ($this->ratings->isEmpty()) {
-            return 0;
+        if (!$this->quality_rating) {
+            return 'Non évalué';
         }
-
-        $totalWeightedQuality = 0;
-        $totalWeight = 0;
-
-        foreach ($this->ratings as $rating) {
-            // Calculer la note globale de ce rating
-            $overallRating = $rating->calculateOverallRating();
-            
-            // Pondérer par la valeur de l'item
-            $weight = $this->unit_cost_ariary;
-            $totalWeightedQuality += $overallRating * $weight;
-            $totalWeight += $weight;
-        }
-
-        return $totalWeight > 0 ? $totalWeightedQuality / $totalWeight : 0;
+        
+        $rating = $this->quality_rating;
+        
+        if ($rating >= 9) return 'Excellent';
+        if ($rating >= 7) return 'Bon';
+        if ($rating >= 5) return 'Moyen';
+        if ($rating >= 3) return 'Médiocre';
+        return 'Mauvais';
     }
 
     /**
      * Obtenir le taux de conformité des attributs
      */
-    public function getAttributeConformityRate(): array
+    public function getConformityRate(): array
     {
         $product = $this->variant->product;
-        $requiredAttributes = $product->attributeTypes()->wherePivot('is_required', true)->get();
+        $requiredAttributes = $product->attributeTypes()
+            ->wherePivot('is_required', true)
+            ->get();
         
         if ($requiredAttributes->isEmpty()) {
             return [
@@ -112,70 +107,83 @@ class StockReceiptItem extends Model
                 ->where('attribute_type_id', $attributeType->id)
                 ->first();
 
-            $isConforming = $rating && $rating->attribute_conformity_rating >= 7.0;
+            $isConforming = $rating && $rating->isConforming();
             
             if ($isConforming) {
                 $conformingAttributes++;
             }
 
             $details[] = [
-                'attribute_type' => $attributeType->name,
+                'attribute_type_id' => $attributeType->id,
+                'attribute_name' => $attributeType->name,
                 'display_name' => $attributeType->display_name,
-                'rating' => $rating ? $rating->attribute_conformity_rating : 0,
-                'is_conforming' => $isConforming
+                'rating' => $rating ? $rating->conformity_rating : null,
+                'conformity_level' => $rating ? $rating->conformity_level : 'Non évalué',
+                'is_conforming' => $isConforming,
+                'notes' => $rating?->notes
             ];
         }
 
         return [
             'total' => $totalAttributes,
             'conforming' => $conformingAttributes,
-            'rate' => ($conformingAttributes / $totalAttributes) * 100,
+            'rate' => $totalAttributes > 0 ? ($conformingAttributes / $totalAttributes) * 100 : 0,
             'details' => $details
         ];
     }
 
     /**
-     * Ajouter ou mettre à jour une évaluation
+     * Ajouter une évaluation d'attribut
      */
-    public function addRating(array $data): StockReceiptItemRating
+    public function addAttributeRating(int $attributeTypeId, float $conformityRating, ?string $notes = null): StockReceiptItemRating
     {
         return $this->ratings()->create([
-            'attribute_type_id' => $data['attribute_type_id'] ?? null,
-            'attribute_conformity_rating' => $data['attribute_conformity_rating'] ?? 5.0,
-            'quality_rating' => $data['quality_rating'],
-            'quality_notes' => $data['quality_notes'] ?? null,
+            'attribute_type_id' => $attributeTypeId,
+            'conformity_rating' => $conformityRating,
+            'notes' => $notes,
             'rated_by' => Auth::id()
         ]);
     }
 
     /**
-     * Obtenir un résumé de la qualité
+     * Mettre à jour la qualité globale de l'item
      */
-    public function getQualitySummary(): array
+    public function updateQuality(float $qualityRating, ?string $qualityNotes = null): void
     {
-        $averageQuality = $this->getAverageQualityRating();
-        $conformityRate = $this->getAttributeConformityRate();
+        $this->update([
+            'quality_rating' => $qualityRating,
+            'quality_notes' => $qualityNotes
+        ]);
+    }
+
+    /**
+     * Obtenir un résumé complet
+     */
+    public function getSummary(): array
+    {
+        $conformity = $this->getConformityRate();
         $quantityRate = $this->quantity_ordered > 0
             ? ($this->quantity_received / $this->quantity_ordered) * 100
             : 0;
 
-        // Score global pondéré
-        $overallScore = (
-            $averageQuality * 0.5 +          // 50% qualité
-            ($conformityRate['rate'] / 10) * 0.3 +  // 30% conformité attributs
-            ($quantityRate / 10) * 0.2             // 20% quantité livrée
-        );
-
         return [
-            'average_quality_rating' => round($averageQuality, 2),
-            'attribute_conformity_rate' => round($conformityRate['rate'], 2),
-            'quantity_fulfillment_rate' => round($quantityRate, 2),
-            'overall_score' => round($overallScore, 2),
+            'quality_rating' => $this->quality_rating,
+            'quality_level' => $this->quality_level,
+            'quality_notes' => $this->quality_notes,
+            'conformity_rate' => round($conformity['rate'], 2),
+            'conforming_attributes' => $conformity['conforming'],
+            'total_attributes' => $conformity['total'],
             'quantity_ordered' => $this->quantity_ordered,
             'quantity_received' => $this->quantity_received,
             'quantity_variance' => $this->quantity_variance,
+            'quantity_rate' => round($quantityRate, 2),
             'total_cost' => $this->total_cost,
-            'ratings_count' => $this->ratings->count()
+            'has_ratings' => $this->ratings->isNotEmpty()
         ];
+    }
+
+    public function getAverageQualityRating()
+    {
+        return $this->quality_rating;
     }
 }

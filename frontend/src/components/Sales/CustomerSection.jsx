@@ -4,15 +4,21 @@
 // ============================================
 
 import { User, Award } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Sales/CustomerSection.module.css';
 
 const CustomerSection = ({ customer }) => {
+  const navigate = useNavigate();
+
   const formatPoints = (points) => {
     return new Intl.NumberFormat('fr-FR').format(points);
   };
 
   return (
-    <div className={styles.container}>
+    <div 
+      className={styles.container}
+      onClick={() => navigate(`/clients/${customer.id}`)}
+    >
       <div className={styles.header}>
         <div className={styles.icon}>
           <User size={18} />

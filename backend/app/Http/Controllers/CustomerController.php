@@ -29,6 +29,7 @@ class CustomerController extends Controller
 
         // Compteurs de relations
         $query->withCount(['sales', 'credits', 'reservations']);
+        $query->where('is_extra_customer', true);
 
         // Filtrer par statut : active / inactive / all
         if ($request->has('status') && in_array($request->status, ['active', 'inactive'])) {
@@ -53,7 +54,6 @@ class CustomerController extends Controller
                     break;
             }
         }
-
         // Filtrer les clients VIP
         if ($request->boolean('vip_only')) {
             $query->vip();
@@ -135,6 +135,7 @@ class CustomerController extends Controller
         $data['loyalty_points'] = $data['loyalty_points'] ?? 0;
         $data['credit_limit'] = $data['credit_limit'] ?? 100000;
         $data['is_active'] = $data['is_active'] ?? true;
+        $data['is_extra_customer'] = $data['is_extra_customer'] ?? false;
 
         $customer = Customer::create($data);
 

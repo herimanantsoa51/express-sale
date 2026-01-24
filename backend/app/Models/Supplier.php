@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Casts\FullUrl;
+
 class Supplier extends Model
 {
     protected $fillable = [
@@ -25,6 +26,7 @@ class Supplier extends Model
     ];
 
     protected $with = ['coordinate']; // Charger automatiquement la coordonnée
+    
     // =====================
     // RELATIONS
     // =====================
@@ -32,7 +34,6 @@ class Supplier extends Model
     /**
      * Coordonnée (pays/ville)
      */
-    // app/Models/Supplier.php
     public function coordinate()
     {
         return $this->belongsTo(Coordinate::class)->withDefault([
@@ -55,7 +56,38 @@ class Supplier extends Model
     }
 
     // =====================
+    // MÉTHODES DE CALCUL
+    // =====================
+
+    /**
+     * Mettre à jour la note de qualité du fournisseur après une évaluation
+     * Calcule simplement la moyenne de tous les quality_rating des items reçus
+     */
+    public function updateReliabilityScore(): void
+    {
+        // Calculer la moyenne de qualité sur tous les items évalués
+        $averageQuality = $this->stockReceiptItems()
+            ->whereNotNull('quality_rating')
+            ->avg('quality_rating');
+
+        if ($averageQuality !== null) {
+            $this->update([
+                'reliability_score' => round($averageQuality, 2)
+            ]);
+        }
+    }
+
+    // =====================
     // ACCESSEURS
     // =====================
 
+    /**
+     * Obtenir le nombre total d'évaluations
+     */
+    public function getTotalRatingsCountAttribute(): int
+    {
+        return $this->stockReceiptItems()
+            ->whereNotNull('quality_rating')
+            ->count();
+    }
 }

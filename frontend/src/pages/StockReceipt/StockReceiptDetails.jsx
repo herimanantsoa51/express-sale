@@ -102,11 +102,10 @@ const StockReceiptDetails = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [expandedItems, setExpandedItems] = useState({});
   const [showArrivalModal, setShowArrivalModal] = useState(false);
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
+  const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -163,7 +162,7 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
           navigate(`/reapprovisionnements/${id}/evaluation`);
           setActionLoading(false);
           return;
-        case 'allocate_costs': // ← NOUVEAU
+        case 'allocate_costs':
           navigate(`/reapprovisionnements/${id}/cout-repartition`);
           setActionLoading(false);
           return;
@@ -194,12 +193,13 @@ const [selectedItemForRatings, setSelectedItemForRatings] = useState(null);
       setActionLoading(false);
     }
   };
-  // Ajoutez cette fonction pour ouvrir le modal des ratings
-const handleViewRatings = (item, event) => {
-  event.stopPropagation();
-  setSelectedItemForRatings(item);
-  setShowRatingsModal(true);
-};
+
+  const handleViewRatings = (item, event) => {
+    event.stopPropagation();
+    setSelectedItemForRatings(item);
+    setShowRatingsModal(true);
+  };
+
   const handleArrivalSubmit = async (data) => {
     try {
       setActionLoading(true);
@@ -213,12 +213,6 @@ const handleViewRatings = (item, event) => {
     }
   };
 
-  const toggleItemExpand = (itemId) => {
-    setExpandedItems(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
-  };
   const handleValidationSubmit = async (data) => {
     try {
       setActionLoading(true);
@@ -232,6 +226,7 @@ const handleViewRatings = (item, event) => {
       setActionLoading(false);
     }
   };
+
   const getAvailableActions = () => {
     if (!receipt || !receipt.status) return [];
     
@@ -258,15 +253,15 @@ const handleViewRatings = (item, event) => {
         break;
       case 'arrived':
         actions.push(
-          { key: 'rate', label: 'Évaluer', icon: BadgeCheck, variant: 'success' } // ← CHANGÉ
+          { key: 'rate', label: 'Évaluer', icon: BadgeCheck, variant: 'success' }
         );
         break;
-      case 'rated': // ← NOUVEAU STATUT
+      case 'rated':
         actions.push(
           { key: 'allocate_costs', label: 'Répartir les coûts', icon: DollarSign, variant: 'primary' }
         );
         break;
-      case 'cost_allocated': // ← NOUVEAU STATUT
+      case 'cost_allocated':
         actions.push(
           { key: 'validate', label: 'Valider définitivement', icon: CheckSquare, variant: 'success' },
           { key: 'allocate_costs', label: 'Modifier la répartition des coûts', icon: DollarSign, variant: 'secondary' }
@@ -398,8 +393,7 @@ const handleViewRatings = (item, event) => {
                   );
                 })}
                 
-                {/* NOUVEAU BOUTON ICI */}
-                {(receipt.status === 'arrived' || receipt.status=='rated') && (
+                {(receipt.status === 'arrived' || receipt.status === 'rated') && (
                   <button
                     className="srd-action-btn primary"
                     onClick={() => navigate(`/reapprovisionnements/${id}/paiements`)}
@@ -410,7 +404,7 @@ const handleViewRatings = (item, event) => {
                 )}
               </div>
             )}
-                      </div>
+          </div>
           
           <div className="srd-hero-meta">
             <div className="srd-meta-item">
@@ -566,11 +560,15 @@ const handleViewRatings = (item, event) => {
                     const variantSku = item.variant?.sku || 'N/A';
                     const attributes = item.variant?.attributes || [];
                     const itemTotalCost = item.total_cost || ((item.quantity_ordered || 0) * (item.unit_cost_ariary || 0));
-                    const hasVariance = item.quantity_variance !== 0 && item.quantity_variance !== undefined;
                     
                     return (
-                      <div key={item.id} className={`srd-item ${expandedItems[item.id] ? 'expanded' : ''}`}>
-                        <div className="srd-item-main" onClick={() => toggleItemExpand(item.id)}>
+                      <div 
+                        key={item.id} 
+                        className="srd-item"
+                        onClick={() => productId && navigate(`/produits/${productId}`)}
+                        style={{ cursor: productId ? 'pointer' : 'default' }}
+                      >
+                        <div className="srd-item-main">
                           <div className="srd-item-left">
                             <div className="srd-item-icon">
                               <Box size={20} />
@@ -578,61 +576,16 @@ const handleViewRatings = (item, event) => {
                             <div className="srd-item-details">
                               <div className="srd-item-title-row">
                                 <h4>{productName}</h4>
-                                {productId && (
-                                  <Link 
-                                    to={`/produits/${productId}`} 
-                                    className="srd-item-link"
-                                    onClick={(e) => e.stopPropagation()}
+                                {item.ratings && item.ratings.length > 0 && (
+                                  <button 
+                                    className="srd-quality-view-btn"
+                                    onClick={(e) => handleViewRatings(item, e)}
+                                    style={{ marginLeft: 'auto' }}
                                   >
-                                    <ArrowUpRight size={14} />
-                                  </Link>
+                                    <Star size={12} strokeWidth={2.5} fill="currentColor" />
+                                    Voir les évaluations ({item.ratings.length})
+                                  </button>
                                 )}
-                                {item.quality_summary && (
-                                    <div className="srd-quality-section">
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                                        <h5 style={{ margin: 0 }}>Résumé qualité</h5>
-                                        {item.ratings && item.ratings.length > 0 && (
-                                          <button 
-                                            className="srd-quality-view-btn"
-                                            onClick={(e) => handleViewRatings(item, e)}
-                                          >
-                                            <Star size={12} strokeWidth={2.5} fill="currentColor" />
-                                            Voir les évaluations ({item.ratings.length})
-                                          </button>
-                                        )}
-                                      </div>
-                                      {/* <div className="srd-quality-stats">
-                                        <div className="srd-quality-box">
-                                          <Star size={16} strokeWidth={2} />
-                                          <div>
-                                            <strong>{item.quality_summary.average_quality_rating?.toFixed(1) || 0}/10</strong>
-                                            <span>Qualité</span>
-                                          </div>
-                                        </div>
-                                        <div className="srd-quality-box">
-                                          <Percent size={16} strokeWidth={2} />
-                                          <div>
-                                            <strong>{item.quality_summary.quantity_fulfillment_rate || 0}%</strong>
-                                            <span>Réception</span>
-                                          </div>
-                                        </div>
-                                        <div className="srd-quality-box">
-                                          <CheckSquare size={16} strokeWidth={2} />
-                                          <div>
-                                            <strong>{item.quality_summary.attribute_conformity_rate || 0}%</strong>
-                                            <span>Conformité</span>
-                                          </div>
-                                        </div>
-                                        <div className="srd-quality-box">
-                                          <Zap size={16} strokeWidth={2} />
-                                          <div>
-                                            <strong>{item.quality_summary.overall_score?.toFixed(1) || 0}/10</strong>
-                                            <span>Score global</span>
-                                          </div>
-                                        </div>
-                                      </div> */}
-                                    </div>
-                                  )}
                               </div>
                               <div className="srd-item-sku">{variantSku}</div>
                               <VariantAttributes attributes={attributes} />
@@ -645,7 +598,7 @@ const handleViewRatings = (item, event) => {
                                 <span className="srd-qty-label">Commandé</span>
                                 <span className="srd-qty-value">{item.quantity_ordered || 0}</span>
                               </div>
-                              {(receipt.status === 'arrived' || receipt.status === 'validated') && (
+                              {(receipt.status === 'arrived' || receipt.status === 'rated' || receipt.status === 'cost_allocated' || receipt.status === 'validated') && (
                                 <div className={`srd-qty-box ${item.quantity_received < item.quantity_ordered ? 'partial' : 'received'}`}>
                                   <span className="srd-qty-label">Reçu</span>
                                   <span className="srd-qty-value">{item.quantity_received || 0}</span>
@@ -658,59 +611,8 @@ const handleViewRatings = (item, event) => {
                               <span className="srd-price-value">{formatCurrency(item.unit_cost_ariary)}</span>
                               <span className="srd-price-total">{formatCurrency(itemTotalCost)}</span>
                             </div>
-                            
-                            <button className="srd-item-expand" onClick={(e) => { e.stopPropagation(); toggleItemExpand(item.id); }}>
-                              {expandedItems[item.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                            </button>
                           </div>
                         </div>
-                        
-                        {expandedItems[item.id] && (
-                          <div className="srd-item-expanded">
-                            {item.quality_summary && (
-                              <div className="srd-quality-section">
-                                <h5>Résumé qualité</h5>
-                                <div className="srd-quality-stats">
-                                  <div className="srd-quality-box">
-                                    <Star size={16} />
-                                    <div>
-                                      <strong>{item.quality_summary.average_quality_rating || 0}/10</strong>
-                                      <span>Qualité</span>
-                                    </div>
-                                  </div>
-                                  <div className="srd-quality-box">
-                                    <Percent size={16} />
-                                    <div>
-                                      <strong>{item.quality_summary.quantity_fulfillment_rate || 0}%</strong>
-                                      <span>Réception</span>
-                                    </div>
-                                  </div>
-                                  <div className="srd-quality-box">
-                                    <CheckSquare size={16} />
-                                    <div>
-                                      <strong>{item.quality_summary.attribute_conformity_rate || 0}%</strong>
-                                      <span>Conformité</span>
-                                    </div>
-                                  </div>
-                                  <div className="srd-quality-box">
-                                    <Zap size={16} />
-                                    <div>
-                                      <strong>{item.quality_summary.overall_score || 0}/10</strong>
-                                      <span>Score global</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {item.notes && (
-                              <div className="srd-notes-section">
-                                <FileText size={16} />
-                                <p>{item.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     );
                   })
@@ -831,18 +733,18 @@ const handleViewRatings = (item, event) => {
         isLoading={actionLoading}
       />
       <RatingsModal
-      isOpen={showRatingsModal}
-      onClose={() => setShowRatingsModal(false)}
-      item={selectedItemForRatings}
-    />
-    <LocationModal
-    isOpen={showLocationModal}
-    onClose={() => setShowLocationModal(false)}
-    items={receipt.items || []}
-    locations={locations}
-    onSubmit={handleValidationSubmit}
-    isLoading={actionLoading}
-  />
+        isOpen={showRatingsModal}
+        onClose={() => setShowRatingsModal(false)}
+        item={selectedItemForRatings}
+      />
+      <LocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        items={receipt.items || []}
+        locations={locations}
+        onSubmit={handleValidationSubmit}
+        isLoading={actionLoading}
+      />
     </div>
   );
 };

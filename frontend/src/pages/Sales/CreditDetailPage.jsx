@@ -1,15 +1,22 @@
 // pages/CreditDetailPage.jsx
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tag, Percent } from 'lucide-react';
+import { Tag, Percent, Download, FileText, Loader, Printer, XCircle } from 'lucide-react';
+
 import useCreditDetail from '../../hooks/useCreditDetail';
 import CustomerMiniCard from '../../components/Credits/CustomerMiniCard';
 import InstallmentCard from '../../components/Credits/InstallmentCard';
 import CreditProductCard from '../../components/Credits/CreditProductCard';
 import PaymentModal from '../../components/Credits/PaymentModal';
+import CancelCreditModal from '../../components/Credits/CancelCreditModal';
 import LoadingSpinner from '../../components/Credits/LoadingSpinner';
 import StatusBadge from '../../components/Credits/StatusBadge';
 import '../../styles/components/CreditDetailPage.css';
+import invoiceService from '../../services/invoiceService';
+import creditService from '../../services/creditService';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import printService from '../../services/printService';
 
 const CreditDetailPage = () => {
   const { id } = useParams();
@@ -18,6 +25,10 @@ const CreditDetailPage = () => {
   
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -37,6 +48,10 @@ const CreditDetailPage = () => {
   };
 
   const handleOpenPaymentModal = (installment) => {
+    if (credit.status === 'cancelled') {
+      toast.warning('Impossible d\'effectuer un paiement sur un crédit annulé');
+      return;
+    }
     setSelectedInstallment(installment);
     setIsModalOpen(true);
   };
@@ -51,6 +66,62 @@ const CreditDetailPage = () => {
     }
   };
 
+  const handleDownloadCredit = async () => {
+    if (downloading) {
+      return;
+    }
+    try {
+      setDownloading(true);
+      await invoiceService.downloadCredit(credit.id, credit.sale_number);
+      toast.success('Crédit téléchargé avec succès');
+    } catch (err) {
+      alert('Impossible de télécharger le crédit');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrintCredit = async () => {
+    if (isPrinting) {
+      return;
+    }
+    try {
+      setIsPrinting(true);
+      await printService.printCredit(credit.id);
+      toast.success('Crédit envoyé à l\'imprimante');
+    } catch (err) {
+      console.log(err);
+      toast.error('Impossible d\'imprimer le crédit');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleCancelCredit = async () => {
+    if (isCancelling) return;
+    
+    try {
+      setIsCancelling(true);
+      await creditService.cancelCredit(credit.id);
+      toast.success('Crédit annulé avec succès');
+      setIsCancelModalOpen(false);
+      // Recharger la page pour voir les changements
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Impossible d\'annuler le crédit');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const hasConfirmedTransactions = () => {
+    if (!credit.installments) return false;
+    return credit.installments.some(installment => 
+      installment.transactions?.some(t => t.status === 'confirmed')
+    );
+  };
+  
   if (loading) {
     return <LoadingSpinner fullScreen size="large" />;
   }
@@ -84,6 +155,8 @@ const CreditDetailPage = () => {
 
   if (!credit) return null;
 
+  const isCancelled = credit.status === 'cancelled';
+
   return (
     <div className="credit-detail-page">
       <div className="page-container">
@@ -107,6 +180,52 @@ const CreditDetailPage = () => {
               <StatusBadge status={credit.status} />
             </div>
             <p className="credit-date">Créé le {formatDate(credit.credit_date)}</p>
+          </div>
+
+          <div className="header-actions">
+            {!isCancelled && (
+              <button
+                className="cancel-credit-btn"
+                onClick={() => setIsCancelModalOpen(true)}
+              >
+                <XCircle size={18} />
+                <span>Annuler le crédit</span>
+              </button>
+            )}
+            <button
+              className="download-credit-btn"
+              onClick={handlePrintCredit}
+              disabled={isPrinting}
+            >
+              {isPrinting ? (
+                <>
+                  <Loader size={18} className="down-spinner" />
+                  <span>Impression ...</span>
+                </>
+              ) : (
+                <>
+                  <Printer size={18} />
+                  <span>Imprimer</span>
+                </>
+              )}
+            </button>
+            <button
+              className="download-credit-btn"
+              onClick={handleDownloadCredit}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <>
+                  <Loader size={18} className="down-spinner" />
+                  <span>Téléchargement...</span>
+                </>
+              ) : (
+                <>
+                  <Download size={18} />
+                  <span>Télécharger</span>
+                </>
+              )}
+            </button>
           </div>
           
           <div className="header-amounts">
@@ -233,6 +352,7 @@ const CreditDetailPage = () => {
                       key={installment.id}
                       installment={installment}
                       onPay={handleOpenPaymentModal}
+                      isCreditCancelled={isCancelled}
                     />
                   ))
                 ) : (
@@ -254,6 +374,15 @@ const CreditDetailPage = () => {
         }}
         installment={selectedInstallment}
         onSubmit={handlePayment}
+      />
+
+      <CancelCreditModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirm={handleCancelCredit}
+        creditNumber={credit.sale_number}
+        hasConfirmedTransactions={hasConfirmedTransactions()}
+        isLoading={isCancelling}
       />
     </div>
   );

@@ -1,0 +1,72 @@
+pour le fontend, sépare completement le jsx et le css, svp, pour le css, donne juste les css à ajouter, voici la finalisation de Reservation
+
+ /**
+     * POST /api/reservations/{id}/complete
+     * Compléter une réservation (paiement final)
+     */
+    public function completeReservation(CompleteReservationRequest $request, int $id): JsonResponse
+    {
+        try {
+            $reservation = $this->saleService->completeReservation($id, $request->validated());
+
+            return response()->json([
+                'message' => 'Réservation complétée avec succès',
+                'data' => new ReservationResource($reservation),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la complétion de la réservation',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+Pour le CashCount: 
+
+public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'count_date' => ['required', 'date', 'unique:cash_counts,count_date'],
+            'notes' => ['nullable', 'string'],
+            'denominations' => ['required', 'array', 'min:1'],
+            'denominations.*.denomination' => ['required', 'integer', 'min:1'],
+            'denominations.*.quantity' => ['required', 'integer', 'min:0'],
+        ]);
+
+        return DB::transaction(function () use ($data) {
+
+            // Création du comptage principal
+            $cashCount = CashCount::create([
+                'count_date' => $data['count_date'],
+                'notes' => $data['notes'] ?? null,
+                'created_by' => Auth::id(),
+                'total_amount' => 0, // recalculé après
+            ]);
+
+            $total = 0;
+
+            foreach ($data['denominations'] as $row) {
+                $subtotal = $row['denomination'] * $row['quantity'];
+
+                CashCountDenomination::create([
+                    'cash_count_id' => $cashCount->id,
+                    'denomination' => $row['denomination'],
+                    'quantity' => $row['quantity'],
+                    'subtotal' => $subtotal,
+                ]);
+
+                $total += $subtotal;
+            }
+
+            // Mise à jour du total
+            $cashCount->update([
+                'total_amount' => $total,
+            ]);
+
+            return response()->json([
+                'message' => 'Comptage enregistré avec succès',
+                'data' => $cashCount->load('denominations'),
+            ], 201);
+        });
+    }
+

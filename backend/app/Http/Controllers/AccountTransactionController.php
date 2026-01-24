@@ -423,8 +423,8 @@ class AccountTransactionController extends Controller
 
             /* ===================== VENTE ===================== */
             'sale:id,sale_type,sale_number',
-            'sale.credit:id',
-            'sale.reservation:id',
+            'sale.credit:id,sale_id',
+            'sale.reservation:id,sale_id',
 
             /* ===================== ANNULATION ===================== */
             'reversingTransaction:id,reference_number,transaction_date,created_at',

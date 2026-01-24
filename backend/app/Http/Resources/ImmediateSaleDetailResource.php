@@ -19,6 +19,7 @@ class ImmediateSaleDetailResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'discount_amount' => (float) $this->discount_amount,
             'total_amount' => (float) $this->total_amount,
+            'status'=>$this->status,
 
             /* =======================
              |  CUSTOMER (FIXE)

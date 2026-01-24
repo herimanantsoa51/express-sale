@@ -11,17 +11,33 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U express_sale_user -d express_sale_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   backend:
     build: ./backend
     container_name: express_backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env.docker  # 👈 AJOUTEZ CETTE LIGNE
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: express_sale_db
+      DB_USERNAME: express_sale_user
+      DB_PASSWORD: express_sale_mdp
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/var/www
       - backend_storage:/var/www/storage
-
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -30,7 +46,7 @@ services:
       - backend
     ports:
       - "3000:80"
-
+    restart: unless-stopped
 
 volumes:
   pgdata:

@@ -238,29 +238,16 @@ const stockReceiptService = {
     return response.data;
   },
 
-  /**
-   * Évaluer la qualité d'un item
-   * POST /api/stock-receipts/{id}/items/{itemId}/rate
-   * 
-   * @param {number} id - ID de la réception
-   * @param {number} itemId - ID de l'item
-   * @param {Object} data
-   * @param {Array} data.ratings - Liste des évaluations
-   * @param {number} data.ratings[].attribute_type_id - ID du type d'attribut
-   * @param {number} data.ratings[].rating - Note (1-10)
-   * @param {string|null} [data.ratings[].notes] - Commentaire
-   * 
-   * @returns {Promise<Object>} Réponse API
-   * @returns {string} return.status - 'success' | 'error'
-   * @returns {string} return.message
-   * @returns {Object} return.data.item - Item avec ratings
-   * @returns {Object} return.data.quality_summary - Résumé qualité
-   * @returns {Object} return.data.conformity - Taux de conformité
+   /**
+   * Évaluer tous les items d'une réception (évalue + valide + crée batches)
+   * @param {number} receiptId - ID de la réception
+   * @param {object} data - { items: [{ item_id, quality_rating, quality_notes, attribute_ratings }] }
    */
-  rateItem: async (id, itemId, data) => {
-    const response = await api.post(`/stock-receipts/${id}/items/${itemId}/rate`, data);
+   async rateReceipt(receiptId, data) {
+    const response = await api.post(`/stock-receipts/${receiptId}/rate`, data);
     return response.data;
   },
+
 
   /**
    * Enregistrer un paiement pour cette réception

@@ -4,9 +4,12 @@
 // ============================================
 
 import { Package, Tag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Sales/SaleItemCard.module.css';
 
 const SaleItemCard = ({ item }) => {
+  const navigate = useNavigate();
+
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0,
@@ -16,7 +19,10 @@ const SaleItemCard = ({ item }) => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div 
+        className={styles.header}
+        onClick={() => navigate(`/produits/${item.product.id}`)}
+      >
         <div className={styles.icon}>
           <Package size={16} />
         </div>

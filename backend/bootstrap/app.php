@@ -18,11 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\IsAdmin::class
         ]);
         
-        // Ajouter le middleware d'expiration des réservations sur les routes API
+        // 👇 SetDynamicUrl EN PREMIER avec prepend
+        $middleware->api(prepend: [
+            \App\Http\Middleware\SetDynamicUrl::class,
+        ]);
+        
+        // 👇 Les autres middlewares après
         $middleware->appendToGroup('api', [
             \App\Http\Middleware\AdminNotificationsMiddleware::class,
         ]);
-     
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

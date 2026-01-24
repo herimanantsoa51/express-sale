@@ -1,0 +1,161 @@
+/* ============================================
+   TransactionSuggestionModal.module.css
+   Styles pour le modal de suggestion
+   ============================================ */
+
+   .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  .modal {
+    position: relative;
+    width: 90%;
+    max-width: 480px;
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    padding: var(--spacing-2xl);
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--spacing-lg);
+    border-radius: 50%;
+    background: var(--success-light);
+    color: var(--success);
+  }
+  
+  .title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    text-align: center;
+    margin: 0 0 var(--spacing-md);
+  }
+  
+  .message {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    text-align: center;
+    margin: 0 0 var(--spacing-xl);
+    line-height: 1.6;
+  }
+  
+  .transactionInfo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: var(--font-weight-semibold);
+  }
+  
+  .value {
+    font-size: var(--font-size-md);
+    font-family: var(--font-mono);
+    color: var(--primary);
+    font-weight: var(--font-weight-bold);
+  }
+  
+  .actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+  }
+  
+  .skipBtn,
+  .goBtn {
+    flex: 1;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+  }
+  
+  .skipBtn {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+  }
+  
+  .skipBtn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-tertiary);
+  }
+  
+  .goBtn {
+    background: var(--primary);
+    color: white;
+  }
+  
+  .goBtn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* === ANIMATIONS === */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .modal {
+      padding: var(--spacing-xl);
+    }
+  
+    .actions {
+      flex-direction: column;
+    }
+  
+    .skipBtn,
+    .goBtn {
+      width: 100%;
+    }
+  }

@@ -4,27 +4,46 @@
 // ============================================
 
 import { useState } from 'react';
-import { FileText, Download, Eye, Mail, Loader } from 'lucide-react';
+import { FileText, Download, Eye, Mail, Loader,Printer } from 'lucide-react';
 import invoiceService from '../../services/invoiceService';
 import styles from '../../styles/Sales/InvoiceActions.module.css';
+import printService from '../../services/printService';
+import { toast } from 'react-toastify';
 
-const InvoiceActions = ({ saleId, hasCustomerEmail = false }) => {
+const InvoiceActions = ({ saleId, saleNumber,hasCustomerEmail = false }) => {
   const [downloading, setDownloading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isPrinting,setIsPrinting]=useState(false);
 
   const handleDownload = async () => {
     try {
       setDownloading(true);
       setError(null);
-      await invoiceService.download(saleId);
+      await invoiceService.downloadSale(saleId,saleNumber);
       setSuccess('Facture téléchargée avec succès');
+      toast.success('Facture téléchargée avec succès');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Erreur lors du téléchargement');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handlePrint=async()=>{
+    try{
+      setIsPrinting(true);
+      setError(null);
+      await printService.printSale(saleId);
+      setSuccess('Facture envoyée à l\'imprimante');
+      toast.success('Facture envoyée à l\'imprimante');
+      setTimeout(() => setSuccess(null), 3000);
+    }catch(err){
+      setError('Erreur lors de l\'impression');
+    }finally{
+      setIsPrinting(false);
     }
   };
 
@@ -60,13 +79,23 @@ const InvoiceActions = ({ saleId, hasCustomerEmail = false }) => {
 
       <div className={styles.actions}>
         {/* Bouton Visualiser */}
+        {/* Bouton Impression */}
         <button
-          onClick={handleShow}
-          className={`${styles.btn} ${styles.btnView}`}
-          disabled={downloading || sending}
+          onClick={handlePrint}
+          className={`${styles.btn} ${styles.btnDownload}`}
+          disabled={isPrinting}
         >
-          <Eye size={18} />
-          <span>Visualiser</span>
+          {isPrinting ? (
+            <>
+              <Loader size={18} className={styles.spinner} />
+              <span>Téléchargement...</span>
+            </>
+          ) : (
+            <>
+              <Printer size={18} />
+              <span>Imprimer</span>
+            </>
+          )}
         </button>
 
         {/* Bouton Télécharger */}

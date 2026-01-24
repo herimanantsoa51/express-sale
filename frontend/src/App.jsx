@@ -70,13 +70,27 @@ import CashCountDetail from './pages/CashCount/CashCountDetail';
 import CashCountForm from './pages/CashCount/CashCountForm';
 import CashCountList from './pages/CashCount/CashCountList';
 import StockReceiptPayment from './pages/StockReceipt/StockReceiptPayment';
-
+import CompanyConfiguration from './pages/Settings/CompanyConfiguration';
+import { ToastContainer } from 'react-toastify';
 import CostAllocation from './pages/StockReceipt/CostAllocation';
 import CostAllocationView from './pages/StockReceipt/CostAllocationView';
 
 function App() {
   return (
+
     <ThemeProvider>
+        <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light" // or "dark", "colored"
+      />
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -200,17 +214,20 @@ function App() {
                 <Route path=':id' element={<CashCountDetail/>} />
                 <Route path=':id/modifier' element={<CashCountForm />} />
               </Route>
+              <Route path='parametres'>
+                <Route index element={<CompanyConfiguration/>} />
+              </Route>
               
 
               {/* Route 404 pour les pages protégées */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
-
             {/* Route 404 globale */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+     
     </ThemeProvider>
   );
 }

@@ -11,7 +11,8 @@ const ClientQuickCreateForm = ({ onSuccess, onClose }) => {
     phone: '',
     address: '',
     credit_limit: '',
-    notes: ''
+    notes: '',
+    
   });
 
   const [errors, setErrors] = useState({});
@@ -66,7 +67,8 @@ const ClientQuickCreateForm = ({ onSuccess, onClose }) => {
         address: formData.address.trim() || null,
         credit_limit: formData.credit_limit ? parseFloat(formData.credit_limit) : 0,
         notes: formData.notes.trim() || null,
-        is_active: true
+        is_active: true,
+        is_extra_customer: true
       };
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/customers`, {

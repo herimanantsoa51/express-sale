@@ -1,0 +1,485 @@
+/* CompanyConfiguration.css */
+
+/* ============================================
+   CONTAINER & LAYOUT
+   ============================================ */
+
+   .company-config {
+    min-height: 100vh;
+    background-color: var(--bg-secondary);
+    font-family: var(--font-family);
+  }
+  
+  .company-config__loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: var(--bg-secondary);
+  }
+  
+  .company-config__content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--spacing-2xl) var(--spacing-lg);
+  }
+  
+  /* ============================================
+     HEADER
+     ============================================ */
+  
+  .company-config__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .company-config__title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin: 0;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .company-config__subtitle {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  
+  .company-config__users-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 10px 18px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .company-config__users-btn:hover:not(:disabled) {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
+  
+  .company-config__users-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  /* ============================================
+     CARD
+     ============================================ */
+  
+  .company-config__card {
+    background-color: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+  }
+  
+  .company-config__section {
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .company-config__section:last-child {
+    margin-bottom: 0;
+  }
+  
+  .company-config__section-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .company-config__divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: var(--spacing-xl) 0;
+  }
+  
+  /* ============================================
+     LOGO SECTION
+     ============================================ */
+  
+  .company-config__logo-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+  }
+  
+  .company-config__logo-box {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+  }
+  
+  .company-config__logo-preview {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+  
+  .company-config__logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .company-config__remove-logo-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-speed) var(--transition-timing);
+    backdrop-filter: blur(10px);
+  }
+  
+  .company-config__remove-logo-btn:hover:not(:disabled) {
+    background-color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+  }
+  
+  .company-config__logo-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--border-radius-lg);
+    background-color: var(--bg-secondary);
+    border: 2px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .company-config__placeholder-icon {
+    color: var(--text-tertiary);
+  }
+  
+  .company-config__logo-actions {
+    flex: 1;
+  }
+  
+  .company-config__file-input {
+    display: none;
+  }
+  
+  .company-config__upload-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 10px 18px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .company-config__upload-btn:hover:not(:disabled) {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
+  
+  .company-config__upload-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  .company-config__upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .company-config__helper-text {
+    margin: 0;
+    margin-top: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+  }
+  
+  /* ============================================
+     FORM
+     ============================================ */
+  
+  .company-config__form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+  
+  .company-config__input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .company-config__label {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+  }
+  
+  .company-config__required {
+    color: var(--danger);
+  }
+  
+  .company-config__input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .company-config__input-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+  }
+  
+  .company-config__input {
+    width: 100%;
+    padding: 12px 14px 12px 44px;
+    font-size: var(--font-size-md);
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    outline: none;
+    transition: all var(--transition-speed) var(--transition-timing);
+    font-family: var(--font-family);
+  }
+  
+  .company-config__input:focus {
+    border-color: var(--primary);
+    background-color: var(--bg-primary);
+  }
+  
+  .company-config__input::placeholder {
+    color: var(--text-tertiary);
+  }
+  
+  /* ============================================
+     FOOTER
+     ============================================ */
+  
+  .company-config__footer {
+    margin-top: var(--spacing-xl);
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .company-config__save-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 12px 24px;
+    background-color: var(--primary);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .company-config__save-btn:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+  }
+  
+  .company-config__save-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  
+  .company-config__save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  /* ============================================
+     SPINNER ANIMATION
+     ============================================ */
+  
+  .company-config__spinner {
+    animation: company-config-spin 1s linear infinite;
+  }
+  
+  @keyframes company-config-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* ============================================
+     RESPONSIVE
+     ============================================ */
+  
+  @media (max-width: 768px) {
+    .company-config__content {
+      padding: var(--spacing-lg) var(--spacing-md);
+    }
+  
+    .company-config__header {
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+  
+    .company-config__users-btn {
+      align-self: flex-start;
+    }
+  
+    .company-config__card {
+      padding: var(--spacing-lg);
+    }
+  
+    .company-config__logo-container {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .company-config__form-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .company-config__footer {
+      justify-content: stretch;
+    }
+  
+    .company-config__save-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .company-config__title {
+      font-size: var(--font-size-xl);
+    }
+  
+    .company-config__logo-box {
+      width: 100px;
+      height: 100px;
+    }
+  }
+  /* ============================================
+   AJOUTS POUR PARAMÈTRES IMPRESSION
+   À ajouter à la fin de CompanyConfiguration.css
+   ============================================ */
+
+/* Input group full width */
+.company-config__input-group--full {
+  grid-column: 1 / -1;
+}
+
+/* Section header avec icône */
+.company-config__section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Printer path section */
+.company-config__printer-path {
+  margin-bottom: var(--spacing-xl);
+}
+
+.company-config__printer-help {
+  margin: 0;
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Auto-print section */
+.company-config__auto-print-section {
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.company-config__auto-print-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Checkbox grid */
+.company-config__checkbox-grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.company-config__checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-speed) var(--transition-timing);
+}
+
+.company-config__checkbox-field:hover {
+  background-color: var(--bg-primary);
+}
+
+.company-config__checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.company-config__checkbox-label {
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  user-select: none;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .company-config__checkbox-grid {
+    gap: var(--spacing-sm);
+  }
+  
+  .company-config__checkbox-field {
+    padding: var(--spacing-xs);
+  }
+}

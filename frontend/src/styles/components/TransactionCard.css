@@ -3,7 +3,26 @@
    styles/components/TransactionCard.css
    ============================================ */
 
-
+   .download-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .spin {
+    animation: spin 0.8s linear infinite;
+  }
+  
+  .transaction-card.disabled {
+    pointer-events: none;
+    opacity: 0.8;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
 .transaction-card {
   display: flex;
   align-items: flex-start;
@@ -90,4 +109,46 @@
   .transaction-amount {
     align-self: flex-start;
   }
+}
+.transaction-card.clickable {
+  cursor: pointer;
+}
+
+.transaction-card.clickable:hover {
+  background: var(--bg-tertiary);
+}
+
+.transaction-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+}
+
+.transaction-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-btn {
+  border: none;
+  background: black !important;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.download-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.chevron {
+  color: var(--text-tertiary);
 }

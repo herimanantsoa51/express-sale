@@ -10,13 +10,15 @@
      const isEditing = !!customer;
      
      const [formData, setFormData] = useState({
-       name: '',
-       phone: '',
-       address: '',
-       credit_limit: '',
-       notes: '',
-       is_active: true
-     });
+      name: '',
+      phone: '',
+      address: '',
+      credit_limit: '',
+      notes: '',
+      is_active: true,
+      is_anonymous: false // 🆕
+    });
+    
    
      const [errors, setErrors] = useState({});
      const [loading, setLoading] = useState(false);
@@ -30,7 +32,8 @@
            address: customer.address || '',
            credit_limit: customer.credit_limit || '',
            notes: customer.notes || '',
-           is_active: customer.is_active
+           is_active: customer.is_active,
+           is_anonymous:!customer.is_extra_customer
          });
        }
      }, [customer]);
@@ -87,7 +90,8 @@
            address: formData.address.trim() || null,
            credit_limit: formData.credit_limit ? parseFloat(formData.credit_limit) : 0,
            notes: formData.notes.trim() || null,
-           is_active: formData.is_active
+           is_active: formData.is_active,
+           is_extra_customer: !formData.is_anonymous
          };
    
          if (isEditing) {
@@ -160,7 +164,7 @@
                  {errors.phone && <span className="error-message">{errors.phone}</span>}
                </div>
    
-               <div className="form-group">
+               {/* <div className="form-group">
                  <label htmlFor="credit_limit" className="form-label">
                    Limite de crédit
                  </label>
@@ -176,7 +180,7 @@
                    step="0.01"
                  />
                  {errors.credit_limit && <span className="error-message">{errors.credit_limit}</span>}
-               </div>
+               </div> */}
              </div>
    
              <div className="form-group">
@@ -222,6 +226,27 @@
                  <span className="toggle-text">Client actif</span>
                </label>
              </div>
+             <div className="form-group-toggle">
+              <label className="toggle-label">
+                <input
+                  type="checkbox"
+                  name="is_anonymous"
+                  checked={formData.is_anonymous}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData(prev => ({
+                      ...prev,
+                      is_anonymous: checked,
+                      name: checked ? 'Anonyme' : prev.name
+                    }));
+                  }}
+                  className="toggle-input"
+                />
+                <span className="toggle-switch"></span>
+                <span className="toggle-text">Client anonyme</span>
+              </label>
+            </div>
+
    
              <div className="form-actions">
                <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>

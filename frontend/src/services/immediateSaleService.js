@@ -30,6 +30,10 @@ const immediateSaleService = {
   getDetail: async (id) => {
     const response = await api.get(`/sales/immediate/${id}`);
     return response.data;
+  },
+  cancelImmediateSale: async(saleId)=>{
+    const response = await api.post(`/sales/immediate/cancel/${saleId}`);
+    return response.data;
   }
 };
 

@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate} from 'react-router-dom';
 import { 
   Plus, 
   AlertCircle,
@@ -13,6 +12,7 @@ import {
 import useReservations from '../../hooks/useReservations';
 import ReservationTable from '../../components/reservations/ReservationTable';
 import './ReservationsPage.css';
+import { useState } from 'react';
 
 const ReservationsPage = () => {
   const navigate = useNavigate();

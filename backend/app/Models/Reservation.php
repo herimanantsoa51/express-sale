@@ -57,6 +57,7 @@ class Reservation extends Model
         'status',
         'cancellation_reason',
         'completed_at',
+        'transaction_complete_id'
     ];
 
     protected $casts = [
@@ -83,6 +84,11 @@ class Reservation extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function transactionComplete(): BelongsTo
+    {
+        return $this->belongsTo(AccountTransaction::class, 'transaction_complete_id');
     }
 
     /**

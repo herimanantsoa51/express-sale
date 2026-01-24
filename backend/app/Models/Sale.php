@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Enums\SaleStatus;
 
 /**
  * Modèle Sale - Représente une vente dans le système
@@ -64,6 +65,7 @@ class Sale extends Model
         'payment_status',
         'payment_method',
         'notes',
+        'status',
     ];
 
     protected $casts = [
@@ -74,6 +76,7 @@ class Sale extends Model
         'sale_type' => SaleType::class,
         'payment_status' => PaymentStatus::class,
         'payment_method' => PaymentMethod::class,
+        'status'=> SaleStatus::class
     ];
 
     /**
@@ -235,4 +238,11 @@ class Sale extends Model
 
         return $this->isPaid() ? (float) $this->total_amount : 0;
     }
+    protected static function booted()
+    {
+        static::creating(function ($sale) {
+            $sale->status = SaleStatus::CONFIRMED;
+        });
+    }
+    
 }

@@ -165,6 +165,7 @@ const productService = {
    */
   async getForSale(params = {}) {
     const response = await api.get('/products/for-sale', { params });
+    console.log('Products for sale fetched:', response.data);
     return response.data;
   },
 

@@ -5,7 +5,7 @@ import TransactionCard from './TransactionCard';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import '../../styles/components/InstallmentCard.css';
 
-const InstallmentCard = ({ installment, onPay }) => {
+const InstallmentCard = ({ installment, onPay, isCreditCancelled }) => {
   const [showTransactions, setShowTransactions] = useState(false);
 
   const formatAmount = (amount) => {
@@ -25,7 +25,7 @@ const InstallmentCard = ({ installment, onPay }) => {
     });
   };
 
-  const canPay = installment.status !== 'paid' && installment.remaining_amount > 0;
+  const canPay = !isCreditCancelled && installment.status !== 'paid' && installment.remaining_amount > 0;
   const hasTransactions = installment.transactions && installment.transactions.length > 0;
 
   return (
@@ -80,6 +80,12 @@ const InstallmentCard = ({ installment, onPay }) => {
           </button>
         )}
 
+        {isCreditCancelled && installment.remaining_amount > 0 && (
+          <div className="installment-cancelled-notice">
+            <span>Crédit annulé - Paiements désactivés</span>
+          </div>
+        )}
+
         {hasTransactions && (
           <div className="installment-transactions-section">
             <button 
@@ -105,173 +111,3 @@ const InstallmentCard = ({ installment, onPay }) => {
 };
 
 export default InstallmentCard;
-
-/* ============================================
-   styles/components/InstallmentCard.css
-   ============================================ */
-
-/*
-.installment-card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  overflow: hidden;
-  transition: all var(--transition-speed) var(--transition-timing);
-}
-
-.installment-card.overdue {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 1px var(--danger-light);
-}
-
-.installment-header {
-  padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.installment-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-xs);
-}
-
-.installment-number {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
-
-.installment-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-
-.installment-body {
-  padding: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.installment-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--spacing-md);
-}
-
-.installment-info-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.info-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.info-value {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-}
-
-.info-value.amount {
-  color: var(--text-primary);
-}
-
-.info-value.paid {
-  color: var(--success);
-}
-
-.info-value.remaining {
-  color: var(--warning);
-}
-
-.installment-progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.progress-bar-full {
-  height: 8px;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-bar-filled {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.6s var(--transition-smooth);
-}
-
-.progress-label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
-  text-align: right;
-}
-
-.installment-pay-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-  width: 100%;
-  padding: 12px 20px;
-  background: var(--primary);
-  border: none;
-  border-radius: var(--border-radius);
-  color: white;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-speed) var(--transition-timing);
-}
-
-.installment-pay-btn:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
-}
-
-.installment-pay-btn:active {
-  transform: translateY(0);
-}
-
-.installment-transactions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--border-color);
-}
-
-.transactions-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-secondary);
-}
-
-.transactions-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-@media (max-width: 768px) {
-  .installment-info-grid {
-    grid-template-columns: 1fr;
-  }
-}
-*/

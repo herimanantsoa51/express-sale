@@ -10,10 +10,13 @@
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-speed) var(--transition-timing);
+    cursor: pointer;
   }
   
   .container:hover {
     box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--primary);
   }
   
   .header {
@@ -108,39 +111,25 @@
     color: var(--text-secondary);
   }
   
-  /* === SOLDES === */
-  .balances {
+  /* === MONTANT === */
+  .amount {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-  
-  .balanceRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .balanceLabel {
-    display: flex;
-    align-items: center;
     gap: var(--spacing-xs);
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
   }
   
-  .balanceLabel svg {
+  .amountLabel {
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
-  }
-  
-  .balanceValue {
-    font-size: var(--font-size-md);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     font-weight: var(--font-weight-semibold);
-    font-family: var(--font-mono);
-    color: var(--text-primary);
   }
   
-  .balanceValue.success {
+  .amountValue {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    font-family: var(--font-mono);
     color: var(--success);
   }
   
@@ -163,5 +152,9 @@
   
     .refValue {
       font-size: var(--font-size-md);
+    }
+  
+    .amountValue {
+      font-size: var(--font-size-lg);
     }
   }

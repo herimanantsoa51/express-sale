@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Edit, Calendar, User, FileText, Coins } from 'lucide-react';
+import { ArrowLeft, Edit, Calendar, User, FileText, Coins, Download, Loader2,Printer } from 'lucide-react';
 import cashCountService from '../../services/cashCountService';
-import { useParams } from 'react-router-dom';
+import invoiceService from '../../services/invoiceService';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import '../../styles/CashCountDetail.css';
+import 'react-toastify/dist/ReactToastify.css';
+import printService from '../../services/printService';
 
 const CashCountDetail = () => {
   const [cashCount, setCashCount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const { id } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCashCount();
@@ -21,8 +28,43 @@ const CashCountDetail = () => {
       setCashCount(response.data);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
+      toast.error('Erreur lors du chargement du comptage');
     } finally {
       setLoading(false);
+    }
+  };
+  const handlePrint = async () => {
+    if (isPrinting) return;
+    setIsPrinting(true);
+    toast.info('Envoi du rapport à l\'imprimante...');
+    try {
+      await printService.printCashCount(
+        cashCount.id,
+        formatDate(cashCount.count_date)
+      );
+      toast.success('Rapport envoyé à l\'imprimante');
+    } catch (error) {
+      console.error('Erreur impression:', error);
+      toast.error('Erreur lors de l\'impression du rapport');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+  const handleDownloadPDF = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    toast.info('Téléchargement du rapport en cours...');
+    try {
+      await invoiceService.downloadCashCount(
+        cashCount.id,
+        formatDate(cashCount.count_date)
+      );
+      toast.success('Rapport téléchargé avec succès');
+    } catch (error) {
+      console.error('Erreur téléchargement:', error);
+      toast.error('Erreur lors du téléchargement du rapport');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -62,7 +104,7 @@ const CashCountDetail = () => {
     <div className="ccdetail-page">
       <div className="ccdetail-header">
         <div className="ccdetail-header-content">
-          <button className="ccdetail-back-button" onClick={() => window.location.href = '/comptages'}>
+          <button className="ccdetail-back-button" onClick={() => navigate('/comptages')}>
             <ArrowLeft size={20} />
           </button>
           <motion.h1
@@ -71,13 +113,41 @@ const CashCountDetail = () => {
           >
             Détails du comptage
           </motion.h1>
-          <button
-            className="ccdetail-edit-button"
-            onClick={() => window.location.href = `/comptages/${id}/modifier`}
-          >
-            <Edit size={18} />
-            <span>Modifier</span>
-          </button>
+          <div className="ccdetail-header-actions">
+            <button
+              className="ccdetail-download-button"
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              title="Télécharger le rapport PDF"
+            >
+              {isDownloading ? (
+                <Loader2 size={18} className="ccdetail-spinner-icon" />
+              ) : (
+                <Download size={18} />
+              )}
+              <span>{isDownloading ? 'Téléchargement...' : 'Rapport PDF'}</span>
+            </button>
+            <button
+              className="ccdetail-download-button"
+              onClick={handlePrint}
+              disabled={isPrinting}
+              title="Imprimer"
+            >
+              {isPrinting ? (
+                <Loader2 size={18} className="ccdetail-spinner-icon" />
+              ) : (
+                <Printer size={18} />
+              )}
+              <span>{isPrinting ? 'Impression...' : 'Imprimer'}</span>
+            </button>
+            <button
+              className="ccdetail-edit-button"
+              onClick={() => navigate(`/comptages/${id}/modifier`)}
+            >
+              <Edit size={18} />
+              <span>Modifier</span>
+            </button>
+          </div>
         </div>
       </div>
 

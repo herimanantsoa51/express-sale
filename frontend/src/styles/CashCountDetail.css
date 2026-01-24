@@ -304,3 +304,70 @@
       align-items: flex-start;
     }
   }
+
+
+  /* Ajoutez ces styles à votre CashCountDetail.css */
+
+.ccdetail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.ccdetail-download-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px 20px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.ccdetail-download-button:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.ccdetail-download-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ccdetail-spinner-icon {
+  animation: ccdetail-spin-icon 0.8s linear infinite;
+}
+
+@keyframes ccdetail-spin-icon {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .ccdetail-header-actions {
+    gap: var(--spacing-xs);
+  }
+
+  .ccdetail-download-button {
+    padding: 10px 16px;
+  }
+
+  .ccdetail-download-button span {
+    display: none;
+  }
+
+  .ccdetail-edit-button {
+    padding: 10px 16px;
+  }
+
+  .ccdetail-edit-button span {
+    display: none;
+  }
+}

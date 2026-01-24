@@ -11,17 +11,97 @@ const invoiceService = {
    * @param {number} saleId - ID de la vente
    * @returns {Promise<void>}
    */
-  download: async (saleId) => {
+  downloadSale: async (saleId,saleNumber) => {
     try {
-      const response = await api.get(`/invoices/${saleId}/download`, {
+      const response = await api.get(`/invoices/${saleId}/download-sale`, {
         responseType: 'blob', // Important pour les fichiers PDF
       });
 
-      // Créer un lien de téléchargement
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `facture-${saleNumber}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `facture-${saleId}.pdf`);
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur téléchargement facture:', error);
+      throw new Error('Impossible de télécharger la facture');
+    }
+  },
+  downloadCredit: async (creditId,saleNumber) => {
+    try {
+      const response = await api.get(`/invoices/${creditId}/download-credit`, {
+        responseType: 'blob', // Important pour les fichiers PDF
+      });
+
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `facture-${saleNumber}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur téléchargement facture:', error);
+      throw new Error('Impossible de télécharger la facture');
+    }
+  },
+  downloadTransactionInstallment: async (installmentId,factureNumber) => {
+    try {
+      const response = await api.get(`/invoices/${installmentId}/download-transaction-installment`, {
+        responseType: 'blob', // Important pour les fichiers PDF
+      });
+
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Payment-${factureNumber}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
       document.body.appendChild(link);
       link.click();
       
@@ -34,32 +114,110 @@ const invoiceService = {
     }
   },
 
-  /**
-   * Ouvre la facture PDF dans un nouvel onglet
-   * @param {number} saleId - ID de la vente
-   * @returns {void}
-   */
-  show: (saleId) => {
-    const token = localStorage.getItem('token');
-    const url = `${import.meta.env.VITE_API_URL}/invoices/${saleId}/show`;
-    
-    // Ouvrir dans un nouvel onglet avec l'authentification
-    window.open(
-      `${url}?token=${token}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  },
+  downloadReservation: async (reservationId,reservationNumber) => {
+    try {
+      const response = await api.get(`/invoices/${reservationId}/download-reservation`, {
+        responseType: 'blob', // Important pour les fichiers PDF
+      });
 
-  /**
-   * Envoie la facture par email au client
-   * @param {number} saleId - ID de la vente
-   * @returns {Promise<Object>}
-   */
-  sendByEmail: async (saleId) => {
-    const response = await api.post(`/invoices/${saleId}/email`);
-    return response.data;
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Reservation-${reservationNumber}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur téléchargement facture:', error);
+      throw new Error('Impossible de télécharger la facture');
+    }
+  },
+  downloadReservationReceipt: async (reservationId,reservationNumber) => {
+    try {
+      const response = await api.get(`/invoices/${reservationId}/download-reservation-receipt`, {
+        responseType: 'blob', // Important pour les fichiers PDF
+      });
+
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Reservation-Receipt-${reservationNumber}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur téléchargement facture:', error);
+      throw new Error('Impossible de télécharger la facture');
+    }
+  },
+  downloadCashCount: async (cashCountId,dateCount) => {
+    try {
+      const response = await api.get(`/invoices/${cashCountId}/download-cash-count`, {
+        responseType: 'blob', // Important pour les fichiers PDF
+      });
+
+      // ✅ CORRECTION: Récupérer le nom depuis les headers HTTP
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Cash-Count-${dateCount}.pdf`; // Fallback par défaut
+      
+      if (contentDisposition) {
+        // Extraire le nom du fichier depuis "attachment; filename="...""
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
+      // Créer un lien de téléchargement avec le bon nom
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename); // ✅ Utilise le nom du serveur
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyer
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur téléchargement facture:', error);
+      throw new Error('Impossible de télécharger la facture');
+    }
   }
+
+  
 };
 
 export default invoiceService;
