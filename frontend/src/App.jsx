@@ -3,33 +3,54 @@
 // ============================================
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer, Slide } from 'react-toastify';
+
+// 🔥 OBLIGATOIRE : CSS de base Toastify
+import 'react-toastify/dist/ReactToastify.css';
+
+// 🎨 CSS custom Toastify (APRÈS le CSS officiel)
+import './styles/customToastify.css';
+
+// Contexts
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+
+// Layout & routes protégées
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/layout/Layout';
+
 // Pages publiques
 import Login from './pages/Login';
+
 // Pages principales
 import Dashboard from './pages/Dashboard/Dashboard';
+
 // Produits
 import ProductsList from './pages/Products/ProductsList';
 import ProductDetails from './pages/Products/ProductDetails';
 import ProductForm from './pages/Products/ProductForm';
 import VariantForm from './pages/Products/VariantForm';
 
+// Fournisseurs
 import SuppliersList from './pages/Suppliers/SupplierList';
 import SupplierDetails from './pages/Suppliers/SupplierDetails';
 import SupplierForm from './pages/Suppliers/SupplierForm';
 
+// Transitaires
 import FreightForwardersList from './pages/FreightForwarders/FreightForwardersList';
 import FreightForwarderDetails from './pages/FreightForwarders/FreightForwarderDetails';
 import FreightForwarderForm from './pages/FreightForwarders/FreightForwarderForm';
+
+// Réapprovisionnements
 import StockReceiptForm from './pages/StockReceipt/StockReceiptForm';
 import StockReceiptDetails from './pages/StockReceipt/StockReceiptDetails';
 import StockReceiptList from './pages/StockReceipt/StockReceiptList';
 import StockReceiptRating from './pages/StockReceipt/StockReceiptRating';
+import StockReceiptPayment from './pages/StockReceipt/StockReceiptPayment';
+import CostAllocation from './pages/StockReceipt/CostAllocation';
+import CostAllocationView from './pages/StockReceipt/CostAllocationView';
 
-// Localisations de variantes
+// Localisations
 import ProductVariantLocationsList from './pages/ProductVariantLocations/ProductVariantLocationsList';
 import ProductVariantLocationForm from './pages/ProductVariantLocations/ProductVariantLocationForm';
 import LocationVariantsView from './pages/ProductVariantLocations/LocationVariantsView';
@@ -37,10 +58,12 @@ import LocationVariantsView from './pages/ProductVariantLocations/LocationVarian
 // Mouvements de stock
 import StockMovementList from './pages/StockMovement/StockMovementList';
 import StockTransferForm from './pages/StockMovement/StockTransferForm';
-import StockAdjustmentForm from './pages/StockMovement/StockAdjustmentForm';
+import StockLossForm from './pages/StockMovement/StockLossForm';
 
-// Locations (Emplacements de stockage)
+// Locations
 import { LocationsList, LocationDetail, LocationForm } from './pages/Locations';
+
+// Clients
 import CustomerList from './pages/Customers/CustomerList';
 import CustomerDetails from './pages/Customers/CustomerDetails';
 
@@ -50,47 +73,62 @@ import ImmediateSalesList from './pages/Sales/ImmediateSalesList';
 import ImmediateSaleDetail from './pages/Sales/ImmediateSaleDetail';
 import CreditListPage from './pages/Sales/CreditLIstPage';
 import CreditDetailPage from './pages/Sales/CreditDetailPage';
-import AccountForm from './pages/Accounts/AccountForm';
-// Import styles globaux
-import './styles/variables.css';
-import './styles/reset.css';
-import './styles/global.css';
 import ReservationsPage from './pages/Sales/ReservationsPage';
 import ReservationDetailPage from './pages/Sales/ReservationDetailPage';
+
+// Comptes
+import AccountForm from './pages/Accounts/AccountForm';
 import AccountsList from './pages/Accounts/AccountsList';
 import AccountDetail from './pages/Accounts/AccountDetail';
 import AccountTransfer from './pages/Accounts/AccountTransfer';
+import CurrencyRates from './pages/Accounts/CurrencyRates';
+
+// Dépenses
 import ExpenseList from './pages/Expenses/ExpenseList';
 import ExpenseCreate from './pages/Expenses/ExpenseCreate';
+
+// Transactions
 import TransactionDetail from './pages/Transactions/TransactionDetail';
-import CurrencyRates from './pages/Accounts/CurrencyRates';
+
+// Statistiques
 import SalesStatistics from './pages/Statistics/SaleStatisctics';
+
+// Utilisateurs
 import UsersPage from './pages/Users/userPage';
-import CashCountDetail from './pages/CashCount/CashCountDetail';
-import CashCountForm from './pages/CashCount/CashCountForm';
+
+// Comptages
 import CashCountList from './pages/CashCount/CashCountList';
-import StockReceiptPayment from './pages/StockReceipt/StockReceiptPayment';
+import CashCountForm from './pages/CashCount/CashCountForm';
+import CashCountDetail from './pages/CashCount/CashCountDetail';
+
+// Paramètres
 import CompanyConfiguration from './pages/Settings/CompanyConfiguration';
-import { ToastContainer } from 'react-toastify';
-import CostAllocation from './pages/StockReceipt/CostAllocation';
-import CostAllocationView from './pages/StockReceipt/CostAllocationView';
+import InventoryReconciliationForm from './pages/StockMovement/InventoryReconciliationForm';
+// Styles globaux
+import './styles/variables.css';
+import './styles/reset.css';
+import './styles/global.css';
 
 function App() {
   return (
 
     <ThemeProvider>
-        <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light" // or "dark", "colored"
-      />
+         <ToastContainer
+            position="top-right"
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="auto"
+            transition={Slide}
+            limit={3}
+            closeButton
+            icon
+            style={{ zIndex: 99999 }}
+          />
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -148,6 +186,7 @@ function App() {
                 <Route path="nouvelle" element={<ProductVariantLocationForm />} />
                 <Route path=":id/modifier" element={<ProductVariantLocationForm />} />
               </Route>
+              
 
               {/* === VUE PAR LOCATION === */}
               <Route path="locations/:locationId/variantes" element={<LocationVariantsView />} />
@@ -156,7 +195,9 @@ function App() {
               <Route path="mouvements-stock">
                 <Route index element={<StockMovementList />} />
                 <Route path="transfert" element={<StockTransferForm />} />
-                <Route path="ajustement" element={<StockAdjustmentForm />} />
+                {/* <Route path="ajustement" element={<StockAdjustmentForm />} /> */}
+                <Route path="perte" element={<StockLossForm />} />
+                <Route path="reconciliation" element={<InventoryReconciliationForm />} />
               </Route>
 
               {/* === LOCATIONS (Emplacements de stockage) === */}

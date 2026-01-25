@@ -15,7 +15,6 @@ import '../../styles/components/CreditDetailPage.css';
 import invoiceService from '../../services/invoiceService';
 import creditService from '../../services/creditService';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import printService from '../../services/printService';
 
 const CreditDetailPage = () => {

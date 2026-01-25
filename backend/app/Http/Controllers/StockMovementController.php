@@ -9,7 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-
+use App\Models\StockBatch;
+use Illuminate\Support\Facades\Log;
 class StockMovementController extends Controller
 {
     /**
@@ -23,7 +24,8 @@ class StockMovementController extends Controller
             'variant.attributeValues.attributeValue.attributeType',
             'fromLocation',
             'toLocation',
-            'sale',
+            'sale.reservation',
+            'sale.credit',
             'stockReceipt',
             'performedBy'
         ])->orderBy('created_at', 'desc');
@@ -578,5 +580,267 @@ class StockMovementController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    // app/Http/Controllers/StockMovementController.php
+
+    /**
+     * Déclarer une perte de stock (casse, vol, péremption...)
+     * POST /api/stock-movements/loss
+     */
+    public function declareLoss(Request $request)
+    {
+        $data = $request->validate([
+            'variant_id' => 'required|integer|exists:product_variants,id',
+            'location_id' => 'required|integer|exists:locations,id',
+            'quantity' => 'required|integer|min:1',
+            'loss_type' => 'required|string|in:breakage,theft,expiry,damage,inventory_shortage,other',
+            'reason' => 'required|string|max:500',
+            'notes' => 'nullable|string'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $variantLocation = ProductVariantLocation::where([
+                'variant_id' => $data['variant_id'],
+                'location_id' => $data['location_id']
+            ])->firstOrFail();
+
+            // Vérifier stock disponible
+            if ($variantLocation->quantity < $data['quantity']) {
+                return response()->json([
+                    'message' => 'Quantité insuffisante pour la déclaration de perte',
+                    'available' => $variantLocation->quantity,
+                    'requested' => $data['quantity']
+                ], 422);
+            }
+
+            // Consommer les batches en FIFO
+            $remainingToLose = $data['quantity'];
+            $batches = StockBatch::where('variant_id', $data['variant_id'])
+                ->available()
+                ->fifoOrder()
+                ->lockForUpdate()
+                ->get();
+
+            $affectedBatches = [];
+            $totalCostImpact = 0;
+
+            foreach ($batches as $batch) {
+                if ($remainingToLose <= 0) break;
+
+                $quantityFromBatch = min($batch->remaining_quantity, $remainingToLose);
+                
+                // Consommer le batch
+                $batch->decrement('remaining_quantity', $quantityFromBatch);
+                
+                // Calculer l'impact financier
+                $batchCostImpact = $quantityFromBatch * $batch->total_unit_cost;
+                $totalCostImpact += $batchCostImpact;
+
+                $affectedBatches[] = [
+                    'batch_number' => $batch->batch_number,
+                    'quantity_lost' => $quantityFromBatch,
+                    'unit_cost' => $batch->total_unit_cost,
+                    'cost_impact' => $batchCostImpact,
+                ];
+
+                $remainingToLose -= $quantityFromBatch;
+            }
+
+            if ($remainingToLose > 0) {
+                throw new \Exception("Stock insuffisant dans les batches disponibles");
+            }
+
+            // Mettre à jour l'emplacement
+            $variantLocation->decrement('quantity', $data['quantity']);
+            $variantLocation->variant->recalculateTotalStock();
+
+            // Créer le mouvement de perte
+            $movement = StockMovement::create([
+                'variant_id' => $data['variant_id'],
+                'from_location_id' => $data['location_id'],
+                'to_location_id' => null,
+                'quantity' => $data['quantity'],
+                'movement_type' => 'loss',
+                'loss_type' => $data['loss_type'],
+                'performed_by' => Auth::id(),
+                'reason' => $data['reason'],
+                'notes' => $data['notes'] ?? null
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Perte déclarée avec succès',
+                'movement' => $movement->load(['variant.product', 'fromLocation', 'performedBy']),
+                'affected_batches' => $affectedBatches,
+                'total_cost_impact' => $totalCostImpact
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Erreur lors de la déclaration de perte',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Réconcilier l'inventaire après comptage physique
+     * POST /api/stock-movements/reconcile-inventory
+     */
+    public function reconcileInventory(Request $request)
+    {
+        $data = $request->validate([
+            'location_id' => 'required|integer|exists:locations,id',
+            'inventory_date' => 'required|date|before_or_equal:today',
+            'items' => 'required|array|min:1',
+            'items.*.variant_id' => 'required|integer|exists:product_variants,id',
+            'items.*.system_quantity' => 'required|integer|min:0',
+            'items.*.physical_count' => 'required|integer|min:0',
+            'items.*.notes' => 'nullable|string',
+            'notes' => 'nullable|string'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $results = [
+                'confirmed' => [],
+                'surplus' => [],
+                'shortages' => [],
+                'total_cost_impact' => 0
+            ];
+
+            foreach ($data['items'] as $item) {
+                $difference = $item['physical_count'] - $item['system_quantity'];
+
+                // Cas 1 : Stock conforme
+                if ($difference === 0) {
+                    $results['confirmed'][] = [
+                        'variant_id' => $item['variant_id'],
+                        'quantity' => $item['system_quantity'],
+                        'status' => 'confirmed'
+                    ];
+                    continue;
+                }
+
+                // Cas 2 : Stock excédentaire - ALERTE
+                if ($difference > 0) {
+                    Log::warning('Stock surplus detected during inventory reconciliation', [
+                        'variant_id' => $item['variant_id'],
+                        'location_id' => $data['location_id'],
+                        'expected' => $item['system_quantity'],
+                        'found' => $item['physical_count'],
+                        'surplus' => $difference,
+                        'inventory_date' => $data['inventory_date']
+                    ]);
+
+                    $results['surplus'][] = [
+                        'variant_id' => $item['variant_id'],
+                        'expected' => $item['system_quantity'],
+                        'found' => $item['physical_count'],
+                        'surplus' => $difference,
+                        'action' => 'manual_verification_required'
+                    ];
+                    
+                    // TODO: Créer une notification/alerte pour investigation manuelle
+                    continue;
+                }
+
+                // Cas 3 : Stock manquant - Déclarer perte FIFO
+                if ($difference < 0) {
+                    $quantity = abs($difference);
+
+                    // Consommer les batches en FIFO
+                    $batches = StockBatch::where('variant_id', $item['variant_id'])
+                        ->available()
+                        ->fifoOrder()
+                        ->lockForUpdate()
+                        ->get();
+
+                    $remainingToLose = $quantity;
+                    $affectedBatches = [];
+                    $costImpact = 0;
+
+                    foreach ($batches as $batch) {
+                        if ($remainingToLose <= 0) break;
+
+                        $qtyFromBatch = min($batch->remaining_quantity, $remainingToLose);
+                        $batch->decrement('remaining_quantity', $qtyFromBatch);
+                        
+                        $batchCost = $qtyFromBatch * $batch->total_unit_cost;
+                        $costImpact += $batchCost;
+
+                        $affectedBatches[] = [
+                            'batch_number' => $batch->batch_number,
+                            'quantity' => $qtyFromBatch,
+                            'cost' => $batchCost
+                        ];
+
+                        $remainingToLose -= $qtyFromBatch;
+                    }
+
+                    if ($remainingToLose > 0) {
+                        throw new \Exception(
+                            "Stock insuffisant dans les batches pour variant {$item['variant_id']}"
+                        );
+                    }
+
+                    // Créer le mouvement de perte
+                    $movement = StockMovement::create([
+                        'variant_id' => $item['variant_id'],
+                        'from_location_id' => $data['location_id'],
+                        'to_location_id' => null,
+                        'quantity' => $quantity,
+                        'movement_type' => 'loss',
+                        'loss_type' => 'inventory_shortage',
+                        'performed_by' => Auth::id(),
+                        'reason' => $item['notes'] ?? 'Écart constaté lors de l\'inventaire physique',
+                        'notes' => $data['notes']
+                    ]);
+
+                    // Mettre à jour l'emplacement
+                    $variantLocation = ProductVariantLocation::where([
+                        'variant_id' => $item['variant_id'],
+                        'location_id' => $data['location_id']
+                    ])->firstOrFail();
+
+                    $variantLocation->decrement('quantity', $quantity);
+                    $variantLocation->variant->recalculateTotalStock();
+
+                    $results['shortages'][] = [
+                        'variant_id' => $item['variant_id'],
+                        'expected' => $item['system_quantity'],
+                        'found' => $item['physical_count'],
+                        'shortage' => $quantity,
+                        'cost_impact' => $costImpact,
+                        'affected_batches' => $affectedBatches,
+                        'movement_id' => $movement->id
+                    ];
+
+                    $results['total_cost_impact'] += $costImpact;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Inventaire réconcilié avec succès',
+                'inventory_date' => $data['inventory_date'],
+                'location_id' => $data['location_id'],
+                'results' => $results
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Erreur lors de la réconciliation',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

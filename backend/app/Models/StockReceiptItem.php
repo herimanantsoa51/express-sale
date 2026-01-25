@@ -85,10 +85,11 @@ class StockReceiptItem extends Model
     public function getConformityRate(): array
     {
         $product = $this->variant->product;
+
         $requiredAttributes = $product->attributeTypes()
             ->wherePivot('is_required', true)
             ->get();
-        
+
         if ($requiredAttributes->isEmpty()) {
             return [
                 'total' => 0,
@@ -102,35 +103,47 @@ class StockReceiptItem extends Model
         $conformingAttributes = 0;
         $details = [];
 
-        foreach ($requiredAttributes as $attributeType) {
-            $rating = $this->ratings()
-                ->where('attribute_type_id', $attributeType->id)
-                ->first();
+        $conformitySum = 0;
+        $ratedCount = 0;
 
-            $isConforming = $rating && $rating->isConforming();
-            
+        foreach ($requiredAttributes as $attributeType) {
+            $rating = $this->ratings
+                ->firstWhere('attribute_type_id', $attributeType->id);
+
+            $isConforming = $rating?->isConforming() ?? false;
+
             if ($isConforming) {
                 $conformingAttributes++;
+            }
+
+            if ($rating) {
+                $conformitySum += $rating->conformity_rating;
+                $ratedCount++;
             }
 
             $details[] = [
                 'attribute_type_id' => $attributeType->id,
                 'attribute_name' => $attributeType->name,
                 'display_name' => $attributeType->display_name,
-                'rating' => $rating ? $rating->conformity_rating : null,
-                'conformity_level' => $rating ? $rating->conformity_level : 'Non évalué',
+                'rating' => $rating?->conformity_rating,
+                'conformity_level' => $rating?->conformity_level ?? 'Non évalué',
                 'is_conforming' => $isConforming,
                 'notes' => $rating?->notes
             ];
         }
 
+        $average = $ratedCount > 0
+            ? ($conformitySum / $ratedCount)
+            : 0;
+
         return [
             'total' => $totalAttributes,
             'conforming' => $conformingAttributes,
-            'rate' => $totalAttributes > 0 ? ($conformingAttributes / $totalAttributes) * 100 : 0,
+            'rate' => round($average * 10, 2), // note /10 → %
             'details' => $details
         ];
     }
+
 
     /**
      * Ajouter une évaluation d'attribut

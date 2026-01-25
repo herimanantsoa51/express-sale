@@ -20,12 +20,14 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ArrowUpDown,
+  ClipboardCheck,
   Eye,
   X,
   Clock,
   Warehouse,
   Layers,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import stockMovementService from '../../services/stockMovementService';
 import './StockMovementList.css';
@@ -34,7 +36,7 @@ const StockMovementList = () => {
   const navigate = useNavigate();
   
   // États principaux
-  const [viewMode, setViewMode] = useState('grouped'); // 'grouped' ou 'individual'
+  const [viewMode, setViewMode] = useState('individual'); // 'grouped' ou 'individual'
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState(null);
   
@@ -175,8 +177,10 @@ const StockMovementList = () => {
       transfer: <ArrowUpDown size={18} />,
       receipt: <TrendingUp size={18} />,
       sale: <ShoppingCart size={18} />,
-      adjustment: <Filter size={18} />,
-      return: <RefreshCw size={18} />
+      loss: <AlertTriangle size={18} />,  // NOUVEAU
+      reconciliation: <ClipboardCheck size={18} />,  // NOUVEAU
+      return: <RefreshCw size={18} />,
+      restock:<RefreshCw size={18} />
     };
     return icons[type] || <Package size={18} />;
   };
@@ -186,8 +190,10 @@ const StockMovementList = () => {
       transfer: 'Transfert',
       receipt: 'Réception',
       sale: 'Vente',
-      adjustment: 'Ajustement',
-      return: 'Retour'
+      loss: 'Perte',  // NOUVEAU
+      return: 'Retour',
+      restock:'Annulation Vente',
+      reconciliation: 'Réconciliation',
     };
     return types[type] || type;
   };
@@ -197,12 +203,13 @@ const StockMovementList = () => {
       transfer: 'badge-primary',
       receipt: 'badge-success',
       sale: 'badge-danger',
-      adjustment: 'badge-warning',
-      return: 'badge-info'
+      loss: 'badge-warning',  // NOUVEAU
+      return: 'badge-info',
+      restock:'badge-info',
+      reconciliation: 'badge-info'
     };
     return classes[type] || 'badge-default';
   };
-
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString('fr-FR', {
@@ -238,6 +245,7 @@ const StockMovementList = () => {
   };
 
   const getReferenceLink = (movement) => {
+    console.log('movement',movement);
     if (movement.movement_type === 'receipt' && movement.stock_receipt_id) {
       return (
         <Link 
@@ -251,20 +259,105 @@ const StockMovementList = () => {
         </Link>
       );
     }
-    if (movement.movement_type === 'sale' && movement.sale_id) {
+    if ((movement.movement_type === 'sale') && movement.sale_id) {
+      if (movement.sale?.sale_type == 'immediate') {
+        return (
+          <Link 
+            to={`/ventes/immediates/${movement.sale_id}`}
+            className="reference-link sale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ShoppingCart size={14} />
+            <span>Vente #{movement.sale.sale_number}</span>
+            <ExternalLink size={12} />
+          </Link>
+        );
+      }
+      else if(movement.sale?.sale_type == 'reservation'){
+        return (
+          <Link 
+            to={`/ventes/reservations/${movement.sale.reservation.id}`}
+            className="reference-link sale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ShoppingCart size={14} />
+            <span>Réservation #{movement.sale.sale_number}</span>
+            <ExternalLink size={12} />
+          </Link>
+        );
+      }
+      else if(movement.sale?.sale_type == 'credit'){
+        return (
+          <Link 
+            to={`/ventes/credits/${movement.sale.credit.id}`}
+            className="reference-link sale"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ShoppingCart size={14} />
+            <span>Credit #{movement.sale.sale_number}</span>
+            <ExternalLink size={12} />
+          </Link>
+        );
+      }
+      
+    }
+    else if (movement.movement_type =='reservation' )
+    {
       return (
         <Link 
-          to={`/ventes/${movement.sale_id}`}
-          className="reference-link sale"
+          to={`/ventes/reservations/${movement.sale.reservation.id}`}
+          className="reference-link reservation"
           onClick={(e) => e.stopPropagation()}
         >
-          <ShoppingCart size={14} />
-          <span>Vente #{movement.sale_id}</span>
+          <Warehouse size={14} />
+          <span>Réservation #{movement.sale.sale_number}</span>
           <ExternalLink size={12} />
         </Link>
       );
     }
-    return null;
+    else if (movement.movement_type =='restock')
+    {
+        if (movement.sale?.sale_type == 'immediate') {
+          return (
+            <Link 
+              to={`/ventes/immediates/${movement.sale_id}`}
+              className="reference-link sale"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ShoppingCart size={14} />
+              <span>Vente #{movement.sale.sale_number}</span>
+              <ExternalLink size={12} />
+            </Link>
+          );
+        }
+        else if(movement.sale?.sale_type == 'reservation'){
+          return (
+            <Link 
+              to={`/ventes/reservations/${movement.sale.reservation.id}`}
+              className="reference-link sale"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ShoppingCart size={14} />
+              <span>Réservation #{movement.sale.sale_number}</span>
+              <ExternalLink size={12} />
+            </Link>
+          );
+        }
+        else if(movement.sale?.sale_type == 'credit'){
+          return (
+            <Link 
+              to={`/ventes/credits/${movement.sale.credit.id}`}
+              className="reference-link sale"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ShoppingCart size={14} />
+              <span>Credit #{movement.sale.sale_number}</span>
+              <ExternalLink size={12} />
+            </Link>
+          );
+        }
+      }
+      return null;
   };
 
   // Pagination
@@ -316,12 +409,19 @@ const StockMovementList = () => {
           </div>
         </div>
         <div className="header-actions">
+          {/* <button
+            className="btn-secondary"
+            onClick={() => navigate('/mouvements-stock/reconciliation')}
+          >
+            <ClipboardCheck size={18} />
+            Réconciliation
+          </button> */}
           <button
             className="btn-secondary"
-            onClick={() => navigate('/mouvements-stock/ajustement')}
+            onClick={() => navigate('/mouvements-stock/perte')}
           >
-            <Filter size={18} />
-            Ajustement
+            <AlertTriangle size={18} />
+            Déclarer une perte
           </button>
           <button
             className="btn-primary"
@@ -395,7 +495,7 @@ const StockMovementList = () => {
         </div>
 
         <div className="filter-controls">
-          <select
+        <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
             className="filter-select"
@@ -404,8 +504,8 @@ const StockMovementList = () => {
             <option value="transfer">Transferts</option>
             <option value="receipt">Réceptions</option>
             <option value="sale">Ventes</option>
-            <option value="adjustment">Ajustements</option>
-            <option value="return">Retours</option>
+            <option value="loss">Pertes</option>  {/* NOUVEAU */}
+            <option value="restock">Retours</option>
           </select>
 
           <select

@@ -68,6 +68,10 @@ const supplierService = {
         last_receipt_date: null
       };
     }
+  },
+  async getSupplierReceipts(id, params = {}) {
+    const response = await api.get(`/suppliers/${id}/stock-receipts`, { params });
+    return response.data;
   }
 };
 

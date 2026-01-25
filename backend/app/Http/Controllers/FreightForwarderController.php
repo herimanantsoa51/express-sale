@@ -6,6 +6,8 @@ use App\Models\FreightForwarder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Http\Resources\FreightForwarderResource;
+use App\Models\AccountTransaction;
+use App\Models\StockReceipt;
 
 class FreightForwarderController extends Controller
 {
@@ -28,6 +30,7 @@ class FreightForwarderController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:freight_forwarders,name',
+            'type' => 'required|in:aerien,maritime',
             'logo_url' => 'nullable|string|max:500',
             'contact' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -42,14 +45,87 @@ class FreightForwarderController extends Controller
         );
     }
 
+
     /**
      * GET /api/freight-forwarders/{id}
      */
     public function show($id)
     {
         $forwarder = FreightForwarder::with('coordinate')->findOrFail($id);
+        
+        // Calculer les statistiques
+        $statistics = $this->calculateStatistics($forwarder);
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => new FreightForwarderResource($forwarder),
+            'statistics' => $statistics
+        ]);
+    }
 
-        return new FreightForwarderResource($forwarder);
+    /**
+     * Calculer les statistiques pour un transitaire
+     */
+    private function calculateStatistics(FreightForwarder $forwarder)
+    {
+        // Total dépensé (transactions non annulées)
+        $totalSpent = AccountTransaction::where('freight_forwarder_id', $forwarder->id)
+            ->whereNull('reversed_transaction_id')
+            ->sum('amount');
+        
+        // Nombre total de réceptions
+        $totalReceipts = $forwarder->stockReceipts()->count();
+        
+        // Réceptions validées
+        $validatedReceipts = $forwarder->stockReceipts()
+            ->where('status', 'validated')
+            ->count();
+        
+        // Dernière réception
+        $lastReceipt = $forwarder->stockReceipts()
+            ->latest('created_at')
+            ->first();
+        
+        // Valeur totale des réceptions
+        $totalReceiptsValue = $forwarder->stockReceipts()
+            ->where('status', 'validated')
+            ->sum('total_cost_ariary');
+        
+        return [
+            'total_spent' => (float) $totalSpent,
+            'total_receipts' => $totalReceipts,
+            'validated_receipts' => $validatedReceipts,
+            'pending_receipts' => $totalReceipts - $validatedReceipts,
+            'total_receipts_value' => (float) $totalReceiptsValue,
+            'last_receipt_date' => $lastReceipt ? $lastReceipt->created_at : null,
+            'last_receipt_number' => $lastReceipt ? $lastReceipt->receipt_number : null,
+            'average_per_receipt' => $totalReceipts > 0 ? (float) ($totalSpent / $totalReceipts) : 0,
+        ];
+    }
+
+    /**
+     * Obtenir les réceptions de stock d'un transitaire avec pagination
+     * GET /api/freight-forwarders/{id}/stock-receipts
+     */
+    public function getStockReceipts($id, Request $request)
+    {
+        $perPage = $request->input('per_page', 15);
+        
+        $receipts = StockReceipt::where('freight_forwarder_id', $id)
+            ->select(['id', 'receipt_number', 'status', 'total_cost_ariary', 'created_at'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => $receipts->items(),
+            'meta' => [
+                'current_page' => $receipts->currentPage(),
+                'last_page' => $receipts->lastPage(),
+                'per_page' => $receipts->perPage(),
+                'total' => $receipts->total(),
+            ]
+        ]);
     }
 
     /**
@@ -66,6 +142,7 @@ class FreightForwarderController extends Controller
                 'max:255',
                 Rule::unique('freight_forwarders', 'name')->ignore($forwarder->id),
             ],
+            'type' => 'required|in:aerien,maritime',
             'logo_url' => 'nullable|string|max:500',
             'contact' => 'nullable|string|max:255',
             'notes' => 'nullable|string',

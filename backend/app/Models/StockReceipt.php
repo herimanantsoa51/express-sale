@@ -32,11 +32,10 @@ class StockReceipt extends Model
         'expected_delivery_date' => 'date',
         'actual_delivery_date' => 'datetime',
         'total_cost_ariary' => 'decimal:2',
-         'cost_validated_at' => 'date'
+        'cost_validated_at' => 'date'
     ];
 
-    // Status possibles: pending, sent, in_transit, arrived, validated, cancelled
-    // Delivery status: ordered, shipped, in_transit, delivered, delayed
+
 
     // Relations
     public function supplier(): BelongsTo

@@ -1,10 +1,6 @@
-// ============================================
-// pages/FreightForwarders/FreightForwarderForm.jsx - APPLE DESIGN
-// ============================================
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Save, FileText, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Save, FileText, Image as ImageIcon, X, AlertCircle, Plane, Ship } from 'lucide-react';
 import freightForwarderService from '../../services/freightForwarderService';
 import { fileService } from '../../services/fileService';
 import CoordinateSelect from '../../components/CoordinateSelect';
@@ -24,6 +20,7 @@ const FreightForwarderForm = () => {
 
   const [formData, setFormData] = useState({
     name: '',
+    type: 'aerien',
     coordinate_id: null,
     logo_url: '',
     contact: '',
@@ -66,6 +63,7 @@ const FreightForwarderForm = () => {
       
       const newFormData = {
         name: data.name || '',
+        type: data.type || 'aerien',
         coordinate_id: coordinateIdToUse,
         logo_url: imageUrl,
         contact: data.contact || '',
@@ -208,6 +206,10 @@ const FreightForwarderForm = () => {
       newErrors.name = 'Le nom est requis';
     }
 
+    if (!formData.type) {
+      newErrors.type = 'Le type est requis';
+    }
+
     if (formData.service_score < 0 || formData.service_score > 10) {
       newErrors.service_score = 'La note doit être entre 0 et 10';
     }
@@ -249,6 +251,7 @@ const FreightForwarderForm = () => {
 
       const submitData = {
         name: formData.name,
+        type: formData.type,
         coordinate_id: formData.coordinate_id || null,
         contact: formData.contact || '',
         notes: formData.notes || '',
@@ -352,6 +355,55 @@ const FreightForwarderForm = () => {
                 )}
               </div>
 
+              {/* Type */}
+              <div className="ff-field">
+                <label className="ff-label ff-required">Type de transport</label>
+                <div className="ff-type-selector">
+                  <button
+                    type="button"
+                    className={`ff-type-btn ${formData.type === 'aerien' ? 'ff-type-active' : ''}`}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, type: 'aerien' }));
+                      if (errors.type) {
+                        setErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.type;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    disabled={submitting}
+                  >
+                    <Plane size={20} />
+                    <span>Aérien</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`ff-type-btn ${formData.type === 'maritime' ? 'ff-type-active' : ''}`}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, type: 'maritime' }));
+                      if (errors.type) {
+                        setErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.type;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    disabled={submitting}
+                  >
+                    <Ship size={20} />
+                    <span>Maritime</span>
+                  </button>
+                </div>
+                {errors.type && (
+                  <div className="ff-error-msg">
+                    <AlertCircle size={14} />
+                    {errors.type}
+                  </div>
+                )}
+              </div>
+
               {/* Localisation */}
               <div className="ff-field">
                 <label className="ff-label">Localisation</label>
@@ -394,7 +446,7 @@ const FreightForwarderForm = () => {
               </div>
 
               {/* Note de service */}
-              <div className="ff-field">
+              {/* <div className="ff-field">
                 <label className="ff-label">
                   Note de service
                   <span className="ff-score-value">{formData.service_score.toFixed(1)}/10</span>
@@ -416,7 +468,7 @@ const FreightForwarderForm = () => {
                     {errors.service_score}
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Statut */}
               <label className="ff-checkbox">

@@ -6,7 +6,6 @@ import invoiceService from '../../services/invoiceService';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import '../../styles/CashCountDetail.css';
-import 'react-toastify/dist/ReactToastify.css';
 import printService from '../../services/printService';
 
 const CashCountDetail = () => {

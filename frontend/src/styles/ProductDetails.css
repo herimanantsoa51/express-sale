@@ -1,5 +1,5 @@
 /* ============================================
-   PRODUCT DETAIL PAGE - APPLE GRADE STYLES
+   PRODUCT DETAIL PAGE - PARTIE 1
    ============================================ */
 
 /* === CONTAINER === */
@@ -285,6 +285,185 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* === STATS === */
+.pd-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.pd-stat-card {
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  transition: all var(--transition-speed) var(--transition-timing);
+}
+
+.pd-stat-card:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.pd-stat-card-highlight {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+  border-color: var(--primary);
+}
+
+.pd-stat-card-highlight .pd-stat-value {
+  color: var(--primary);
+}
+
+.pd-stat-card-profit {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.1));
+  border-color: #22c55e;
+}
+
+.pd-stat-card-profit .pd-stat-value {
+  color: #22c55e;
+}
+
+.pd-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.pd-stat-value {
+  font-size: 28px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.pd-stat-success {
+  color: var(--success);
+}
+
+.pd-stat-cost {
+  color: #ef4444;
+}
+
+.pd-stat-profit {
+  color: #22c55e;
+}
+
+.pd-stat-margin {
+  color: #3b82f6;
+}
+
+/* === EMPTY STATE === */
+.pd-empty-state {
+  padding: var(--spacing-2xl);
+  text-align: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+}
+
+.pd-empty-text {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+/* === ERROR STATE === */
+.pd-error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--spacing-2xl);
+}
+
+.pd-error-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.pd-error-content h2 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.pd-error-content p {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* === SKELETON === */
+.pd-skeleton-header {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.pd-skeleton-block {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 0%,
+    var(--bg-tertiary) 50%,
+    var(--bg-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonLoading 1.5s ease-in-out infinite;
+  border-radius: var(--border-radius);
+}
+
+.pd-skeleton-title {
+  height: 40px;
+  width: 60%;
+  margin-bottom: var(--spacing-md);
+}
+
+.pd-skeleton-text {
+  height: 20px;
+  width: 40%;
+}
+
+.pd-skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.pd-skeleton-card {
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+}
+
+.pd-skeleton-image {
+  height: 140px;
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+}
+
+@keyframes skeletonLoading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* ============================================
+   PRODUCT DETAIL PAGE - PARTIE 2
+   ============================================ */
+
 /* === VARIANTS === */
 .pd-variants-list {
   display: flex;
@@ -293,25 +472,29 @@
 }
 
 .pd-variant-card {
-  display: flex;
-  gap: var(--spacing-lg);
   padding: var(--spacing-lg);
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   transition: all var(--transition-speed) var(--transition-timing);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .pd-variant-card:hover {
   box-shadow: var(--shadow-md);
-  border-color: var(--border-color);
 }
 
-.pd-variant-image-section {
-  flex-shrink: 0;
+/* Top Section avec Image + Info */
+.pd-variant-top {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: flex-start;
 }
 
 .pd-variant-image-wrapper {
+  flex-shrink: 0;
   width: 140px;
   height: 140px;
   border-radius: var(--border-radius);
@@ -337,11 +520,12 @@
   height: 100%;
 }
 
-.pd-variant-content {
+.pd-variant-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  min-width: 0;
 }
 
 .pd-variant-header {
@@ -392,6 +576,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .pd-variant-price {
@@ -416,6 +601,90 @@
 .pd-variant-inactive {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
+}
+
+/* === VARIANT FINANCIALS === */
+.pd-variant-financials {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05));
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.pd-financial-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-financial-profit-item {
+  background: rgba(34, 197, 94, 0.1);
+  padding: var(--spacing-sm);
+  border-radius: 8px;
+}
+
+.pd-financial-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pd-financial-value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.pd-financial-cost {
+  color: #ef4444;
+}
+
+.pd-financial-profit {
+  color: #22c55e;
+  font-size: var(--font-size-lg);
+}
+
+.pd-financial-margin {
+  color: #3b82f6;
+}
+
+/* === TABS === */
+.pd-variant-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pd-tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-speed) var(--transition-timing);
+  font-family: var(--font-family);
+}
+
+.pd-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.pd-tab-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.pd-tab-content {
+  padding-top: var(--spacing-md);
 }
 
 .pd-variant-grid {
@@ -558,6 +827,248 @@
   color: var(--text-primary);
 }
 
+/* === BATCHES === */
+.pd-batches-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  gap: var(--spacing-md);
+}
+
+.pd-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.pd-batches-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.pd-batch-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-batch-summary-highlight {
+  background: var(--primary-light);
+  padding: var(--spacing-sm);
+  border-radius: 6px;
+}
+
+.pd-batch-summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pd-batch-summary-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.pd-batches-table-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.pd-batches-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  min-width: 1100px;
+}
+
+.pd-batches-table thead {
+  background: var(--bg-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.pd-batches-table th {
+  padding: var(--spacing-sm);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.pd-batches-table td {
+  padding: var(--spacing-sm);
+  border-top: 1px solid var(--border-color);
+}
+
+.pd-batch-number {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-mono);
+}
+
+.pd-batch-link {
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  transition: color var(--transition-speed);
+  font-family: var(--font-family);
+}
+
+.pd-batch-link:hover {
+  color: var(--primary-hover);
+}
+
+.pd-batch-receipt {
+  color: var(--primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.pd-batch-supplier {
+  color: var(--text-primary);
+}
+
+.pd-batch-qty {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pd-batch-qty-available {
+  color: var(--success);
+}
+
+.pd-batch-qty-sold {
+  color: var(--text-secondary);
+}
+
+.pd-batch-cost,
+.pd-batch-value {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.pd-batch-date {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.pd-batch-status {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.pd-batch-status-validated {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.pd-batch-status-pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.pd-batch-view-btn {
+  padding: 6px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition-speed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pd-batch-view-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* === PAGINATION === */
+.pd-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+  margin-top: var(--spacing-sm);
+}
+
+.pd-pagination-info {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.pd-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.pd-pagination-btn {
+  padding: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition-speed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.pd-pagination-btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.pd-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pd-pagination-current {
+  padding: 0 var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
 /* === ALERTS === */
 .pd-variant-alerts {
   display: flex;
@@ -588,150 +1099,6 @@
   padding-top: var(--spacing-sm);
 }
 
-/* === STATS === */
-.pd-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-}
-
-.pd-stat-card {
-  padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  transition: all var(--transition-speed) var(--transition-timing);
-}
-
-.pd-stat-card:hover {
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-2px);
-}
-
-.pd-stat-card-highlight {
-  background: var(--primary-light);
-  border-color: var(--primary);
-}
-
-.pd-stat-card-highlight .pd-stat-value {
-  color: var(--primary);
-}
-
-.pd-stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  font-weight: var(--font-weight-medium);
-}
-
-.pd-stat-value {
-  font-size: 28px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-}
-
-.pd-stat-success {
-  color: var(--success);
-}
-
-/* === EMPTY STATE === */
-.pd-empty-state {
-  padding: var(--spacing-2xl);
-  text-align: center;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-}
-
-.pd-empty-text {
-  font-size: var(--font-size-md);
-  color: var(--text-secondary);
-  margin: 0 0 var(--spacing-md) 0;
-}
-
-/* === ERROR STATE === */
-.pd-error-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  padding: var(--spacing-2xl);
-}
-
-.pd-error-content {
-  text-align: center;
-  max-width: 400px;
-}
-
-.pd-error-content h2 {
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
-}
-
-.pd-error-content p {
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-lg);
-}
-
-/* === SKELETON === */
-.pd-skeleton-header {
-  margin-bottom: var(--spacing-2xl);
-}
-
-.pd-skeleton-block {
-  background: linear-gradient(
-    90deg,
-    var(--bg-secondary) 0%,
-    var(--bg-tertiary) 50%,
-    var(--bg-secondary) 100%
-  );
-  background-size: 200% 100%;
-  animation: skeletonLoading 1.5s ease-in-out infinite;
-  border-radius: var(--border-radius);
-}
-
-.pd-skeleton-title {
-  height: 40px;
-  width: 60%;
-  margin-bottom: var(--spacing-md);
-}
-
-.pd-skeleton-text {
-  height: 20px;
-  width: 40%;
-}
-
-.pd-skeleton-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-md);
-}
-
-.pd-skeleton-card {
-  padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-}
-
-.pd-skeleton-image {
-  height: 140px;
-  width: 100%;
-  margin-bottom: var(--spacing-md);
-}
-
-@keyframes skeletonLoading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
   .pd-container {
@@ -751,11 +1118,16 @@
     font-size: 28px;
   }
 
+  .pd-header-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .pd-attributes-grid {
     grid-template-columns: 1fr;
   }
 
-  .pd-variant-card {
+  .pd-variant-top {
     flex-direction: column;
   }
 
@@ -768,6 +1140,10 @@
     grid-template-columns: 1fr;
   }
 
+  .pd-variant-financials {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .pd-stats-grid {
     grid-template-columns: 1fr;
   }
@@ -778,8 +1154,15 @@
     gap: var(--spacing-sm);
   }
 
-  .pd-header-meta {
-    flex-direction: column;
-    align-items: flex-start;
+  .pd-batches-table-wrapper {
+    overflow-x: scroll;
+  }
+
+  .pd-batches-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pd-batch-summary-highlight {
+    grid-column: 1 / -1;
   }
 }

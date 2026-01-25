@@ -79,16 +79,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('products/update-base-prices', [ProductController::class, 'updateBasePrices']);
     // routes/api.php
     Route::get('products/{product}/attribute-types', [ProductController::class, 'getProductAttributeTypes']);
+    // Dans routes/api.php
+    Route::get('products/{productId}/variants/{variantId}/batches', [ProductController::class, 'getVariantBatches']);
 
 
     // Types d'attributs
     Route::apiResource('freight-forwarders', FreightForwarderController::class);
     Route::get('freight-forwarders/{id}/statistics', [FreightForwarderController::class, 'statistics']);
-
+    Route::get('/freight-forwarders/{id}/stock-receipts', [FreightForwarderController::class, 'getStockReceipts']);
     Route::apiResource('attribute-types', AttributeTypeController::class);
 
     Route::get('suppliers/{id}/statistics', [SupplierController::class, 'statistics']);
     Route::apiResource('suppliers', SupplierController::class);
+   
+    Route::get('suppliers/{id}/stock-receipts', [SupplierController::class, 'getStockReceipts']);
 
 
     Route::get('coordinates/countries', [CoordinateController::class, 'countries']);
@@ -230,6 +234,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bulk-transfer', [StockMovementController::class, 'bulkTransfer']);
         Route::post('/adjustment', [StockMovementController::class, 'adjustment']);
         Route::post('/bulk-adjustment', [StockMovementController::class, 'bulkAdjustment']);
+            // Déclaration de perte
+        Route::post('loss', [StockMovementController::class, 'declareLoss']);
+        
+        // Réconciliation d'inventaire
+        Route::post('reconcile-inventory', [StockMovementController::class, 'reconcileInventory']);
     });
 
     // Routes pour l'historique par variante ou location
@@ -350,6 +359,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('company-info', [CompanyInfoController::class,'update']);
 
     Route::get('/system/info', [SystemController::class, 'getServerInfo']);
+    
     // routes/api.php
     Route::prefix('print')->group(function () {
         Route::get('/test', [PrintController::class, 'testPrinter']);

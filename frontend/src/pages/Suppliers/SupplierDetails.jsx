@@ -1,11 +1,27 @@
-// ============================================
-// pages/Suppliers/SupplierDetails.jsx
-// ============================================
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Trash2, Package, Inbox, DollarSign, Calendar, Phone, MessageCircle, FileText, MapPin, AlertTriangle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit2,
+  Trash2,
+  Package,
+  DollarSign,
+  TrendingUp,
+  ShoppingCart,
+  Calendar,
+  Phone,
+  MessageCircle,
+  FileText,
+  MapPin,
+  AlertTriangle,
+  Star,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  ChevronRight
+} from 'lucide-react';
 import supplierService from '../../services/supplierService';
+import StatusBadge from '../StockReceipt/stockReceiptDetailsComponents/StatusBadge';
 import '../../styles/SupplierDetails.css';
 
 const SupplierDetails = () => {
@@ -14,32 +30,52 @@ const SupplierDetails = () => {
   
   const [supplier, setSupplier] = useState(null);
   const [statistics, setStatistics] = useState(null);
+  const [receipts, setReceipts] = useState([]);
+  const [receiptsPage, setReceiptsPage] = useState(1);
+  const [receiptsPagination, setReceiptsPagination] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     loadSupplierData();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'receipts') {
+      loadReceipts();
+    }
+  }, [activeTab, receiptsPage]);
 
   const loadSupplierData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [supplierData, statsData] = await Promise.all([
-        supplierService.getSupplier(id),
-        supplierService.getSupplierStatistics(id)
-      ]);
-      
-      setSupplier(supplierData);
-      setStatistics(statsData);
+      const response = await supplierService.getSupplier(id);
+      setSupplier(response.data);
+      setStatistics(response.statistics);
     } catch (err) {
       setError('Erreur lors du chargement des données');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadReceipts = async () => {
+    try {
+      setReceiptsLoading(true);
+      const response = await supplierService.getSupplierReceipts(id, { page: receiptsPage });
+      setReceipts(response.data || []);
+      setReceiptsPagination(response.meta);
+    } catch (err) {
+      console.error('Erreur chargement réceptions:', err);
+    } finally {
+      setReceiptsLoading(false);
     }
   };
 
@@ -55,10 +91,27 @@ const SupplierDetails = () => {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount) + ' Ar';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   const getReliabilityColor = (score) => {
-    if (score >= 8) return 'success';
-    if (score >= 6) return 'warning';
-    return 'danger';
+    if (score >= 8) return 'sd-reliability-excellent';
+    if (score >= 6) return 'sd-reliability-good';
+    if (score >= 4) return 'sd-reliability-average';
+    return 'sd-reliability-poor';
   };
 
   const getReliabilityLabel = (score) => {
@@ -68,21 +121,229 @@ const SupplierDetails = () => {
     return 'Faible';
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+  const renderOverviewTab = () => {
+    if (!statistics) return null;
+
+    return (
+      <div className="sd-overview-content">
+        {/* Stats principales */}
+        <div className="sd-stats-grid">
+          <div className="sd-stat-card sd-stat-primary">
+            <div className="sd-stat-icon" style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}>
+              <DollarSign size={24} />
+            </div>
+            <div className="sd-stat-content">
+              <div className="sd-stat-value">{formatCurrency(statistics.total_spent)}</div>
+              <div className="sd-stat-label">Total dépensé</div>
+            </div>
+          </div>
+
+          <div className="sd-stat-card sd-stat-success">
+            <div className="sd-stat-icon" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
+              <TrendingUp size={24} />
+            </div>
+            <div className="sd-stat-content">
+              <div className="sd-stat-value">{formatCurrency(statistics.profit_data.total_profit)}</div>
+              <div className="sd-stat-label">Bénéfices réalisés</div>
+              <div className="sd-stat-subtitle">
+                Marge: {statistics.profit_data.profit_margin_percent}%
+              </div>
+            </div>
+          </div>
+
+          <div className="sd-stat-card">
+            <div className="sd-stat-icon" style={{ background: 'var(--info-light)', color: 'var(--info)' }}>
+              <ShoppingCart size={24} />
+            </div>
+            <div className="sd-stat-content">
+              <div className="sd-stat-value">{statistics.profit_data.total_units_sold}</div>
+              <div className="sd-stat-label">Unités vendues</div>
+              <div className="sd-stat-subtitle">
+                Revenu: {formatCurrency(statistics.profit_data.total_revenue)}
+              </div>
+            </div>
+          </div>
+
+          <div className="sd-stat-card">
+            <div className="sd-stat-icon" style={{ background: 'var(--warning-light)', color: 'var(--warning)' }}>
+              <Package size={24} />
+            </div>
+            <div className="sd-stat-content">
+              <div className="sd-stat-value">{statistics.total_products}</div>
+              <div className="sd-stat-label">Produits</div>
+              <div className="sd-stat-subtitle">
+                {statistics.total_receipts} réceptions
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Conformité par attribut */}
+        {statistics.conformity_by_attribute && statistics.conformity_by_attribute.length > 0 && (
+          <div className="sd-section">
+            <h3 className="sd-section-title">
+              <CheckCircle size={20} />
+              Conformité par attribut
+            </h3>
+            <div className="sd-conformity-grid">
+              {statistics.conformity_by_attribute.map((attr) => (
+                <div key={attr.attribute_id} className="sd-conformity-card">
+                  <div className="sd-conformity-header">
+                    <span className="sd-conformity-name">{attr.attribute_name}</span>
+                    <span className={`sd-conformity-rate ${attr.conformity_rate >= 70 ? 'sd-rate-good' : attr.conformity_rate >= 40 ? 'sd-rate-average' : 'sd-rate-poor'}`}>
+                      {attr.conformity_rate}%
+                    </span>
+                  </div>
+                  <div className="sd-conformity-progress">
+                    <div 
+                      className="sd-conformity-bar"
+                      style={{ width: `${attr.conformity_rate}%` }}
+                    />
+                  </div>
+                  <div className="sd-conformity-details">
+                    {attr.conforming_count} / {attr.total_ratings} conformes
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Informations générales */}
+        <div className="sd-section">
+          <h3 className="sd-section-title">
+            <FileText size={20} />
+            Informations générales
+          </h3>
+          <div className="sd-info-grid">
+            {supplier.coordinate && (
+              <div className="sd-info-item">
+                <MapPin size={16} className="sd-info-icon" />
+                <div className="sd-info-content">
+                  <div className="sd-info-label">Localisation</div>
+                  <div className="sd-info-value">{supplier.coordinate.full_location}</div>
+                </div>
+              </div>
+            )}
+
+            {supplier.contact && (
+              <div className="sd-info-item">
+                <Phone size={16} className="sd-info-icon" />
+                <div className="sd-info-content">
+                  <div className="sd-info-label">Contact</div>
+                  <div className="sd-info-value">{supplier.contact}</div>
+                </div>
+              </div>
+            )}
+
+            {supplier.wechat && (
+              <div className="sd-info-item">
+                <MessageCircle size={16} className="sd-info-icon" />
+                <div className="sd-info-content">
+                  <div className="sd-info-label">WeChat</div>
+                  <div className="sd-info-value">{supplier.wechat}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="sd-info-item">
+              <Calendar size={16} className="sd-info-icon" />
+              <div className="sd-info-content">
+                <div className="sd-info-label">Ajouté le</div>
+                <div className="sd-info-value">{formatDate(supplier.created_at)}</div>
+              </div>
+            </div>
+          </div>
+
+          {supplier.profile && (
+            <div className="sd-info-block">
+              <div className="sd-info-label">Profil</div>
+              <div className="sd-info-description">{supplier.profile}</div>
+            </div>
+          )}
+
+          {supplier.accessibility_notes && (
+            <div className="sd-info-block">
+              <div className="sd-info-label">Notes d'accessibilité</div>
+              <div className="sd-info-description">{supplier.accessibility_notes}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderReceiptsTab = () => {
+    if (receiptsLoading) {
+      return (
+        <div className="sd-tab-loading">
+          <Loader2 className="sd-spinner" size={32} />
+        </div>
+      );
+    }
+
+    if (receipts.length === 0) {
+      return (
+        <div className="sd-empty-tab">
+          <Package size={48} />
+          <p>Aucune réception</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div className="sd-receipts-list">
+          {receipts.map((receipt) => (
+            <div
+              key={receipt.id}
+              className="sd-receipt-card"
+              onClick={() => navigate(`/reapprovisionnements/${receipt.id}`)}
+            >
+              <div className="sd-receipt-main">
+                <h4 className="sd-receipt-number">{receipt.receipt_number}</h4>
+                <StatusBadge status={receipt.status} />
+              </div>
+              <div className="sd-receipt-footer">
+                <span className="sd-receipt-amount">{formatCurrency(receipt.total_cost_ariary)}</span>
+                <span className="sd-receipt-date">{formatDate(receipt.created_at)}</span>
+              </div>
+              <ChevronRight className="sd-receipt-arrow" size={20} />
+            </div>
+          ))}
+        </div>
+
+        {receiptsPagination && receiptsPagination.last_page > 1 && (
+          <div className="sd-pagination">
+            <button
+              className="sd-pagination-btn"
+              onClick={() => setReceiptsPage(receiptsPage - 1)}
+              disabled={receiptsPage === 1}
+            >
+              Précédent
+            </button>
+            <span className="sd-pagination-text">
+              Page {receiptsPage} sur {receiptsPagination.last_page}
+            </span>
+            <button
+              className="sd-pagination-btn"
+              onClick={() => setReceiptsPage(receiptsPage + 1)}
+              disabled={receiptsPage === receiptsPagination.last_page}
+            >
+              Suivant
+            </button>
+          </div>
+        )}
+      </>
+    );
   };
 
   if (loading) {
     return (
-      <div className="supplier-details-page">
-        <div className="loading-container">
-          <div className="loading-spinner large"></div>
-          <p>Chargement des détails...</p>
+      <div className="sd-page">
+        <div className="sd-loading-screen">
+          <Loader2 className="sd-spinner" size={56} />
+          <p>Chargement...</p>
         </div>
       </div>
     );
@@ -90,15 +351,12 @@ const SupplierDetails = () => {
 
   if (error || !supplier) {
     return (
-      <div className="supplier-details-page">
-        <div className="error-container">
-          <AlertTriangle className="error-icon" size={64} />
+      <div className="sd-page">
+        <div className="sd-error-screen">
+          <AlertTriangle size={72} />
           <h3>Erreur</h3>
           <p>{error || 'Fournisseur introuvable'}</p>
-          <button 
-            className="btn-primary"
-            onClick={() => navigate('/fournisseurs')}
-          >
+          <button className="sd-btn-primary" onClick={() => navigate('/fournisseurs')}>
             <ArrowLeft size={18} /> Retour à la liste
           </button>
         </div>
@@ -107,200 +365,105 @@ const SupplierDetails = () => {
   }
 
   return (
-    <div className="supplier-details-page">
+    <div className="sd-page">
       {/* Header */}
-      <div className="details-header">
-        <button 
-          className="btn-back"
-          onClick={() => navigate('/fournisseurs')}
-        >
-          <ArrowLeft size={18} /> Retour
+      <div className="sd-header">
+        <button className="sd-back-btn" onClick={() => navigate('/fournisseurs')}>
+          <ArrowLeft size={18} />
+          Retour
         </button>
 
-        <div className="header-content">
-          <div className="header-main">
-            <div className="supplier-logo-large">
+        <div className="sd-header-content">
+          <div className="sd-header-main">
+            <div className="sd-supplier-logo">
               {supplier.logo_url ? (
                 <img src={supplier.logo_url} alt={supplier.name} />
               ) : (
-                <div className="logo-placeholder-large">
+                <div className="sd-logo-placeholder">
                   {supplier.name?.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
 
-            <div className="header-info">
-              <h1 className="supplier-title">{supplier.name}</h1>
-              
-              <div className="header-badges">
-                <span className={`status-badge ${supplier.is_active ? 'active' : 'inactive'}`}>
+            <div className="sd-header-info">
+              <h1>{supplier.name}</h1>
+              <div className="sd-header-badges">
+                <span className={`sd-status-badge ${supplier.is_active ? 'sd-status-active' : 'sd-status-inactive'}`}>
                   {supplier.is_active ? 'Actif' : 'Inactif'}
                 </span>
-                
-                <span className={`reliability-badge ${getReliabilityColor(supplier.reliability_score || 0)}`}>
+                <span className={`sd-reliability-badge ${getReliabilityColor(supplier.reliability_score || 0)}`}>
+                  <Star size={14} fill="currentColor" />
                   {supplier.reliability_score || '0.0'}/10 - {getReliabilityLabel(supplier.reliability_score || 0)}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="header-actions">
-            <button 
-              className="btn-secondary"
-              onClick={() => navigate(`/fournisseurs/${id}/modifier`)}
-            >
+          <div className="sd-header-actions">
+            <button className="sd-btn-secondary" onClick={() => navigate(`/fournisseurs/${id}/modifier`)}>
               <Edit2 size={18} /> Modifier
             </button>
-            <button 
-              className="btn-danger"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
+            <button className="sd-btn-danger" onClick={() => setShowDeleteConfirm(true)}>
               <Trash2 size={18} /> Supprimer
             </button>
           </div>
         </div>
       </div>
 
-      {/* Statistiques */}
-      {statistics && (
-        <div className="stats-section">
-          <h2 className="section-title">
-            <FileText className="section-icon" size={24} />
-            Statistiques
-          </h2>
-          
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
-                <Package size={24} />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{statistics.total_products || 0}</div>
-                <div className="stat-label">Produits</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
-                <Inbox size={24} />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{statistics.total_receipts || 0}</div>
-                <div className="stat-label">Réceptions</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'var(--warning-light)', color: 'var(--warning)' }}>
-                <DollarSign size={24} />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">
-                  {statistics.total_spent ? `${statistics.total_spent.toLocaleString()} Ar` : '0 Ar'}
-                </div>
-                <div className="stat-label">Total Dépensé</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon" style={{ background: 'var(--info-light)', color: 'var(--info)' }}>
-                <Calendar size={24} />
-              </div>
-              <div className="stat-info">
-                <div className="stat-value">{formatDate(statistics.last_receipt_date)}</div>
-                <div className="stat-label">Dernière Réception</div>
-              </div>
-            </div>
-          </div>
+      {/* Tabs */}
+      <div className="sd-tabs-container">
+        <div className="sd-tabs-header">
+          <button
+            className={`sd-tab-btn ${activeTab === 'overview' ? 'sd-tab-active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            <TrendingUp size={18} />
+            Vue d'ensemble
+          </button>
+          <button
+            className={`sd-tab-btn ${activeTab === 'receipts' ? 'sd-tab-active' : ''}`}
+            onClick={() => setActiveTab('receipts')}
+          >
+            <Package size={18} />
+            Réceptions ({statistics?.total_receipts || 0})
+          </button>
         </div>
-      )}
 
-      {/* Informations */}
-      <div className="details-content">
-        <div className="info-section">
-          <h2 className="section-title">
-            <FileText className="section-icon" size={24} />
-            Informations Générales
-          </h2>
-
-          <div className="info-grid">
-            {supplier.coordinate && (
-              <div className="info-item">
-                <div className="info-label"><MapPin size={16} /> Localisation</div>
-                <div className="info-value">{supplier.coordinate.full_location}</div>
-              </div>
-            )}
-
-            {supplier.contact && (
-              <div className="info-item">
-                <div className="info-label"><Phone size={16} /> Contact</div>
-                <div className="info-value">{supplier.contact}</div>
-              </div>
-            )}
-
-            {supplier.wechat && (
-              <div className="info-item">
-                <div className="info-label"><MessageCircle size={16} /> WeChat</div>
-                <div className="info-value">{supplier.wechat}</div>
-              </div>
-            )}
-
-            <div className="info-item">
-              <div className="info-label"><Calendar size={16} /> Ajouté le</div>
-              <div className="info-value">{formatDate(supplier.created_at)}</div>
-            </div>
-
-            <div className="info-item">
-              <div className="info-label"><Calendar size={16} /> Modifié le</div>
-              <div className="info-value">{formatDate(supplier.updated_at)}</div>
-            </div>
-          </div>
-
-          {supplier.profile && (
-            <div className="info-block">
-              <div className="info-label"><FileText size={16} /> Profil</div>
-              <div className="info-description">{supplier.profile}</div>
-            </div>
-          )}
-
-          {supplier.accessibility_notes && (
-            <div className="info-block">
-              <div className="info-label"><MapPin size={16} /> Notes d'Accessibilité</div>
-              <div className="info-description">{supplier.accessibility_notes}</div>
-            </div>
-          )}
+        <div className="sd-tab-content">
+          {activeTab === 'overview' && renderOverviewTab()}
+          {activeTab === 'receipts' && renderReceiptsTab()}
         </div>
       </div>
 
-      {/* Modal de confirmation de suppression */}
+      {/* Modal de suppression */}
       {showDeleteConfirm && (
-        <div className="modal-overlay" onClick={() => !deleting && setShowDeleteConfirm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon danger">
+        <div className="sd-modal-overlay" onClick={() => !deleting && setShowDeleteConfirm(false)}>
+          <div className="sd-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="sd-modal-icon">
               <AlertTriangle size={40} />
             </div>
-            <h3 className="modal-title">Confirmer la suppression</h3>
-            <p className="modal-message">
+            <h3>Confirmer la suppression</h3>
+            <p>
               Êtes-vous sûr de vouloir supprimer le fournisseur <strong>{supplier.name}</strong> ?
               <br />
               Cette action est irréversible.
             </p>
-            <div className="modal-actions">
-              <button 
-                className="btn-secondary"
+            <div className="sd-modal-actions">
+              <button
+                className="sd-btn-secondary"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleting}
               >
                 Annuler
               </button>
-              <button 
-                className="btn-danger"
+              <button
+                className="sd-btn-danger"
                 onClick={handleDelete}
                 disabled={deleting}
               >
                 {deleting ? (
                   <>
-                    <div className="loading-spinner small"></div>
+                    <Loader2 className="sd-spinner" size={18} />
                     Suppression...
                   </>
                 ) : (

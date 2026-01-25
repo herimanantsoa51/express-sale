@@ -670,3 +670,22 @@
     width: 100%;
   }
 }
+
+/* === TYPE BADGE === */
+.freight-list-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  width: fit-content;
+  margin-bottom: var(--spacing-xs);
+}
+
+.freight-list-type-badge svg {
+  flex-shrink: 0;
+}

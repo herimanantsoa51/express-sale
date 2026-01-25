@@ -66,6 +66,11 @@ const freightForwarderService = {
         active_receipts: 0
       };
     }
+  },
+  // Ajouter cette méthode
+  async getFreightForwarderReceipts(id, params = {}) {
+    const response = await api.get(`/freight-forwarders/${id}/stock-receipts`, { params });
+    return response.data;
   }
 };
 

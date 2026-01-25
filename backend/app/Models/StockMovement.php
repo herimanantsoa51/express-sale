@@ -20,7 +20,8 @@ class StockMovement extends Model
         'performed_by',
         'reason',
         'notes',
-        'batch_id'
+        'batch_id',
+        'loss_type'
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class StockMovement extends Model
     const TYPE_ADJUSTMENT = 'adjustment';
     const TYPE_RETURN = 'return';
     const TYPE_RESERVARTION = 'reservation';
+    const TYPE_LOSS = 'loss';   
 
     // Relations
     public function variant(): BelongsTo

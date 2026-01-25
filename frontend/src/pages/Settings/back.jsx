@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Building2, Mail, Phone, MapPin, Upload, X, Users, Save, Loader2,Signature } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import '../../styles/CompanyConfiguration.css';
 import companyInfoService from '../../services/companyInfoService';
 import {fileService} from '../../services/fileService';

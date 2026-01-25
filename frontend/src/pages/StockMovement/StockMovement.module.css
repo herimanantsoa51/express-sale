@@ -706,3 +706,467 @@
       transform: rotate(90deg);
     }
   }
+  /* Styles additionnels pour StockLossForm - À ajouter dans StockMovement.module.css */
+
+/* Alert Warning */
+.alertWarning {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  font-size: var(--font-size-sm);
+}
+
+/* Warning Card */
+.warningCard {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background-color: var(--warning-light);
+  border: 2px solid var(--warning);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+}
+
+.warningCard svg {
+  color: var(--warning);
+  flex-shrink: 0;
+}
+
+.warningCard h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.warningCard p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Loss Type Grid */
+.lossTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.lossTypeButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.lossTypeButton:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--text-tertiary);
+}
+
+.lossTypeButton.active {
+  background-color: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.lossTypeIcon {
+  font-size: var(--font-size-xl);
+}
+
+/* Cost Impact Card */
+.costImpactCard {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, var(--danger-light), var(--bg-secondary));
+  border: 2px solid var(--danger);
+  border-radius: var(--border-radius);
+  margin-top: var(--spacing-md);
+}
+
+.costImpactCard svg {
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.costImpactLabel {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.costImpactValue {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--danger);
+}
+
+.costImpactNote {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Summary Card */
+.summaryCard {
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+}
+
+.summaryCard h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+}
+
+.summaryLabel {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summaryValue {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.summaryValue.danger {
+  color: var(--danger);
+}
+
+/* Danger Button Variant */
+.btnDanger {
+  background: linear-gradient(135deg, var(--danger), #c81e1e) !important;
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c81e1e, #a01616) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lossTypeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Styles pour Réconciliation d'Inventaire - À ajouter dans StockMovement.module.css */
+
+/* Info Card */
+.infoCard {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background-color: var(--info-light);
+  border: 2px solid var(--info);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-lg);
+}
+
+.infoCard svg {
+  color: var(--info);
+  flex-shrink: 0;
+}
+
+.infoCard h3 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.infoCard ul {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+}
+
+.infoCard li {
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.textDanger {
+  color: var(--danger);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Form Row */
+.formRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+/* Inventory Card */
+.inventoryCard {
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  overflow-x: auto;
+}
+
+/* Inventory Table */
+.inventoryTable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 900px;
+}
+
+.inventoryHeader,
+.inventoryRow {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 2fr;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.inventoryHeader {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inventoryRow {
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  transition: all var(--transition-speed);
+}
+
+.inventoryRow:hover {
+  background-color: var(--bg-tertiary);
+  transform: translateX(2px);
+}
+
+/* Columns */
+.colProduct,
+.colQuantity,
+.colDifference,
+.colNotes {
+  display: flex;
+  align-items: center;
+}
+
+.colProduct {
+  justify-content: flex-start;
+}
+
+.colQuantity,
+.colDifference {
+  justify-content: center;
+}
+
+.colNotes {
+  justify-content: stretch;
+}
+
+/* Product Info */
+.productInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.productInfo svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.productName {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.productSku {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+/* Quantities */
+.systemQty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.countInput {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: center;
+  background-color: var(--bg-primary);
+  border: 2px solid var(--primary);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  transition: all var(--transition-speed);
+}
+
+.countInput:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Differences */
+.differenceNeutral,
+.differencePositive,
+.differenceNegative {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.differenceNeutral {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.differencePositive {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.differenceNegative {
+  background-color: var(--danger-light);
+  color: var(--danger);
+}
+
+/* Notes Input */
+.colNotes input {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  transition: all var(--transition-speed);
+}
+
+.colNotes input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.colNotes input.inputRequired {
+  border-color: var(--danger);
+}
+
+.colNotes input.inputRequired:focus {
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+
+/* Stats Grid for Reconciliation */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.statCard svg {
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .inventoryTable {
+    min-width: 800px;
+  }
+  
+  .inventoryHeader,
+  .inventoryRow {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+  
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .inventoryCard {
+    padding: var(--spacing-md);
+  }
+  
+  .inventoryTable {
+    min-width: 700px;
+  }
+}

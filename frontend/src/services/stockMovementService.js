@@ -118,7 +118,31 @@ const stockMovementService = {
       { value: 'expiry', label: 'Péremption' },
       { value: 'other', label: 'Autre' }
     ];
-  }
+  },
+  declareLoss: async (data) => {
+    const response = await api.post('/stock-movements/loss', data);
+    return response.data;
+  },
+
+  reconcileInventory: async (data) => {
+    const response = await api.post('/stock-movements/reconcile-inventory', data);
+    return response.data;
+  },
+
+  /**
+   * Récupérer les types de perte disponibles
+   */
+  getLossTypes: () => {
+    return [
+      { value: 'breakage', label: 'Casse', icon: '💥', color: 'danger' },
+      { value: 'theft', label: 'Vol', icon: '🚨', color: 'danger' },
+      { value: 'expiry', label: 'Péremption', icon: '📅', color: 'warning' },
+      { value: 'damage', label: 'Dommage', icon: '⚠️', color: 'warning' },
+      { value: 'inventory_shortage', label: 'Écart inventaire', icon: '📊', color: 'info' },
+      { value: 'other', label: 'Autre', icon: '📝', color: 'default' }
+    ];
+  },
+
 };
 
 export default stockMovementService;

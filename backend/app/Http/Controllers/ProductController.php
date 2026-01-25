@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ProductAttribute;
+use App\Models\ProductVariant;
 
 class ProductController extends Controller
 {
@@ -229,6 +230,27 @@ public function index(Request $request)
                 ->where('credits.status', 'completed')
                 ->sum('sale_items.quantity');
             
+            // ✅ NOUVEAU: Calcul des bénéfices par variant
+            $profitData = DB::table('sale_item_batches')
+                ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
+                ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+                ->where('sale_items.variant_id', $variant->id)
+                ->where('sale_item_batches.status', 'sold')
+                ->selectRaw('
+                    SUM(sale_item_batches.quantity) as total_sold_qty,
+                    SUM(sale_item_batches.quantity * sale_item_batches.unit_price_at_sale) as total_revenue,
+                    SUM(sale_item_batches.quantity * sale_item_batches.discount_at_sale) as total_discount,
+                    SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as total_cost
+                ')
+                ->first();
+            
+            $totalRevenue = (float) ($profitData->total_revenue ?? 0);
+            $totalDiscount = (float) ($profitData->total_discount ?? 0);
+            $totalCost = (float) ($profitData->total_cost ?? 0);
+            $netRevenue = $totalRevenue - $totalDiscount;
+            $totalProfit = $netRevenue - $totalCost;
+            $profitMargin = $netRevenue > 0 ? ($totalProfit / $netRevenue) * 100 : 0;
+            
             // Stock total par location
             $stockByLocation = $variant->locations->map(function($loc) {
                 return [
@@ -279,6 +301,17 @@ public function index(Request $request)
                     'total_sold' => (int) ($soldQuantity + $soldViaReservation + $soldViaCredit),
                 ],
                 
+                // ✅ NOUVEAU: Statistiques financières
+                'financials' => [
+                    'total_revenue' => round($totalRevenue, 2),
+                    'total_discount' => round($totalDiscount, 2),
+                    'net_revenue' => round($netRevenue, 2),
+                    'total_cost' => round($totalCost, 2),
+                    'total_profit' => round($totalProfit, 2),
+                    'profit_margin_percent' => round($profitMargin, 2),
+                    'units_sold' => (int) ($profitData->total_sold_qty ?? 0),
+                ],
+                
                 // Alertes
                 'alerts' => [
                     'is_low_stock' => $totalStock <= $variant->low_stock_threshold,
@@ -287,6 +320,27 @@ public function index(Request $request)
                 ]
             ];
         });
+        
+        // ✅ NOUVEAU: Stats globales financières du produit
+        $globalProfitData = DB::table('sale_item_batches')
+            ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
+            ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+            ->join('product_variants', 'sale_items.variant_id', '=', 'product_variants.id')
+            ->where('product_variants.product_id', $product->id)
+            ->where('sale_item_batches.status', 'sold')
+            ->selectRaw('
+                SUM(sale_item_batches.quantity * sale_item_batches.unit_price_at_sale) as total_revenue,
+                SUM(sale_item_batches.quantity * sale_item_batches.discount_at_sale) as total_discount,
+                SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as total_cost
+            ')
+            ->first();
+        
+        $productTotalRevenue = (float) ($globalProfitData->total_revenue ?? 0);
+        $productTotalDiscount = (float) ($globalProfitData->total_discount ?? 0);
+        $productTotalCost = (float) ($globalProfitData->total_cost ?? 0);
+        $productNetRevenue = $productTotalRevenue - $productTotalDiscount;
+        $productTotalProfit = $productNetRevenue - $productTotalCost;
+        $productProfitMargin = $productNetRevenue > 0 ? ($productTotalProfit / $productNetRevenue) * 100 : 0;
         
         // Stats globales du produit
         $productArray['product_stats'] = [
@@ -306,10 +360,127 @@ public function index(Request $request)
                 ->join('product_variants', 'sale_items.variant_id', '=', 'product_variants.id')
                 ->where('product_variants.product_id', $product->id)
                 ->where('sales.payment_status', 'paid')
-                ->sum('sale_items.subtotal')
+                ->sum('sale_items.subtotal'),
+            // ✅ NOUVEAU: Statistiques financières globales
+            'total_revenue' => round($productTotalRevenue, 2),
+            'total_discount' => round($productTotalDiscount, 2),
+            'net_revenue' => round($productNetRevenue, 2),
+            'total_cost' => round($productTotalCost, 2),
+            'total_profit' => round($productTotalProfit, 2),
+            'profit_margin_percent' => round($productProfitMargin, 2),
         ];
         
         return response()->json($productArray);
+    }
+
+    // ✅ NOUVEAU: Endpoint pour obtenir les batches d'un variant avec pagination
+    public function getVariantBatches(Request $request, $productId, $variantId)
+    {
+        $variant = ProductVariant::where('id', $variantId)
+            ->where('product_id', $productId)
+            ->firstOrFail();
+        
+        // Paramètres de pagination
+        $perPage = $request->input('per_page', 10); // 10 par défaut
+        $page = $request->input('page', 1);
+        
+        // Query de base
+        $query = DB::table('stock_batches')
+            ->join('stock_receipt_items', 'stock_batches.stock_receipt_item_id', '=', 'stock_receipt_items.id')
+            ->join('stock_receipts', 'stock_receipt_items.stock_receipt_id', '=', 'stock_receipts.id')
+            ->leftJoin('suppliers', 'stock_receipts.supplier_id', '=', 'suppliers.id')
+            ->where('stock_batches.variant_id', $variantId)
+            ->select([
+                'stock_batches.id',
+                'stock_batches.batch_number',
+                'stock_batches.initial_quantity',
+                'stock_batches.remaining_quantity',
+                'stock_batches.reserved_quantity',
+                'stock_batches.supplier_unit_cost',
+                'stock_batches.freight_cost_per_unit',
+                'stock_batches.other_costs_per_unit',
+                'stock_batches.total_unit_cost',
+                'stock_batches.received_date',
+                'stock_batches.cost_status',
+                'stock_batches.cost_validated_at',
+                'stock_receipts.id as stock_receipt_id',
+                'stock_receipts.receipt_number',
+                'suppliers.name as supplier_name',
+            ])
+            ->orderBy('stock_batches.received_date', 'desc');
+        
+        // Calculer les statistiques globales AVANT la pagination
+        $allBatches = $query->get();
+        $totalInventoryValue = 0;
+        $totalRemainingStock = 0;
+        $totalAvailableStock = 0;
+        
+        foreach ($allBatches as $batch) {
+            $availableQuantity = $batch->remaining_quantity - $batch->reserved_quantity;
+            $totalRemainingStock += $batch->remaining_quantity;
+            $totalAvailableStock += max(0, $availableQuantity);
+            $totalInventoryValue += ($batch->remaining_quantity * $batch->total_unit_cost);
+        }
+        
+        // Pagination
+        $total = $allBatches->count();
+        $lastPage = ceil($total / $perPage);
+        $offset = ($page - 1) * $perPage;
+        
+        $paginatedBatches = $allBatches->slice($offset, $perPage)->values();
+        
+        // Mapper les batches paginés
+        $batches = $paginatedBatches->map(function($batch) {
+            $soldQuantity = $batch->initial_quantity - $batch->remaining_quantity;
+            $availableQuantity = $batch->remaining_quantity - $batch->reserved_quantity;
+            
+            return [
+                'id' => $batch->id,
+                'batch_number' => $batch->batch_number,
+                'stock_receipt_id' => $batch->stock_receipt_id,
+                'receipt_number' => $batch->receipt_number,
+                'supplier_name' => $batch->supplier_name,
+                'quantities' => [
+                    'initial' => (int) $batch->initial_quantity,
+                    'remaining' => (int) $batch->remaining_quantity,
+                    'reserved' => (int) $batch->reserved_quantity,
+                    'available' => max(0, (int) $availableQuantity),
+                    'sold' => (int) $soldQuantity,
+                ],
+                'costs' => [
+                    'supplier_unit_cost' => (float) $batch->supplier_unit_cost,
+                    'freight_cost_per_unit' => (float) $batch->freight_cost_per_unit,
+                    'other_costs_per_unit' => (float) $batch->other_costs_per_unit,
+                    'total_unit_cost' => (float) $batch->total_unit_cost,
+                    'total_batch_value' => (float) ($batch->remaining_quantity * $batch->total_unit_cost),
+                ],
+                'dates' => [
+                    'received_date' => $batch->received_date,
+                    'cost_validated_at' => $batch->cost_validated_at,
+                ],
+                'cost_status' => $batch->cost_status,
+            ];
+        });
+        
+        return response()->json([
+            'variant_id' => $variantId,
+            'variant_sku' => $variant->sku,
+            'batches' => $batches,
+            'summary' => [
+                'total_batches' => $total,
+                'total_remaining_stock' => (int) $totalRemainingStock,
+                'total_available_stock' => (int) $totalAvailableStock,
+                'total_inventory_value' => round($totalInventoryValue, 2),
+            ],
+            'pagination' => [
+                'current_page' => (int) $page,
+                'per_page' => (int) $perPage,
+                'total' => $total,
+                'last_page' => (int) $lastPage,
+                'from' => $offset + 1,
+                'to' => min($offset + $perPage, $total),
+            ]
+        ]);
     }
 
     public function showWithVariants($id)

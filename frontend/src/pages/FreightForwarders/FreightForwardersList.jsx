@@ -1,10 +1,6 @@
-// ============================================
-// pages/FreightForwarders/FreightForwardersList.jsx
-// ============================================
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, CheckCircle, XCircle, Star, Search, X, Plus, ArrowUpDown, PackageOpen, MapPin } from 'lucide-react';
+import { Truck, CheckCircle, XCircle, Star, Search, X, Plus, ArrowUpDown, PackageOpen, MapPin, Plane, Ship } from 'lucide-react';
 import freightForwarderService from '../../services/freightForwarderService';
 import coordinateService from '../../services/coordinateService';
 import '../../styles/FreightForwardersList.css';
@@ -18,6 +14,7 @@ const FreightForwardersList = () => {
   // Filtres et tri
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -35,11 +32,7 @@ const FreightForwardersList = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Chargement des transitaires...');
       const data = await freightForwarderService.getFreightForwarders();
-      console.log('Transitaires chargés:', data);
-      console.log('Type de données:', typeof data);
-      console.log('Est un tableau?', Array.isArray(data));
       
       // Convertir l'objet en tableau si nécessaire
       let forwardersArray = [];
@@ -47,7 +40,6 @@ const FreightForwardersList = () => {
       if (Array.isArray(data)) {
         forwardersArray = data;
       } else if (data && typeof data === 'object') {
-        // Si c'est un objet, convertir en tableau
         if (data.data && Array.isArray(data.data)) {
           forwardersArray = data.data;
         } else if (data.forwarders && Array.isArray(data.forwarders)) {
@@ -55,17 +47,15 @@ const FreightForwardersList = () => {
         } else if (data.results && Array.isArray(data.results)) {
           forwardersArray = data.results;
         } else {
-          // Extraire les valeurs de l'objet
           forwardersArray = Object.values(data);
         }
       }
       
-      console.log('Tableau final:', forwardersArray);
       setForwarders(forwardersArray);
     } catch (err) {
       console.error('Erreur détaillée:', err);
       setError(`Erreur lors du chargement des transitaires: ${err.message}`);
-      setForwarders([]); // Réinitialiser à un tableau vide
+      setForwarders([]);
     } finally {
       setLoading(false);
     }
@@ -93,14 +83,27 @@ const FreightForwardersList = () => {
     if (Array.isArray(forwarders)) {
       return forwarders;
     } else if (forwarders && typeof forwarders === 'object') {
-      // Essayer de convertir l'objet en tableau
       const values = Object.values(forwarders);
       return Array.isArray(values[0]) ? values[0] : values;
     }
     return [];
   };
 
-  // Filtrage et tri - utilisation de la fonction utilitaire
+  // Obtenir l'icône du type
+  const getTypeIcon = (type) => {
+    if (type === 'aerien') return Plane;
+    if (type === 'maritime') return Ship;
+    return Truck;
+  };
+
+  // Obtenir le label du type
+  const getTypeLabel = (type) => {
+    if (type === 'aerien') return 'Aérien';
+    if (type === 'maritime') return 'Maritime';
+    return type;
+  };
+
+  // Filtrage et tri
   const forwardersArray = getForwardersArray();
   
   const filteredForwarders = forwardersArray
@@ -110,6 +113,9 @@ const FreightForwardersList = () => {
       // Filtre par statut
       if (statusFilter === 'active' && !forwarder.is_active) return false;
       if (statusFilter === 'inactive' && forwarder.is_active) return false;
+      
+      // Filtre par type
+      if (typeFilter && forwarder.type !== typeFilter) return false;
       
       // Filtre par pays
       if (countryFilter && forwarder.coordinate?.country !== countryFilter) return false;
@@ -166,7 +172,6 @@ const FreightForwardersList = () => {
       avgScore = sum / validScores.length;
     }
     
-    // Arrondir à 1 décimale
     avgScore = Math.round(avgScore * 10) / 10;
     
     return {
@@ -208,7 +213,6 @@ const FreightForwardersList = () => {
     return isNaN(parsed) ? '0.0' : parsed.toFixed(1);
   };
 
-  // Ajouter un bouton pour recharger en cas d'erreur
   const handleRetry = () => {
     loadFreightForwarders();
     loadCountries();
@@ -337,7 +341,19 @@ const FreightForwardersList = () => {
           </select>
         </div>
 
-        {/* Filtre par pays */}
+        <div className="freight-list-filter-group">
+          <label className="freight-list-filter-label">Type:</label>
+          <select 
+            className="freight-list-filter-select"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="">Tous les types</option>
+            <option value="aerien">Aérien</option>
+            <option value="maritime">Maritime</option>
+          </select>
+        </div>
+
         <div className="freight-list-filter-group">
           <label className="freight-list-filter-label">Pays:</label>
           <select 
@@ -385,7 +401,7 @@ const FreightForwardersList = () => {
           <p>
             {error 
               ? 'Une erreur est survenue lors du chargement'
-              : searchQuery || statusFilter !== 'all' || countryFilter
+              : searchQuery || statusFilter !== 'all' || countryFilter || typeFilter
                 ? 'Essayez de modifier vos filtres de recherche'
                 : 'Commencez par ajouter votre premier transitaire'}
           </p>
@@ -406,8 +422,8 @@ const FreightForwardersList = () => {
       ) : (
         <div className="freight-list-grid">
           {filteredForwarders.map((forwarder, index) => {
-            // Utiliser index comme clé de secours si forwarder.id n'existe pas
             const key = forwarder?.id || index;
+            const TypeIcon = getTypeIcon(forwarder?.type);
             
             return (
               <div 
@@ -434,6 +450,14 @@ const FreightForwardersList = () => {
                       <span className="freight-list-status-badge inactive">Inactif</span>
                     )}
                   </div>
+
+                  {/* Type de transport */}
+                  {forwarder?.type && (
+                    <div className="freight-list-type-badge">
+                      <TypeIcon size={14} />
+                      <span>{getTypeLabel(forwarder.type)}</span>
+                    </div>
+                  )}
 
                   {/* Note de service */}
                   <div className="freight-list-score">

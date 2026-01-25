@@ -180,6 +180,10 @@ const productService = {
   async updateBasePrices(data){
     const response = await api.post('/products/update-base-prices', data);
     return response.data;
+  },
+  async getVariantBatches(productId, variantId){
+    const response = await api.get(`/products/${productId}/variants/${variantId}/batches`);
+    return response.data;
   }
 };
 

@@ -11,7 +11,6 @@ import { formatCurrency, formatDate, calculatePercentage, daysUntil } from '../.
 import invoiceService from '../../services/invoiceService';
 import './ReservationDetailPage.css';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import printService from '../../services/printService';
 
 const ReservationDetailPage = () => {
