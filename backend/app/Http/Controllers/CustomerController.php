@@ -15,6 +15,8 @@ use App\Models\Credit;
 use App\Http\Resources\CustomerReservationResource;
 use App\Models\Reservation;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 
 
 class CustomerController extends Controller
@@ -138,7 +140,15 @@ class CustomerController extends Controller
         $data['is_extra_customer'] = $data['is_extra_customer'] ?? false;
 
         $customer = Customer::create($data);
-
+        ActivityLogger::success(
+            ActivityAction::CUSTOMER_CREATED,
+            " a créé le client {$customer->customer_number}",
+            [
+                "model_type"=>Customer::class,
+                "model_id"=>$customer->id,
+                "metadata"=>$customer
+            ],"clients/{$customer->id}"
+        );
         return response()->json([
             'message' => 'Client créé avec succès',
             'data' => new CustomerResource($customer),
@@ -171,7 +181,15 @@ class CustomerController extends Controller
         $customer = Customer::findOrFail($id);
         
         $customer->update($request->validated());
-
+        ActivityLogger::success(
+            ActivityAction::CUSTOMER_CREATED,
+            " a modifié le client {$customer->customer_number}",
+            [
+                "model_type"=>Customer::class,
+                "model_id"=>$customer->id,
+                "metadata"=>$customer
+            ],"clients/{$customer->id}"
+        );
         return response()->json([
             'message' => 'Client mis à jour avec succès',
             'data' => new CustomerResource($customer),

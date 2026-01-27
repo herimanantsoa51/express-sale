@@ -6,7 +6,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-
+use App\Enums\ActivityAction;
+use App\Helpers\ActivityLogger;
 class FileUploadController extends Controller
 {
     /**
@@ -27,7 +28,15 @@ class FileUploadController extends Controller
             
             // Uploader le fichier dans le disque "public"
             $filePath = $request->file('image')->storeAs($path, $fileName, 'public');
-            
+            ActivityLogger::success(
+                ActivityAction::FILE_UPLOADED,
+                "Image uploadée : {$filePath}",
+                [
+                    'model_type' => null,
+                    'model_id' => null,
+                    'metadata' => ['path' => $filePath],
+                ]
+            );
             // On **stocke seulement le chemin relatif**, pas l’URL complète
             // URL finale sera construite dynamiquement avec asset($image_path) côté front
             return response()->json([
@@ -37,6 +46,12 @@ class FileUploadController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::FILE_UPLOADED,
+                "Erreur lors de l'upload de l'image",
+                $e,
+               
+            );
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'upload',
@@ -59,7 +74,15 @@ class FileUploadController extends Controller
             if (Storage::disk('public')->exists($request->path)) {
                 Storage::disk('public')->delete($request->path);
             }
-            
+            ActivityLogger::success(
+                ActivityAction::FILE_UPLOADED,
+                "Image supprimée : {$request->path}",
+                [
+                    'model_type' => null,
+                    'model_id' => null,
+                    'metadata' => ['path' => $request->path],
+                ]
+            );
             return response()->json([
                 'success' => true,
                 'message' => 'Image supprimée avec succès'

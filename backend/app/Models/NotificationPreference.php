@@ -13,6 +13,7 @@ class NotificationPreference extends Model
     const TYPE_STOCK_OUT = 'stock_out';
     const TYPE_RESERVATION_EXPIRING = 'reservation_expiring';
     const TYPE_CREDIT_DUE = 'credit_due';
+    const TYPE_PLANNED_EXPENSE_DUE = 'planned_expense_due';
 
     protected $fillable = [
         'user_id',
@@ -51,7 +52,8 @@ class NotificationPreference extends Model
             self::TYPE_STOCK_LOW => 1,
             self::TYPE_STOCK_OUT => 1,
             self::TYPE_RESERVATION_EXPIRING => 2,
-            self::TYPE_CREDIT_DUE => 7
+            self::TYPE_CREDIT_DUE => 7,
+            self::TYPE_PLANNED_EXPENSE_DUE => 3 
         ];
     }
 

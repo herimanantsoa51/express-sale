@@ -24,6 +24,8 @@ use  App\Http\Requests\AddExpenseRequest;
 use App\Http\Resources\ReceiptExpenseResource;
 use App\Models\StockReceiptItem;
 use App\Http\Requests\MarkAsValidateRequest;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 
 
 class StockReceiptController extends Controller
@@ -109,13 +111,31 @@ class StockReceiptController extends Controller
     {
         try {
             $receipt = StockReceipt::createWithItems($request->validated());
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_CREATED,
+                "a créé un réapprovisionnement",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=> $receipt->id,
+                    "metadata"=>$receipt->toArray(),
+                    
+                ],
+                "reapprovisionnements/{$receipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception de stock créée avec succès',
                 'data' => new StockReceiptResource($receipt)
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_CREATED,
+                "Erreur de création du réapprovisionnement",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la création de la réception',
@@ -190,13 +210,29 @@ class StockReceiptController extends Controller
             });
 
             $stockReceipt->load(['supplier', 'freightForwarder', 'items.variant.product']);
-
+            ActivityLogger::success(ActivityAction::STOCK_RECEIPT_UPDATED,
+            " a mis a jour le réapprovisionnement {$stockReceipt->receipt_number}",
+            [
+                "model_type"=>StockReceipt::class,
+                "model_id"=>$stockReceipt->id,
+                "metadata"=>$stockReceipt
+            ],
+            "reapprovisionnements/{$stockReceipt->id}"
+         );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception mise à jour avec succès',
                 'data' => new StockReceiptResource($stockReceipt)
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_UPDATED,
+                "mise à jour non réussi",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la mise à jour',
@@ -220,13 +256,30 @@ class StockReceiptController extends Controller
 
         try {
             $stockReceipt->markAsShipped($request->notes);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_SHIPPED,
+                "a marqué la réapprovisionnement {$stockReceipt->receipt_number} envoyé",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception marquée comme envoyée',
                 'data' => new StockReceiptResource($stockReceipt)
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_SHIPPED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la mise à jour',
@@ -250,13 +303,30 @@ class StockReceiptController extends Controller
 
         try {
             $stockReceipt->markAsInTransit($request->notes);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_IN_TRANSIT,
+                "a marqué la réapprovisionnement {$stockReceipt->receipt_number} en transit",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception marquée comme en transit',
                 'data' => new StockReceiptResource($stockReceipt)
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_IN_TRANSIT,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la mise à jour',
@@ -280,7 +350,16 @@ class StockReceiptController extends Controller
 
         try {
             $stockReceipt->markAsArrived($request->items);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_ARRIVED,
+                "a marqué la réapprovisionnement {$stockReceipt->receipt_number} en arrivé",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception marquée comme arrivée. Les stocks ont été mis à jour dans les emplacements.',
@@ -292,6 +371,14 @@ class StockReceiptController extends Controller
                 // ]))
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_ARRIVED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la mise à jour',
@@ -308,7 +395,16 @@ class StockReceiptController extends Controller
     {
         try {                       
             $stockReceipt->validate($request->items);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_VALIDATED,
+                "a marqué la réapprovisionnement {$stockReceipt->receipt_number} en validé",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception validée avec succès. Les scores ont été mis à jour.',
@@ -319,6 +415,14 @@ class StockReceiptController extends Controller
                 ]))
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_VALIDATED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$request->validated()->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -334,12 +438,29 @@ class StockReceiptController extends Controller
     {
         try {
             $stockReceipt->cancel();
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_CANCELLED,
+                "a annulé la réapprovisionnement {$stockReceipt->receipt_number}",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception annulée avec succès'
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_VALIDATED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$stockReceipt->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -355,12 +476,31 @@ class StockReceiptController extends Controller
         try {
             $stockReceipt->update(['status'=>'rated']); 
             $stockReceipt->createBatches();
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_RATED,
+                "a évalué la réapprovisionnement {$stockReceipt->receipt_number}",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
+         
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception marquée comme évaluée avec succès',  
             ]);
 
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_RATED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$stockReceipt->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors du marquage en rated',
@@ -417,13 +557,30 @@ class StockReceiptController extends Controller
                 'items.ratings.ratedBy',
                 'items.variant.product'
             ]);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_RATED,
+                "a évalué la réapprovisionnement {$stockReceipt->receipt_number}",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Réception évaluée et validée avec succès',
                 'data' => new StockReceiptResource($stockReceipt)
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_RATED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$stockReceipt->toArray()
+                ]
+                );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de l\'évaluation',
@@ -526,7 +683,16 @@ class StockReceiptController extends Controller
                     return $transaction;
                 }
            });
-
+           ActivityLogger::success(
+            ActivityAction::STOCK_RECEIPT_PAYMENT,
+            "a payer $transaction->amount pour le réapprovisionnement {$stockReceipt->receipt_number}",
+            [
+                "model_type"=>AccountTransaction::class,
+                "model_id"=>$transaction->id,
+                "metadata"=>$transaction->toArray()
+            ],
+            "transactions/{$transaction->id}"
+        );
            return response()->json([
                'status' => 'success',
                'message' => 'Paiement enregistré avec succès',
@@ -534,6 +700,14 @@ class StockReceiptController extends Controller
            ], 201);
            
        } catch (\Exception $e) {
+        ActivityLogger::error(
+            ActivityAction::STOCK_RECEIPT_PAYMENT,
+            "Réapprovisionnement non payé",
+            $e,
+            [
+                "metadata"=>$stockReceipt->toArray()
+            ]
+            );
            return response()->json([
                'status' => 'error',
                'message' => 'Erreur lors de l\'enregistrement du paiement',
@@ -882,7 +1056,16 @@ class StockReceiptController extends Controller
                     'cost_validated_at' => now(),
                 ]);
             }
-    
+            ActivityLogger::success(
+                ActivityAction::STOCK_RECEIPT_COST_DISTRIBUTED,
+                "a répartit les couts du réapprovisionnement {$stockReceipt->receipt_number}",
+                [
+                    "model_type"=>StockReceipt::class,
+                    "model_id"=>$stockReceipt->id,
+                    "metadata"=>$stockReceipt->toArray()
+                ],
+                "reapprovisionnements/{$stockReceipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Coûts appliqués avec succès aux batches',
@@ -890,6 +1073,14 @@ class StockReceiptController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_RECEIPT_COST_DISTRIBUTED,
+                "Réapprovisionnement non marqué à jour",
+                $e,
+                [
+                    "metadata"=>$stockReceipt->toArray()
+                ]
+                );
             // Ajouter un log détaillé
             Log::error('Erreur applyCosts', [
                 'stock_receipt_id' => $stockReceipt->id,
@@ -1064,7 +1255,19 @@ class StockReceiptController extends Controller
                     'unit_cost_ariary' => $sourceItem->unit_cost_ariary,
                 ]);
             }
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_TRANSFERRED,
+                "a répartit les couts du réapprovisionnement {$receipt->receipt_number}",
+                [
+                    "model_type"=>StockReceiptItem::class,
+                    "model_id"=>$sourceItem->id,
+                    "metadata"=>[
+                        "source"=>$sourceItem,
+                        "destination"=>$destinationItem
+                    ]
+                ],
+                "reapprovisionnements/{$receipt->id}"
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Quantité corrigée avant création des batches',
@@ -1072,6 +1275,14 @@ class StockReceiptController extends Controller
         });
 
     } catch (\Exception $e) {
+        ActivityLogger::error(
+            ActivityAction::STOCK_TRANSFERRED,
+            "Quantité  non transféré",
+            $e,
+            [
+                "metadata"=>$request
+            ]
+            );
         return response()->json([
             'status' => 'error',
             'message' => $e->getMessage()

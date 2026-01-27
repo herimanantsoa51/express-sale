@@ -10,7 +10,8 @@ use App\Models\SaleItemBatch;
 use App\Models\StockReceiptItemRating;
 use App\Models\StockReceipt;
 use Illuminate\Http\JsonResponse;
-
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 class SupplierController extends Controller
 {
     /**
@@ -73,22 +74,59 @@ class SupplierController extends Controller
      * Création fournisseur
      */
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'name' => 'required|string|max:255|unique:suppliers,name',
-            'wechat' => 'nullable|string|max:100',
-            'profile' => 'nullable|string',
-            'contact' => 'nullable|string|max:255',
-            'accessibility_notes' => 'nullable|string',
-            'reliability_score' => 'nullable|numeric|min:0|max:10',
-            'logo_url' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
-            'coordinate_id' => 'nullable|exists:coordinates,id',
-        ]);
+    {   
 
-        $supplier = Supplier::create($data);
+        try {
+            $data = $request->validate([
+                'name' => 'required|string|max:255|unique:suppliers,name',
+                'wechat' => 'nullable|string|max:100',
+                'profile' => 'nullable|string',
+                'contact' => 'nullable|string|max:255',
+                'accessibility_notes' => 'nullable|string',
+                'reliability_score' => 'nullable|numeric|min:0|max:10',
+                'logo_url' => 'nullable|string|max:500',
+                'is_active' => 'boolean',
+                'coordinate_id' => 'nullable|exists:coordinates,id',
+            ]);
+    
+            $supplier = Supplier::create($data);
+            ActivityLogger::success(
+                ActivityAction::SUPPLIER_CREATED ,
+                "Création d\'un nouveau fournisseur {$supplier->name}",
+                [   
+                    'model_type' => Supplier::class,
+                    'model_id' => $supplier->id,
+                    'metadata' => [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'contact' => $supplier->contact,
+                    ],
+                    
+                ],
+                "fournisseurs/{$supplier->id}",
+            );
+            return response()->json($supplier->load('coordinate'), 201);
+           
+        } catch (\Exception $e) {
 
-        return response()->json($supplier->load('coordinate'), 201);
+            ActivityLogger::error(
+                ActivityAction::SUPPLIER_CREATED ,
+                "Création d\'un nouveau fournisseur a échoué",
+                $e,
+                [
+                    'model_type' => Supplier::class,
+                    'metadata' => [
+                        'input_data' => $request->all(),
+                    ],
+                ]
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la création du fournisseur',
+                'error' => $e->getMessage(),
+            ], 500);
+            // Gérer l'erreur de logging si nécessaire
+        }
+      
     }
     // Dans SupplierController.php
         /**
@@ -279,28 +317,62 @@ class SupplierController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $supplier = Supplier::findOrFail($id);
+        try {
+            $supplier = Supplier::findOrFail($id);
 
-        $data = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('suppliers', 'name')->ignore($supplier->id)
-            ],
-            'wechat' => 'nullable|string|max:100',
-            'profile' => 'nullable|string',
-            'contact' => 'nullable|string|max:255',
-            'accessibility_notes' => 'nullable|string',
-            'reliability_score' => 'nullable|numeric|min:0|max:10',
-            'logo_url' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
-            'coordinate_id' => 'nullable|exists:coordinates,id',
-        ]);
-
-        $supplier->update($data);
-
-        return response()->json($supplier->load('coordinate'));
+            $data = $request->validate([
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('suppliers', 'name')->ignore($supplier->id)
+                ],
+                'wechat' => 'nullable|string|max:100',
+                'profile' => 'nullable|string',
+                'contact' => 'nullable|string|max:255',
+                'accessibility_notes' => 'nullable|string',
+                'reliability_score' => 'nullable|numeric|min:0|max:10',
+                'logo_url' => 'nullable|string|max:500',
+                'is_active' => 'boolean',
+                'coordinate_id' => 'nullable|exists:coordinates,id',
+            ]);
+    
+            $supplier->update($data);
+            ActivityLogger::success(
+                ActivityAction::SUPPLIER_UPDATED ,
+                "Mise à jour du fournisseur {$supplier->name}",
+                [   
+                    'model_type' => Supplier::class,
+                    'model_id' => $supplier->id,
+                    'metadata' => [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'contact' => $supplier->contact,
+                    ],
+                    
+                ],
+                "fournisseurs/{$supplier->id}",
+            );
+            return response()->json($supplier->load('coordinate'));
+        } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::SUPPLIER_UPDATED ,
+                "Mise à jour du fournisseur a échoué",
+                $e,
+                [
+                    'model_type' => Supplier::class,
+                    'model_id' => $id,
+                    'metadata' => [
+                        'input_data' => $request->all(),
+                    ],
+                ]
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour du fournisseur',
+                'error' => $e->getMessage(),
+            ], 500);
+            //throw $th;
+        }
     }
 
     /**
@@ -308,20 +380,54 @@ class SupplierController extends Controller
      */
     public function destroy($id)
     {
-        $supplier = Supplier::findOrFail($id);
+        try {
+            $supplier = Supplier::findOrFail($id);
 
         // Sécurité métier : fournisseur utilisé
-        if ($supplier->products()->exists()) {
+            if ($supplier->stockReceipts()->exists()) {
+                return response()->json([
+                    'message' => 'Impossible de supprimer : fournisseur lié à des réceptions'
+                ], 409);
+            }
+
+            $supplier->delete();
+
+            ActivityLogger::success(
+                ActivityAction::SUPPLIER_DELETED ,
+                "Suppression du fournisseur {$supplier->name}",
+                [   
+                    'model_type' => Supplier::class,
+                    'model_id' => $supplier->id,
+                    'metadata' => [
+                        'supplier_id' => $supplier->id,
+                        'supplier_name' => $supplier->name,
+                        'contact' => $supplier->contact,
+                    ],
+                    
+                ],
+                null,
+            );
             return response()->json([
-                'message' => 'Impossible de supprimer : fournisseur lié à des produits'
-            ], 409);
+                'message' => 'Fournisseur supprimé'
+            ]);
+        } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::SUPPLIER_DELETED ,
+                "Suppression du fournisseur a échoué",
+                $e,
+                [
+                    'model_type' => Supplier::class,
+                    'model_id' => $id,
+                    'metadata' => [
+                        'supplier_id' => $id,
+                    ],
+                ]
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la suppression du fournisseur',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $supplier->delete();
-
-        return response()->json([
-            'message' => 'Fournisseur supprimé'
-        ]);
     }
 
     /**

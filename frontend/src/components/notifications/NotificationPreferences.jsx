@@ -18,15 +18,19 @@ const NotificationPreferences = ({ isOpen, onClose }) => {
     stock_low: 'Stock faible',
     stock_out: 'Stock épuisé',
     reservation_expiring: 'Réservations expirant',
-    credit_due: 'Échéances de crédit'
+    credit_due: 'Échéances de crédit',
+    planned_expense_due: 'Dépenses planifiées',
   };
+  
 
   const typeDescriptions = {
-    stock_low: 'Recevoir des alertes lorsque le stock d\'un produit est faible',
-    stock_out: 'Recevoir des alertes lorsque le stock d\'un produit est épuisé',
-    reservation_expiring: 'Recevoir des alertes pour les réservations qui expirent bientôt',
-    credit_due: 'Recevoir des alertes pour les échéances de paiement crédit'
+    stock_low: 'Alertes lorsque le stock est faible',
+    stock_out: 'Alertes lorsque le stock est épuisé',
+    reservation_expiring: 'Alertes pour les réservations à échéance',
+    credit_due: 'Alertes pour les crédits à payer',
+    planned_expense_due: 'Alertes pour les dépenses planifiées à payer',
   };
+  
 
   useEffect(() => {
     if (isOpen) {

@@ -8,6 +8,9 @@ use Illuminate\Validation\Rule;
 use App\Http\Resources\FreightForwarderResource;
 use App\Models\AccountTransaction;
 use App\Models\StockReceipt;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
+use App\Models\ActivityLog;
 
 class FreightForwarderController extends Controller
 {
@@ -27,22 +30,52 @@ class FreightForwarderController extends Controller
      * POST /api/freight-forwarders
      */
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'name' => 'required|string|max:255|unique:freight_forwarders,name',
-            'type' => 'required|in:aerien,maritime',
-            'logo_url' => 'nullable|string|max:500',
-            'contact' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-            'coordinate_id' => 'nullable|exists:coordinates,id',
-            'is_active' => 'boolean',
-        ]);
+    {   
 
-        $forwarder = FreightForwarder::create($data);
-
-        return new FreightForwarderResource(
-            $forwarder->load('coordinate')
-        );
+        try {
+            $data = $request->validate([
+                'name' => 'required|string|max:255|unique:freight_forwarders,name',
+                'type' => 'required|in:aerien,maritime',
+                'logo_url' => 'nullable|string|max:500',
+                'contact' => 'nullable|string|max:255',
+                'notes' => 'nullable|string',
+                'coordinate_id' => 'nullable|exists:coordinates,id',
+                'is_active' => 'boolean',
+            ]);
+    
+            $forwarder = FreightForwarder::create($data);
+            ActivityLogger::success(
+                ActivityAction::FREIGHT_FORWARDER_CREATED,
+                "Transitaire créé : {$forwarder->name}",
+                [
+                    'model_type' => FreightForwarder::class,
+                    'model_id' => $forwarder->id,
+                    'metadata' => $forwarder->toArray(),
+                ],
+                "/transitaires/{$forwarder->id}"
+            );
+            return new FreightForwarderResource(
+                $forwarder->load('coordinate')
+            );
+        } catch (\Exception $e) {
+            //throw $th;
+            ActivityLogger::error(
+                ActivityAction::FREIGHT_FORWARDER_CREATED,
+                "Erreur lors de la création du transitaire ",
+                $e,
+                [
+                    'model_type' => FreightForwarder::class,
+                    'metadata' => $request->all(),
+                    'error_message' => $e->getMessage(),
+                    'error_trace' => $e->getTraceAsString(),
+                ] 
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la création du transitaire',
+                'error' => 'creation_failed'
+            ], 500);
+        }
+        
     }
 
 
@@ -133,28 +166,57 @@ class FreightForwarderController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $forwarder = FreightForwarder::findOrFail($id);
+        try {
+            $forwarder = FreightForwarder::findOrFail($id);
 
-        $data = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('freight_forwarders', 'name')->ignore($forwarder->id),
-            ],
-            'type' => 'required|in:aerien,maritime',
-            'logo_url' => 'nullable|string|max:500',
-            'contact' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-            'is_active' => 'boolean',
-            'coordinate_id' => 'nullable|exists:coordinates,id',
-        ]);
+            $data = $request->validate([
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('freight_forwarders', 'name')->ignore($forwarder->id),
+                ],
+                'type' => 'required|in:aerien,maritime',
+                'logo_url' => 'nullable|string|max:500',
+                'contact' => 'nullable|string|max:255',
+                'notes' => 'nullable|string',
+                'is_active' => 'boolean',
+                'coordinate_id' => 'nullable|exists:coordinates,id',
+            ]);
 
-        $forwarder->update($data);
+            $forwarder->update($data);
+            $forwarder->load('coordinate');
 
-        return new FreightForwarderResource(
-            $forwarder->load('coordinate')
-        );
+            ActivityLogger::success(
+                ActivityAction::FREIGHT_FORWARDER_UPDATED,
+                "Transitaire modifié : {$forwarder->name}",
+                [
+                    'model_type' => FreightForwarder::class,
+                    'model_id' => $forwarder->id,
+                    'metadata' => $forwarder->toArray(),
+                ],
+                "/transitaires/{$forwarder->id}"
+            );
+            return new FreightForwarderResource(
+                $forwarder
+            );
+        } catch (\Exception $e) {
+            //throw $th;
+            ActivityLogger::error(
+                ActivityAction::FREIGHT_FORWARDER_UPDATED,
+                "Erreur lors de la modification du transitaire ID : {$id}",
+                $e,
+                [
+                    'model_type' => FreightForwarder::class,
+                    'model_id' => $id,
+                    'metadata' => $request->all(),
+                ] 
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la modification du transitaire',
+                'error' => 'update_failed'
+            ], 500);
+        }
     }
 
     /**
@@ -162,19 +224,45 @@ class FreightForwarderController extends Controller
      */
     public function destroy($id)
     {
-        $forwarder = FreightForwarder::findOrFail($id);
+        try {
+            $forwarder = FreightForwarder::findOrFail($id);
 
-        if ($forwarder->stockReceipts()->exists()) {
+            if ($forwarder->stockReceipts()->exists()) {
+                return response()->json([
+                    'message' => 'Impossible de supprimer : transitaire lié à des réceptions de stock'
+                ], 409);
+            }
+
+            $forwarder->delete();
+            
+
+            ActivityLogger::success(
+                ActivityAction::FREIGHT_FORWARDER_DELETED,
+                "Transitaire supprimé : {$forwarder->name}",
+                [
+                    'model_type' => FreightForwarder::class,
+                    'model_id' => $forwarder->id,
+                    'metadata' => $forwarder->toArray(),
+                ]
+            );
             return response()->json([
-                'message' => 'Impossible de supprimer : transitaire lié à des réceptions de stock'
-            ], 409);
+                'message' => 'Transitaire supprimé'
+            ]);
+        } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::FREIGHT_FORWARDER_DELETED,
+                "Erreur lors de la suppression du transitaire ID : {$id}",
+                $e,
+                [
+                    'model_type' => FreightForwarder::class,
+                    'model_id' => $id,
+                ] 
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la suppression du transitaire',
+                'error' => 'deletion_failed'
+            ], 500);
         }
-
-        $forwarder->delete();
-
-        return response()->json([
-            'message' => 'Transitaire supprimé'
-        ]);
     }
 
     /**

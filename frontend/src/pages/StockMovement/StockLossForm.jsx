@@ -1,173 +1,180 @@
+// ============================================
+// StockLossForm.jsx - Apple Style avec Dark/Light Mode
+// ============================================
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, X, AlertCircle, AlertTriangle, Package, MapPin, DollarSign, Layers, TrendingDown } from 'lucide-react';
+import { 
+  Save, X, AlertCircle, Package, 
+  Search, Shield, ChevronLeft, ChevronRight, Moon, Sun
+} from 'lucide-react';
 import stockMovementService from '../../services/stockMovementService';
 import locationService from '../../services/locationService';
 import productVariantLocationService from '../../services/productVariantLocationService';
-import styles from './StockMovement.module.css';
+import './StockLossForm.css';
 
 const StockLossForm = () => {
   const navigate = useNavigate();
+  const [theme, setTheme] = useState('light');
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [warning, setWarning] = useState(null);
   const [locations, setLocations] = useState([]);
   const [variants, setVariants] = useState([]);
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [currentQuantity, setCurrentQuantity] = useState(0);
-  const [estimatedCostImpact, setEstimatedCostImpact] = useState(0);
-
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  
   const [formData, setFormData] = useState({
-    variant_id: '',
     location_id: '',
-    quantity: 0,
+    variant_id: '',
+    quantity: 1,
     loss_type: '',
     reason: '',
     notes: ''
   });
 
-  // Types de perte
+  const [confirmationInput, setConfirmationInput] = useState('');
+  const requiredConfirmation = selectedVariant 
+    ? `${selectedVariant.variant.sku} ANNULER` 
+    : '';
+
   const lossTypes = [
-    { value: 'breakage', label: 'Casse', icon: '💥' },
-    { value: 'theft', label: 'Vol', icon: '🚨' },
-    { value: 'expiry', label: 'Péremption', icon: '📅' },
-    { value: 'damage', label: 'Dommage', icon: '⚠️' },
-    { value: 'inventory_shortage', label: 'Écart inventaire', icon: '📊' },
-    { value: 'other', label: 'Autre', icon: '📝' }
+    { value: 'breakage', label: 'Casse', icon: '💥', color: 'var(--danger)' },
+    { value: 'theft', label: 'Vol', icon: '🚨', color: '#dc2626' },
+    { value: 'expiry', label: 'Péremption', icon: '📅', color: 'var(--warning)' },
+    { value: 'damage', label: 'Dommage', icon: '⚠️', color: '#f97316' },
+    { value: 'inventory_shortage', label: 'Écart', icon: '📊', color: 'var(--primary)' },
+    { value: 'other', label: 'Autre', icon: '📝', color: 'var(--text-secondary)' }
   ];
 
+  // ============================================
+  // INITIALISATION THÈME
+  // ============================================
   useEffect(() => {
+    const savedTheme = localStorage.getItem('stock-loss-theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = prefersDark ? 'dark' : 'light';
+      setTheme(initialTheme);
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    }
     loadLocations();
   }, []);
 
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('stock-loss-theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
+
+  // ============================================
+  // CHARGEMENT DONNÉES
+  // ============================================
   useEffect(() => {
     if (formData.location_id) {
-      loadVariants();
+      loadVariants(1);
     }
   }, [formData.location_id]);
 
   useEffect(() => {
-    if (formData.variant_id && formData.location_id) {
-      loadCurrentQuantity();
+    if (formData.location_id && searchTerm !== '') {
+      const timer = setTimeout(() => loadVariants(1), 300);
+      return () => clearTimeout(timer);
     }
-  }, [formData.variant_id, formData.location_id]);
-
-  // Calculer l'impact en coût estimé
-  useEffect(() => {
-    if (selectedVariant && formData.quantity > 0) {
-      // Utiliser le prix de base du produit comme estimation
-      const basePrice = selectedVariant.product?.base_price || 0;
-      setEstimatedCostImpact(basePrice * formData.quantity);
-    } else {
-      setEstimatedCostImpact(0);
-    }
-  }, [selectedVariant, formData.quantity]);
+  }, [searchTerm]);
 
   const loadLocations = async () => {
     try {
       const data = await locationService.getActive();
       setLocations(data);
     } catch (err) {
-      console.error('Erreur chargement locations:', err);
       setError('Impossible de charger les emplacements');
     }
   };
 
-  const loadVariants = async () => {
+  const loadVariants = async (page) => {
     try {
-      const data = await productVariantLocationService.getByLocation(formData.location_id);
-      setVariants(data.filter(vl => vl.quantity > 0)); // Seulement les variants avec stock
+      setLoading(true);
+      const response = await productVariantLocationService.getByLocation(
+        formData.location_id,
+        { page, search: searchTerm, available_only: true, per_page: 20 }
+      );
+      setVariants(response.data);
+      setPagination({
+        current_page: response.current_page,
+        last_page: response.last_page,
+        total: response.total
+      });
     } catch (err) {
-      console.error('Erreur chargement variants:', err);
       setError('Impossible de charger les produits');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadCurrentQuantity = async () => {
-    try {
-      const variantLocations = await productVariantLocationService.getByVariant(formData.variant_id);
-      const location = variantLocations.find(vl => vl.location_id === parseInt(formData.location_id));
-      setCurrentQuantity(location?.quantity || 0);
-    } catch (err) {
-      console.error('Erreur chargement quantité:', err);
-      setCurrentQuantity(0);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError(null);
-    setWarning(null);
-  };
-
-  const handleVariantChange = (e) => {
-    const variantId = e.target.value;
-    setFormData(prev => ({ ...prev, variant_id: variantId }));
-    const variantLocation = variants.find(vl => vl.variant_id === parseInt(variantId));
-    setSelectedVariant(variantLocation?.variant);
-    setError(null);
-    setWarning(null);
-  };
-
-  const handleLocationChange = (e) => {
-    const locationId = e.target.value;
-    setFormData(prev => ({ ...prev, location_id: locationId, variant_id: '' }));
-    const location = locations.find(l => l.id === parseInt(locationId));
-    setSelectedLocation(location);
-    setSelectedVariant(null);
-    setCurrentQuantity(0);
-    setError(null);
-    setWarning(null);
-  };
-
+  // ============================================
+  // GESTION QUANTITÉ AVEC SÉCURITÉ STRICTE
+  // ============================================
   const handleQuantityChange = (e) => {
-    const qty = parseInt(e.target.value) || 0;
-    setFormData(prev => ({ ...prev, quantity: qty }));
-    
-    // Afficher un avertissement si > 50% du stock
-    if (qty > currentQuantity * 0.5 && qty <= currentQuantity) {
-      setWarning(`⚠️ Attention : vous déclarez une perte importante (${Math.round(qty/currentQuantity*100)}% du stock)`);
-    } else {
-      setWarning(null);
+    if (!selectedVariant) return;
+
+    const rawValue = e.target.value;
+    const maxQuantity = selectedVariant.available_quantity;
+
+    // Accepter uniquement les nombres
+    if (rawValue === '' || rawValue === '-') {
+      setFormData(prev => ({ ...prev, quantity: '' }));
+      return;
     }
-    
-    setError(null);
+
+    let numValue = parseInt(rawValue);
+
+    // Sécurité stricte
+    if (isNaN(numValue) || numValue < 1) {
+      numValue = 1;
+      setError('La quantité minimum est 1');
+      setTimeout(() => setError(null), 2000);
+    } else if (numValue > maxQuantity) {
+      numValue = maxQuantity;
+      setError(`Quantité maximale: ${maxQuantity} unités`);
+      setTimeout(() => setError(null), 2000);
+    }
+
+    setFormData(prev => ({ ...prev, quantity: numValue }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleVariantSelect = (variantLocation) => {
+    setSelectedVariant(variantLocation);
+    setFormData(prev => ({ 
+      ...prev, 
+      variant_id: variantLocation.variant_id,
+      quantity: 1 
+    }));
+  };
 
-    // Validations
-    if (!formData.loss_type) {
-      setError('Le type de perte est obligatoire');
-      return;
-    }
+  const canProceedToConfirmation = () => {
+    return formData.location_id && 
+           formData.variant_id && 
+           formData.quantity > 0 &&
+           formData.quantity <= selectedVariant?.available_quantity &&
+           formData.loss_type &&
+           formData.reason.trim();
+  };
 
-    if (!formData.reason.trim()) {
-      setError('La raison de la perte est obligatoire');
-      return;
-    }
-
-    if (formData.quantity <= 0) {
-      setError('La quantité doit être supérieure à 0');
-      return;
-    }
-
-    if (formData.quantity > currentQuantity) {
-      setError(`Impossible de déclarer une perte de ${formData.quantity} unités. Stock disponible: ${currentQuantity}`);
+  const handleSubmit = async () => {
+    if (confirmationInput !== requiredConfirmation) {
+      setError(`Vous devez saisir exactement : ${requiredConfirmation}`);
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-
-      // Appeler l'endpoint de déclaration de perte
       await stockMovementService.declareLoss({
         variant_id: parseInt(formData.variant_id),
         location_id: parseInt(formData.location_id),
@@ -177,24 +184,17 @@ const StockLossForm = () => {
         notes: formData.notes || null
       });
 
-      // Rediriger vers la liste des mouvements
       navigate('/mouvements-stock', { 
         state: { 
-          message: `Perte de ${formData.quantity} unité(s) déclarée avec succès`,
+          message: `Perte de ${formData.quantity} unité(s) déclarée`,
           type: 'success'
         }
       });
-
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la déclaration de perte');
-      console.error('Erreur:', err);
+      setError(err.response?.data?.message || 'Erreur lors de la déclaration');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getNewQuantity = () => {
-    return Math.max(0, currentQuantity - (parseInt(formData.quantity) || 0));
   };
 
   const formatCurrency = (amount) => {
@@ -206,293 +206,320 @@ const StockLossForm = () => {
   };
 
   return (
-    <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Déclaration de Perte de Stock</h1>
-          <p className={styles.subtitle}>
-            Déclarer une perte de stock (casse, vol, péremption, etc.)
-          </p>
-        </div>
-        <button
-          className={styles.btnSecondary}
-          onClick={() => navigate('/mouvements-stock')}
-        >
-          <X size={20} />
-          Annuler
-        </button>
-      </div>
-
-      {/* Alertes */}
-      {error && (
-        <div className={styles.alertDanger}>
-          <AlertCircle size={20} />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {warning && (
-        <div className={styles.alertWarning}>
-          <AlertTriangle size={20} />
-          <span>{warning}</span>
-        </div>
-      )}
-
-      {/* Avertissement important */}
-      <div className={styles.warningCard}>
-        <AlertTriangle size={24} />
-        <div>
-          <h3>⚠️ Important</h3>
-          <p>
-            Cette action est <strong>irréversible</strong> et va consommer automatiquement 
-            les batches en FIFO (Premier Entré, Premier Sorti). Assurez-vous que les 
-            informations sont correctes avant de valider.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className={styles.form}>
-        {/* Informations de base */}
-        <div className={styles.formCard}>
-          <h2 className={styles.cardTitle}>
-            <TrendingDown size={20} />
-            Informations de la perte
-          </h2>
-
-          {/* Emplacement */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Emplacement <span className={styles.required}>*</span>
-            </label>
-            <select
-              name="location_id"
-              value={formData.location_id}
-              onChange={handleLocationChange}
-              required
+    <div className="slfa__page">
+      <div className="slfa__container">
+        {/* HEADER AVEC TOGGLE THÈME */}
+        <div className="slfa__header">
+          <div className="slfa__header-content">
+            <h1 className="slfa__title">🚨 Déclaration de Perte</h1>
+            <p className="slfa__subtitle">Action irréversible - Consommation FIFO automatique</p>
+          </div>
+          <div className="slfa__header-actions">
+            <button 
+              className="slfa__theme-toggle" 
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
             >
-              <option value="">Sélectionner un emplacement</option>
-              {locations.map(loc => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name} - {loc.warehouse}
-                </option>
-              ))}
-            </select>
-            {selectedLocation && (
-              <div className={styles.selectedInfo}>
-                <MapPin size={16} />
-                <div>
-                  <p><strong>{selectedLocation.name}</strong></p>
-                  <p className={styles.subText}>
-                    {selectedLocation.warehouse} | Code: {selectedLocation.code}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Produit */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Produit <span className={styles.required}>*</span>
-            </label>
-            <select
-              name="variant_id"
-              value={formData.variant_id}
-              onChange={handleVariantChange}
-              required
-              disabled={!formData.location_id}
-            >
-              <option value="">Sélectionner un produit</option>
-              {variants.map(vl => (
-                <option key={vl.variant_id} value={vl.variant_id}>
-                  {vl.variant?.product?.name} - {vl.variant?.sku} (Stock: {vl.quantity})
-                </option>
-              ))}
-            </select>
-            {selectedVariant && (
-              <div className={styles.selectedInfo}>
-                <Package size={16} />
-                <div>
-                  <p><strong>{selectedVariant.product?.name}</strong></p>
-                  <p className={styles.subText}>
-                    SKU: {selectedVariant.sku} | Stock actuel: {currentQuantity} unités
-                  </p>
-                  {selectedVariant.product?.base_price && (
-                    <p className={styles.subText}>
-                      Prix unitaire estimé: {formatCurrency(selectedVariant.product.base_price)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Type de perte */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Type de perte <span className={styles.required}>*</span>
-            </label>
-            <div className={styles.lossTypeGrid}>
-              {lossTypes.map(type => (
-                <button
-                  key={type.value}
-                  type="button"
-                  className={`${styles.lossTypeButton} ${formData.loss_type === type.value ? styles.active : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, loss_type: type.value }))}
-                >
-                  <span className={styles.lossTypeIcon}>{type.icon}</span>
-                  <span>{type.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Quantité perdue */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Quantité perdue <span className={styles.required}>*</span>
-            </label>
-            <input
-              type="number"
-              name="quantity"
-              value={formData.quantity}
-              onChange={handleQuantityChange}
-              min="1"
-              max={currentQuantity}
-              required
-              disabled={!formData.variant_id}
-            />
-            {formData.quantity > 0 && (
-              <div className={styles.quantityPreview}>
-                <span className={styles.currentQty}>Stock actuel: {currentQuantity}</span>
-                <span className={styles.decrease}>
-                  -{formData.quantity}
-                </span>
-                <span className={styles.newQty}>Nouveau stock: {getNewQuantity()}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Impact financier estimé */}
-          {estimatedCostImpact > 0 && (
-            <div className={styles.costImpactCard}>
-              <DollarSign size={20} />
-              <div>
-                <p className={styles.costImpactLabel}>Impact financier estimé</p>
-                <p className={styles.costImpactValue}>{formatCurrency(estimatedCostImpact)}</p>
-                <p className={styles.costImpactNote}>
-                  Basé sur le prix de base du produit. Les coûts réels FIFO seront calculés automatiquement.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Raison */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>
-              Raison détaillée <span className={styles.required}>*</span>
-            </label>
-            <textarea
-              name="reason"
-              value={formData.reason}
-              onChange={handleChange}
-              rows="3"
-              placeholder="Expliquez les circonstances de la perte..."
-              required
-            />
-            <p className={styles.helperText}>
-              Décrivez précisément les circonstances (date, heure, cause, responsable éventuel...)
-            </p>
-          </div>
-
-          {/* Notes complémentaires */}
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Notes complémentaires</label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows="3"
-              placeholder="Actions correctives, mesures prises, etc."
-            />
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
+            <button className="slfa__btn-cancel" onClick={() => navigate('/mouvements-stock')}>
+              <X size={20} />
+              <span>Annuler</span>
+            </button>
           </div>
         </div>
 
-        {/* Résumé avant validation */}
-        {formData.variant_id && formData.quantity > 0 && (
-          <div className={styles.summaryCard}>
-            <h3>
-              <Layers size={20} />
-              Résumé de la déclaration
-            </h3>
-            <div className={styles.summaryGrid}>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Produit</span>
-                <span className={styles.summaryValue}>
-                  {selectedVariant?.product?.name} - {selectedVariant?.sku}
-                </span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Emplacement</span>
-                <span className={styles.summaryValue}>{selectedLocation?.name}</span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Type de perte</span>
-                <span className={styles.summaryValue}>
-                  {lossTypes.find(t => t.value === formData.loss_type)?.label || '—'}
-                </span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Quantité perdue</span>
-                <span className={`${styles.summaryValue} ${styles.danger}`}>
-                  {formData.quantity} unité{formData.quantity > 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Stock après perte</span>
-                <span className={styles.summaryValue}>{getNewQuantity()} unités</span>
-              </div>
-              {estimatedCostImpact > 0 && (
-                <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Impact estimé</span>
-                  <span className={`${styles.summaryValue} ${styles.danger}`}>
-                    {formatCurrency(estimatedCostImpact)}
-                  </span>
-                </div>
-              )}
-            </div>
+        {/* PROGRESS BAR */}
+        <div className="slfa__progress">
+          <div className={`slfa__progress-step ${step >= 1 ? 'slfa__progress-step--active' : ''}`}>
+            <div className="slfa__step-number">1</div>
+            <span className="slfa__step-label">Sélection</span>
+          </div>
+          <div className="slfa__progress-line"></div>
+          <div className={`slfa__progress-step ${step >= 2 ? 'slfa__progress-step--active' : ''}`}>
+            <div className="slfa__step-number">2</div>
+            <span className="slfa__step-label">Confirmation</span>
+          </div>
+        </div>
+
+        {/* ERROR ALERT */}
+        {error && (
+          <div className="slfa__alert-error">
+            <AlertCircle size={20} />
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="slfa__alert-close">
+              <X size={16} />
+            </button>
           </div>
         )}
 
-        {/* Actions */}
-        <div className={styles.formActions}>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={() => navigate('/mouvements-stock')}
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            className={`${styles.btnPrimary} ${styles.btnDanger}`}
-            disabled={loading || !formData.variant_id || !formData.quantity || !formData.loss_type || !formData.reason}
-          >
-            {loading ? (
+        {/* CONTENT */}
+        {step === 1 ? (
+          <div className="slfa__step-content">
+            {/* LOCATION SELECTOR */}
+            <div className="slfa__form-section">
+              <label className="slfa__label">
+                Emplacement <span className="slfa__required">*</span>
+              </label>
+              <select
+                className="slfa__select"
+                value={formData.location_id}
+                onChange={(e) => {
+                  const loc = locations.find(l => l.id === parseInt(e.target.value));
+                  setSelectedLocation(loc);
+                  setFormData(prev => ({ ...prev, location_id: e.target.value, variant_id: '' }));
+                  setSelectedVariant(null);
+                }}
+              >
+                <option value="">Choisir un emplacement</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} - {loc.warehouse}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* SEARCH + VARIANTS */}
+            {formData.location_id && (
               <>
-                <div className={styles.spinner}></div>
-                Enregistrement...
-              </>
-            ) : (
-              <>
-                <Save size={20} />
-                Confirmer la déclaration de perte
+                <div className="slfa__form-section">
+                  <label className="slfa__label">Rechercher un produit</label>
+                  <div className="slfa__search-box">
+                    <Search size={18} />
+                    <input
+                      type="text"
+                      placeholder="Nom ou SKU..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="slfa__search-input"
+                    />
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="slfa__loading-state">
+                    <div className="slfa__spinner"></div>
+                    <p>Chargement...</p>
+                  </div>
+                ) : variants.length === 0 ? (
+                  <div className="slfa__empty-state">
+                    <Package size={48} />
+                    <p>Aucun produit disponible</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="slfa__variants-grid">
+                      {variants.map((vl) => (
+                        <div
+                          key={vl.id}
+                          className={`slfa__variant-card ${selectedVariant?.id === vl.id ? 'slfa__variant-card--selected' : ''}`}
+                          onClick={() => handleVariantSelect(vl)}
+                        >
+                          <div className="slfa__variant-image">
+                            {vl.variant.product.image_url ? (
+                              <img src={vl.variant.product.image_url} alt={vl.variant.product.name} />
+                            ) : (
+                              <Package size={32} />
+                            )}
+                          </div>
+                          <div className="slfa__variant-info">
+                            <h4 className="slfa__variant-name">{vl.variant.product.name}</h4>
+                            <span className="slfa__variant-sku">{vl.variant.sku}</span>
+                            <div className="slfa__variant-meta">
+                              <span className="slfa__stock-badge">{vl.available_quantity} dispo</span>
+                              <span className="slfa__price">{formatCurrency(vl.variant.product.base_price)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {pagination.last_page > 1 && (
+                      <div className="slfa__pagination">
+                        <button
+                          className="slfa__pagination-btn"
+                          disabled={pagination.current_page === 1}
+                          onClick={() => loadVariants(pagination.current_page - 1)}
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <span className="slfa__pagination-text">
+                          Page {pagination.current_page} / {pagination.last_page}
+                        </span>
+                        <button
+                          className="slfa__pagination-btn"
+                          disabled={pagination.current_page === pagination.last_page}
+                          onClick={() => loadVariants(pagination.current_page + 1)}
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
-          </button>
-        </div>
-      </form>
+
+            {/* FORM FIELDS */}
+            {selectedVariant && (
+              <>
+                <div className="slfa__form-section">
+                  <label className="slfa__label">
+                    Type de perte <span className="slfa__required">*</span>
+                  </label>
+                  <div className="slfa__loss-types-grid">
+                    {lossTypes.map(type => (
+                      <button
+                        key={type.value}
+                        type="button"
+                        className={`slfa__loss-type-btn ${formData.loss_type === type.value ? 'slfa__loss-type-btn--active' : ''}`}
+                        style={{ '--type-color': type.color }}
+                        onClick={() => setFormData(prev => ({ ...prev, loss_type: type.value }))}
+                      >
+                        <span className="slfa__type-icon">{type.icon}</span>
+                        <span className="slfa__type-label">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="slfa__form-section">
+                  <label className="slfa__label">
+                    Quantité <span className="slfa__required">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedVariant.available_quantity}
+                    value={formData.quantity}
+                    onChange={handleQuantityChange}
+                    onBlur={(e) => {
+                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                        setFormData(prev => ({ ...prev, quantity: 1 }));
+                      }
+                    }}
+                    className="slfa__input-number"
+                  />
+                  <span className="slfa__help-text">
+                    Maximum disponible: {selectedVariant.available_quantity} unités
+                  </span>
+                </div>
+
+                <div className="slfa__form-section">
+                  <label className="slfa__label">
+                    Raison détaillée <span className="slfa__required">*</span>
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={formData.reason}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="Décrivez les circonstances..."
+                    className="slfa__textarea"
+                  />
+                </div>
+
+                <div className="slfa__form-section">
+                  <label className="slfa__label">Notes complémentaires</label>
+                  <textarea
+                    rows="2"
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Actions correctives, mesures prises..."
+                    className="slfa__textarea"
+                  />
+                </div>
+
+                <button
+                  className="slfa__btn-primary-large"
+                  disabled={!canProceedToConfirmation()}
+                  onClick={() => setStep(2)}
+                >
+                  Continuer vers la confirmation
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="slfa__step-content">
+            <div className="slfa__confirmation-alert">
+              <Shield size={48} />
+              <h3 className="slfa__confirmation-title">Confirmation de sécurité</h3>
+              <p className="slfa__confirmation-text">
+                Cette action est irréversible et consommera automatiquement les batches en FIFO
+              </p>
+            </div>
+
+            <div className="slfa__summary-card">
+              <h3 className="slfa__summary-title">Résumé de la déclaration</h3>
+              <div className="slfa__summary-grid">
+                <div className="slfa__summary-item">
+                  <span>Produit</span>
+                  <strong>{selectedVariant.variant.product.name}</strong>
+                </div>
+                <div className="slfa__summary-item">
+                  <span>SKU</span>
+                  <strong>{selectedVariant.variant.sku}</strong>
+                </div>
+                <div className="slfa__summary-item">
+                  <span>Emplacement</span>
+                  <strong>{selectedLocation.name}</strong>
+                </div>
+                <div className="slfa__summary-item">
+                  <span>Type</span>
+                  <strong>{lossTypes.find(t => t.value === formData.loss_type)?.label}</strong>
+                </div>
+                <div className="slfa__summary-item slfa__summary-item--danger">
+                  <span>Quantité perdue</span>
+                  <strong>{formData.quantity} unités</strong>
+                </div>
+                <div className="slfa__summary-item">
+                  <span>Stock après</span>
+                  <strong>{selectedVariant.available_quantity - formData.quantity} unités</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="slfa__confirmation-input-section">
+              <label className="slfa__confirmation-label">
+                Pour confirmer, saisissez exactement : 
+                <code className="slfa__confirmation-code">{requiredConfirmation}</code>
+              </label>
+              <input
+                type="text"
+                value={confirmationInput}
+                onChange={(e) => setConfirmationInput(e.target.value)}
+                placeholder="Saisissez ici..."
+                className="slfa__confirmation-input"
+                autoFocus
+              />
+            </div>
+
+            <div className="slfa__action-buttons">
+              <button className="slfa__btn-secondary-large" onClick={() => setStep(1)}>
+                Retour
+              </button>
+              <button
+                className="slfa__btn-danger-large"
+                disabled={loading || confirmationInput !== requiredConfirmation}
+                onClick={handleSubmit}
+              >
+                {loading ? (
+                  <>
+                    <div className="slfa__spinner"></div>
+                    Traitement...
+                  </>
+                ) : (
+                  <>
+                    <Save size={20} />
+                    Confirmer la perte
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

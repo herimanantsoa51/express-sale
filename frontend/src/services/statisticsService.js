@@ -59,8 +59,38 @@ const statisticsService = {
     const cleanParams = cleanDateParams(params);
     const response = await api.get('/statistics/sales/reservations', { params: cleanParams });
     return response.data;
-  }
+  },
+   // ========== FINANCIAL STATISTICS (Nouvelles) ==========
+  
+   financialDashboard: async (params) => {
+    const response = await api.get('/statistics/financial/dashboard', { params });
+    return response.data;
+  },
+
+  financialTimeline: async (startDate, endDate, grouping) => {
+    const response = await api.get('/statistics/financial/timeline', {
+      params: { start_date: startDate, end_date: endDate, grouping }
+    });
+    return response.data;
+  },
+
+  profitsOverview: async (params) => {
+    const response = await api.get('/statistics/financial/profits', { params });
+    return response.data;
+  },
+
+  expensesOverview: async (params) => {
+    const response = await api.get('/statistics/financial/expenses', { params });
+    return response.data;
+  },
+
+  lossesOverview: async (params) => {
+    const response = await api.get('/statistics/financial/losses', { params });
+    return response.data;
+  },
 };
+
+
 
 // Helper pour nettoyer les paramètres de date
 const cleanDateParams = (params) => {

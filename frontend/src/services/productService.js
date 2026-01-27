@@ -19,7 +19,19 @@ const productService = {
     const response = await api.get('/categories', { params: { only_roots: true } });
     return response.data;
   },
-
+  // services/productService.js
+ async getAttributesForSale () {
+  try {
+    console.log('📡 Appel API: /products/attributes/available');
+    const response = await api.get('/products/attributes/available');
+    console.log('📦 Réponse brute:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ Erreur API attributs:', error);
+    console.error('📊 Réponse erreur:', error.response);
+    throw error;
+  }
+},
   /**
    * Récupère les sous-catégories d'une catégorie parente
    */
@@ -156,6 +168,36 @@ const productService = {
     return response.data;
   },
 
+
+  // productService.js - Ajoutez ces méthodes
+
+// ========== VALEURS D'ATTRIBUTS ==========
+
+async getAttributeValues(attributeTypeId) {
+  const response = await api.get(`/attribute-types/${attributeTypeId}/values`);
+  return response.data;
+},
+
+async addAttributeValue(attributeTypeId, data) {
+  const response = await api.post(`/attribute-types/${attributeTypeId}/values`, data);
+  return response.data;
+},
+
+async updateAttributeValue(attributeTypeId, valueId, data) {
+  const response = await api.put(`/attribute-types/${attributeTypeId}/values/${valueId}`, data);
+  return response.data;
+},
+
+async deleteAttributeValue(attributeTypeId, valueId) {
+  const response = await api.delete(`/attribute-types/${attributeTypeId}/values/${valueId}`);
+  return response.data;
+},
+
+async reorderAttributeValues(attributeTypeId, order) {
+  const response = await api.post(`/attribute-types/${attributeTypeId}/values/reorder`, { order });
+  return response.data;
+},
+
   // ========== PRODUITS POUR VENTE ==========
   
   /**
@@ -164,9 +206,24 @@ const productService = {
    * @returns {Promise<Object>} Liste paginée de produits
    */
   async getForSale(params = {}) {
-    const response = await api.get('/products/for-sale', { params });
-    console.log('Products for sale fetched:', response.data);
-    return response.data;
+    try {
+      console.log('📡 Appel API produits avec params:', params);
+      
+      // Si params est déjà une string URLSearchParams
+      const url = `/products/for-sale${params ? `?${params}` : ''}`;
+      console.log('🌐 URL complète:', url);
+      
+      const response = await api.get(url);
+      console.log('📦 Réponse API produits:', {
+        count: response.data?.length || 0,
+        data: response.data
+      });
+      return response;
+    } catch (error) {
+      console.error('❌ Erreur API produits:', error);
+      console.error('📊 Réponse erreur:', error.response);
+      throw error;
+    }
   },
 
   /**

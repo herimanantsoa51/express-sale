@@ -16,9 +16,11 @@
    import ClientQuickCreateForm from '../../components/ClientQuickCreateForm';
    import './QuickSalePage.css';
 import customerService from '../../services/customerService';
+import { useAuth } from '../../context/AuthContext';
    
    const QuickSalePage = () => {
     const navigate = useNavigate();
+    const {isAdmin,user}=useAuth()
 
     // Constantes
     const STORAGE_KEY = 'quick_sale_draft';
@@ -138,6 +140,16 @@ import customerService from '../../services/customerService';
     const [successMessage, setSuccessMessage] = useState(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [lastSaved, setLastSaved] = useState(null);
+    // QuickSalePage.js - Ajoutez ces états
+    const [attributes, setAttributes] = useState([]);
+    const [selectedAttributeType, setSelectedAttributeType] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedAttributeType || null;
+    });
+    const [selectedAttributeValue, setSelectedAttributeValue] = useState(() => {
+      const saved = loadFromStorage();
+      return saved?.selectedAttributeValue || null;
+    });
     
     // Fonction pour sauvegarder l'état dans localStorage
     const saveToStorage = useCallback((data) => {
@@ -177,7 +189,9 @@ import customerService from '../../services/customerService';
         depositAmount,
         productSearch,
         selectedCategory,
-        selectedSubcategory
+        selectedSubcategory,
+        selectedAttributeType,
+        selectedAttributeValue,
       };
       
       // Délai pour éviter de sauvegarder trop souvent
@@ -191,7 +205,12 @@ import customerService from '../../services/customerService';
       selectedAccount, paymentMethod, installments, dueDate,
       expiryDate, depositAmount, productSearch, selectedCategory, selectedSubcategory
     ]);
-    
+    useEffect(() => {
+      if (!isAdmin() && (saleMode === 'credit' || saleMode === 'reservation')) {
+        toast.warning('Seuls les administrateurs peuvent accéder à ce mode de vente');
+        setSaleMode('immediate');
+      }
+    }, [saleMode, isAdmin]);
     // Restaurer depuis localStorage au chargement
     useEffect(() => {
       const saved = loadFromStorage();
@@ -237,7 +256,10 @@ import customerService from '../../services/customerService';
        }, 300);
    
        return () => clearTimeout(timer);
-     }, [productSearch, selectedCategory, selectedSubcategory]);
+     }, [productSearch, selectedCategory, selectedSubcategory,
+      selectedAttributeType,      // ✅ AJOUTÉ
+      selectedAttributeValue       
+     ]);
    
      // Charger les comptes quand le payment method change
      useEffect(() => {
@@ -249,26 +271,96 @@ import customerService from '../../services/customerService';
        loadProducts();
        loadCategories();
        loadAccounts();
+       loadAttributes();
      }, []);
-      
-     const loadProducts = async () => {
-       try {
-         setProductsLoading(true);
-         const params = {
-           per_page: 50,
-           ...(productSearch && { search: productSearch }),
-           ...(selectedCategory && { category_id: selectedCategory }),
-           ...(selectedSubcategory && { subcategory_id: selectedSubcategory })
-         };
-         const response = await productService.getForSale(params);
-         setProducts(response.data || []);
-       } catch (error) {
-         console.error('Erreur chargement produits:', error);
-         toast.error('Erreur lors du chargement des produits');
-       } finally {
-         setProductsLoading(false);
-       }
-     };
+     const loadAttributes = async () => {
+      try {
+        console.log('🚀 Chargement des attributs...');
+        const response = await productService.getAttributesForSale();
+        console.log('✅ Réponse API attributs:', response);
+        console.log('📊 Données attributs:', response.data);
+        
+        // Vérifiez la structure de la réponse
+        if (response && response.data) {
+          setAttributes(response.data);
+          console.log(`📋 ${response.data.length} attributs chargés`);
+        } else {
+          console.error('❌ Structure de réponse incorrecte:', response);
+          setAttributes([]);
+        }
+      } catch (error) {
+        console.error('❌ Erreur chargement attributs:', error);
+        console.error('📞 URL appelée:', error.config?.url);
+        toast.error('Erreur lors du chargement des attributs');
+      }
+    };
+    const loadProducts = async () => {
+      try {
+        setProductsLoading(true);
+        // Dans votre console navigateur
+      console.log('Type ID:', selectedAttributeType); // Doit être un nombre
+      console.log('Valeur:', selectedAttributeValue); // Doit être une string
+        const params = new URLSearchParams();
+        params.append('per_page', 20);
+        
+        if (productSearch) params.append('search', productSearch);
+        if (selectedCategory) params.append('category_id', selectedCategory);
+        if (selectedSubcategory) params.append('subcategory_id', selectedSubcategory);
+        
+        // ✅ CORRECTION : Assurez-vous que la structure est correcte
+        if (selectedAttributeType && selectedAttributeValue) {
+          // La clé DOIT être l'ID du type d'attribut (nombre)
+          // La valeur DOIT être la valeur textuelle de l'attribut
+          const attributesFilter = {
+            [selectedAttributeType.toString()]: selectedAttributeValue
+          };
+          
+          console.log('🎨 Filtre attributs envoyé:', attributesFilter);
+          console.log('📤 JSON stringifié:', JSON.stringify(attributesFilter));
+          
+          params.append('attributes', JSON.stringify(attributesFilter));
+        }
+        
+        console.log('📡 Chargement produits avec params:', params.toString());
+        console.log('🔍 Params décodés:', {
+          search: productSearch,
+          category: selectedCategory,
+          subcategory: selectedSubcategory,
+          attributeType: selectedAttributeType,
+          attributeValue: selectedAttributeValue
+        });
+        
+        const response = await productService.getForSale(params.toString());
+        console.log('📦 Réponse complète:', response);
+        
+        let productsData = [];
+        
+        if (Array.isArray(response.data)) {
+          productsData = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+          productsData = response.data.data;
+        } else if (response.data && response.data.products) {
+          productsData = Array.isArray(response.data.products) 
+            ? response.data.products 
+            : [];
+        }
+        
+        console.log(`✅ ${productsData.length} produits chargés`);
+        setProducts(productsData);
+        
+      } catch (error) {
+        console.error('❌ Erreur chargement produits:', error);
+        console.error('📍 Détails erreur:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        toast.error('Erreur lors du chargement des produits');
+        setProducts([]);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
    
      const loadCategories = async () => {
        try {
@@ -404,15 +496,62 @@ import customerService from '../../services/customerService';
      
    
      const handleSubmitSale = async () => {
-       if (cart.length === 0) {
-         toast.error('Le panier est vide');
-         return;
-       }
-   
-       if (!selectedAccount) {
-         toast.error('Veuillez sélectionner un compte');
-         return;
-       }
+      if (cart.length === 0) {
+        toast.error('Le panier est vide');
+        return;
+      }
+    
+      if (!selectedAccount) {
+        toast.error('Veuillez sélectionner un compte');
+        return;
+      }
+    
+      // VALIDATION 1: Vérifier que la remise n'est pas supérieure au sous-total
+      if (discount.amount > subtotal) {
+        toast.error(`La remise (${discount.amount.toLocaleString()} Ar) ne peut pas dépasser le sous-total (${subtotal.toLocaleString()} Ar)`);
+        return;
+      }
+    
+      // VALIDATION 2: Vérifier que l'acompte n'est pas supérieur au total (réservation)
+      if (saleMode === 'reservation') {
+        if (depositAmount > total) {
+          toast.error(`L'acompte (${depositAmount.toLocaleString()} Ar) ne peut pas dépasser le total (${total.toLocaleString()} Ar)`);
+          return;
+        }
+        if (!expiryDate) {
+          toast.error('Veuillez sélectionner une date limite de retrait');
+          return;
+        }
+      }
+    
+      // VALIDATION 3: Vérifier les échéances (crédit)
+      if (saleMode === 'credit') {
+        if (!dueDate) {
+          toast.error('Veuillez sélectionner une date limite');
+          return;
+        }
+        
+        // Si des échéances sont spécifiées
+        if (installments.length > 0) {
+          const installmentsTotal = installments.reduce((sum, inst) => 
+            sum + parseFloat(inst.amount || 0), 0
+          );
+          const difference = Math.abs(installmentsTotal - total);
+          
+          // Tolérance de 1 Ar pour les arrondis
+          if (difference > 1) {
+            toast.error(`La somme des échéances (${installmentsTotal.toLocaleString()} Ar) doit être égale au total (${total.toLocaleString()} Ar)`);
+            return;
+          }
+          
+          // Vérifier que chaque échéance a une date
+          const hasEmptyDate = installments.some(inst => !inst.due_date);
+          if (hasEmptyDate) {
+            toast.error('Toutes les échéances doivent avoir une date');
+            return;
+          }
+        }
+      }
    
        try {
          setSubmitting(true);
@@ -523,7 +662,14 @@ import customerService from '../../services/customerService';
        setShowClientModal(false);
        toast.success(`Client ${newClient.name} créé avec succès`);
      };
-   
+     const clearAllFilters = () => {
+      setSelectedCategory(null);
+      setSelectedSubcategory(null);
+      setSelectedAttributeType(null);
+      setSelectedAttributeValue(null);
+      setProductSearch('');
+      toast.success('Tous les filtres ont été effacés');
+    };
      const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
    
      return (
@@ -543,22 +689,26 @@ import customerService from '../../services/customerService';
              >
                Vente rapide
              </button>
-             <button
-               role="tab"
-               aria-selected={saleMode === 'credit'}
-               className={`mode-tab ${saleMode === 'credit' ? 'active' : ''}`}
-               onClick={() => setSaleMode('credit')}
-             >
-               Vente à crédit
-             </button>
-             <button
-               role="tab"
-               aria-selected={saleMode === 'reservation'}
-               className={`mode-tab ${saleMode === 'reservation' ? 'active' : ''}`}
-               onClick={() => setSaleMode('reservation')}
-             >
-               Réservation
-             </button>
+             {isAdmin() && (
+              <>
+                <button
+                  role="tab"
+                  aria-selected={saleMode === 'credit'}
+                  className={`mode-tab ${saleMode === 'credit' ? 'active' : ''}`}
+                  onClick={() => setSaleMode('credit')}
+                >
+                  Vente à crédit
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={saleMode === 'reservation'}
+                  className={`mode-tab ${saleMode === 'reservation' ? 'active' : ''}`}
+                  onClick={() => setSaleMode('reservation')}
+                >
+                  Réservation
+                </button>
+              </>
+            )}
              <div className="mode-indicator" data-mode={saleMode} />
            </div>
          </header>
@@ -726,66 +876,151 @@ import customerService from '../../services/customerService';
                </section>
              )}
    
-             <div className="filters-section">
-               <div className="product-search-wrapper-compact">
-                 <Search size={18} strokeWidth={2} />
-                 <input
-                   type="text"
-                   placeholder="Rechercher..."
-                   value={productSearch}
-                   onChange={(e) => setProductSearch(e.target.value)}
-                   className="product-search-input-compact"
-                 />
-               </div>
-   
-               <div className="category-filters">
-                 <div className="filter-group-compact">
-                   <Filter size={16} />
-                   <select
-                     value={selectedCategory || ''}
-                     onChange={(e) => {
-                       setSelectedCategory(e.target.value ? parseInt(e.target.value) : null);
-                       setSelectedSubcategory(null);
-                     }}
-                     className="category-select-compact"
-                   >
-                     <option value="">Catégories</option>
-                     {categories.map(cat => (
-                       <option key={cat.id} value={cat.id}>{cat.name}</option>
-                     ))}
-                   </select>
-                 </div>
-   
-                 {selectedCategory && selectedCategoryData?.children?.length > 0 && (
-                   <div className="filter-group-compact">
-                     <ChevronDown size={16} />
-                     <select
-                       value={selectedSubcategory || ''}
-                       onChange={(e) => setSelectedSubcategory(e.target.value ? parseInt(e.target.value) : null)}
-                       className="category-select-compact"
-                     >
-                       <option value="">Sous-catégories</option>
-                       {selectedCategoryData.children.map(subcat => (
-                         <option key={subcat.id} value={subcat.id}>{subcat.name}</option>
-                       ))}
-                     </select>
-                   </div>
-                 )}
-   
-                 {(selectedCategory || selectedSubcategory) && (
-                   <button
-                     className="btn-clear-filters-compact"
-                     onClick={() => {
-                       setSelectedCategory(null);
-                       setSelectedSubcategory(null);
-                     }}
-                   >
-                     <X size={14} />
-                   </button>
-                 )}
-               </div>
-             </div>
-   
+          <div className="filters-section">
+              <div className="product-search-wrapper-compact">
+                <Search size={18} strokeWidth={2} />
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="product-search-input-compact"
+                />
+              </div>
+
+              <div className="category-filters">
+                {/* Filtres catégories (existants) */}
+                <div className="filter-group-compact">
+                  <Filter size={16} />
+                  <select
+                    value={selectedCategory || ''}
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value ? parseInt(e.target.value) : null);
+                      setSelectedSubcategory(null);
+                    }}
+                    className="category-select-compact"
+                  >
+                    <option value="">Catégories</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedCategory && selectedCategoryData?.children?.length > 0 && (
+                  <div className="filter-group-compact">
+                    <ChevronDown size={16} />
+                    <select
+                      value={selectedSubcategory || ''}
+                      onChange={(e) => setSelectedSubcategory(e.target.value ? parseInt(e.target.value) : null)}
+                      className="category-select-compact"
+                    >
+                      <option value="">Sous-catégories</option>
+                      {selectedCategoryData.children.map(subcat => (
+                        <option key={subcat.id} value={subcat.id}>{subcat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Nouveau filtre pour les attributs */}
+                <div className="filter-group-compact">
+                  <Filter size={16} />
+                  <select
+                    value={selectedAttributeType || ''}
+                    onChange={(e) => {
+                      const attrId = e.target.value ? parseInt(e.target.value) : null;
+                      setSelectedAttributeType(attrId);
+                      setSelectedAttributeValue(null);
+                    }}
+                    className="category-select-compact"
+                  >
+                    <option value="">Attributs</option>
+                    {attributes.map(attr => (
+                      <option key={attr.id} value={attr.id}>{attr.display_name || attr.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtre pour les valeurs d'attributs */}
+                {selectedAttributeType && (
+                  <div className="filter-group-compact">
+                    <ChevronDown size={16} />
+                    <select
+                      value={selectedAttributeValue || ''}
+                      onChange={(e) => setSelectedAttributeValue(e.target.value ? e.target.value : null)}
+                      className="category-select-compact"
+                    >
+                      <option value="">Valeurs</option>
+                      {(() => {
+                        const selectedAttr = attributes.find(attr => attr.id === selectedAttributeType);
+                        if (selectedAttr && selectedAttr.values) {
+                          return selectedAttr.values.map(value => (
+                            <option key={value.id} value={value.value}>
+                              {value.value} ({value.product_count || 0})
+                            </option>
+                          ));
+                        }
+                        return null;
+                      })()}
+                    </select>
+                  </div>
+                )}
+
+                {/* Bouton pour effacer tous les filtres */}
+                {(selectedCategory || selectedSubcategory || selectedAttributeType || selectedAttributeValue) && (
+                  <button
+                    className="btn-clear-filters-compact"
+                    onClick={clearAllFilters}
+                    title="Effacer tous les filtres"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Affichage des filtres actifs */}
+              <div className="active-filters">
+                {selectedCategory && (
+                  <span className="active-filter">
+                    Catégorie: {categories.find(c => c.id === selectedCategory)?.name}
+                    <button onClick={() => setSelectedCategory(null)}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                
+                {selectedSubcategory && (
+                  <span className="active-filter">
+                    Sous-catégorie: {selectedCategoryData?.children?.find(s => s.id === selectedSubcategory)?.name}
+                    <button onClick={() => setSelectedSubcategory(null)}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                
+                {selectedAttributeType && (
+                  <span className="active-filter">
+                    Attribut: {attributes.find(a => a.id === selectedAttributeType)?.display_name}
+                    <button onClick={() => {
+                      setSelectedAttributeType(null);
+                      setSelectedAttributeValue(null);
+                    }}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                
+                {selectedAttributeValue && (
+                  <span className="active-filter">
+                    Valeur: {selectedAttributeValue}
+                    <button onClick={() => setSelectedAttributeValue(null)}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
              <div className="products-grid">
                {productsLoading ? (
                  Array.from({ length: 8 }).map((_, i) => (
@@ -844,24 +1079,40 @@ import customerService from '../../services/customerService';
    
              {cart.length > 0 && (
                <>
-                 <div className="cart-discount">
-                   <button
-                     className="discount-toggle"
-                     onClick={() => setShowDiscountReason(!showDiscountReason)}
-                   >
-                     Remise
-                   </button>
-                   <input
-                     type="number"
-                     placeholder="0"
-                     value={discount.amount || ''}
-                     onChange={(e) => setDiscount(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                     className="discount-input"
-                     min="0"
-                     max={subtotal}
-                   />
-                   <span>Ar</span>
-                 </div>
+                  <div className="cart-discount">
+                    <button
+                      className="discount-toggle"
+                      onClick={() => setShowDiscountReason(!showDiscountReason)}
+                    >
+                      Remise
+                    </button>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={discount.amount || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        // Empêcher la remise d'être supérieure au sous-total
+                        setDiscount(prev => ({ 
+                          ...prev, 
+                          amount: Math.min(value, subtotal) // Maximum = sous-total
+                        }));
+                      }}
+                      className="discount-input"
+                      min="0"
+                      max={subtotal} // Ajouter l'attribut max
+                      step="1"
+                    />
+                    <span>Ar</span>
+                  </div>
+
+                  
+                  {discount.amount > subtotal && (
+                    <div className="discount-warning">
+                      <AlertTriangle size={14} />
+                      <span>La remise ne peut pas dépasser {subtotal.toLocaleString()} Ar</span>
+                    </div>
+                  )}
    
                  {showDiscountReason && (
                    <input
@@ -934,84 +1185,199 @@ import customerService from '../../services/customerService';
                    </div>
                  )}
                  
-                 {saleMode === 'credit' && (
-                   <div className="credit-options">
-                     <label>Date limite</label>
-                     <input
-                       type="date"
-                       value={dueDate}
-                       onChange={(e) => setDueDate(e.target.value)}
-                       className="date-input"
-                       min={new Date().toISOString().split('T')[0]}
-                     />
+                 
+                  {saleMode === 'credit' && (
+                    <div className="credit-options">
+                      <label>Date limite</label>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="date-input"
+                        min={new Date().toISOString().split('T')[0]}
+                        required
+                      />
+
+                      <label>Échéances (optionnel)</label>
+                      
+                      {/* Afficher un message si les échéances ne correspondent pas au total */}
+                      {installments.length > 0 && (
+                        (() => {
+                          const installmentsTotal = installments.reduce((sum, inst) => 
+                            sum + parseFloat(inst.amount || 0), 0
+                          );
+                          const difference = Math.abs(installmentsTotal - total);
+                          
+                          if (difference > 0.01) {
+                            return (
+                              <div className="installments-warning">
+                                <AlertCircle size={14} />
+                                <span>
+                                  Somme des échéances : {installmentsTotal.toLocaleString()} Ar
+                                  ({difference.toLocaleString()} Ar de différence)
+                                </span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="installments-ok">
+                              <Check size={14} />
+                              <span>Somme des échéances : {installmentsTotal.toLocaleString()} Ar ✓</span>
+                            </div>
+                          );
+                        })()
+                      )}
+                      
+                      {installments.map((inst, idx) => (
+                        <div key={idx} className="installment-row">
+                          <input
+                            type="date"
+                            value={inst.due_date}
+                            onChange={(e) => {
+                              const updated = [...installments];
+                              updated[idx].due_date = e.target.value;
+                              setInstallments(updated);
+                            }}
+                            className="date-input-small"
+                            min={new Date().toISOString().split('T')[0]}
+                            required
+                          />
+                          <input
+                            type="number"
+                            placeholder="Montant"
+                            value={inst.amount || ''}
+                            onChange={(e) => {
+                              const updated = [...installments];
+                              updated[idx].amount = parseFloat(e.target.value) || 0;
+                              setInstallments(updated);
+                            }}
+                            className="amount-input-small"
+                            min="0"
+                            max={total} // Empêcher une échéance > total
+                            step="1"
+                          />
+                          <button
+                            className="btn-remove-installment"
+                            onClick={() => setInstallments(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      
+                      <button
+                        className="btn-add-installment"
+                        onClick={() => {
+                          // Calculer le montant restant à répartir
+                          const currentTotal = installments.reduce((sum, inst) => 
+                            sum + parseFloat(inst.amount || 0), 0
+                          );
+                          const remaining = Math.max(0, total - currentTotal);
+                          
+                          setInstallments(prev => [...prev, { 
+                            due_date: '', 
+                            amount: remaining > 0 ? remaining : 0 
+                          }]);
+                        }}
+                      >
+                        <Plus size={14} /> Ajouter échéance
+                      </button>
+                      
+                      {/* Bouton pour équilibrer automatiquement */}
+                      {installments.length > 1 && (
+                        <button
+                          className="btn-balance-installments"
+                          onClick={() => {
+                            const equalAmount = total / installments.length;
+                            const balanced = installments.map(inst => ({
+                              ...inst,
+                              amount: parseFloat(equalAmount.toFixed(2))
+                            }));
+                            setInstallments(balanced);
+                          }}
+                        >
+                          Répartir équitablement
+                        </button>
+                      )}
+                    </div>
+                  )}
    
-                     <label>Échéances (optionnel)</label>
-                     {installments.map((inst, idx) => (
-                       <div key={idx} className="installment-row">
-                         <input
-                           type="date"
-                           value={inst.due_date}
-                           onChange={(e) => {
-                             const updated = [...installments];
-                             updated[idx].due_date = e.target.value;
-                             setInstallments(updated);
-                           }}
-                           className="date-input-small"
-                           min={new Date().toISOString().split('T')[0]}
-                         />
-                         <input
-                           type="number"
-                           placeholder="Montant"
-                           value={inst.amount || ''}
-                           onChange={(e) => {
-                             const updated = [...installments];
-                             updated[idx].amount = parseFloat(e.target.value) || 0;
-                             setInstallments(updated);
-                           }}
-                           className="amount-input-small"
-                           min="0"
-                         />
-                           <button
-                             className="btn-remove-installment"
-                             onClick={() => setInstallments(prev => prev.filter((_, i) => i !== idx))}
-                           >
-                             <Trash2 size={14} />
-                           </button>
-                         
-                       </div>
-                     ))}
-                     <button
-                       className="btn-add-installment"
-                       onClick={() => setInstallments(prev => [...prev, { due_date: '', amount: 0 }])}
-                     >
-                       <Plus size={14} /> Ajouter échéance
-                     </button>
-                   </div>
-                 )}
-   
-                 {saleMode === 'reservation' && (
-                   <div className="reservation-options">
-                     <label>Date limite de retrait</label>
-                     <input
-                       type="date"
-                       value={expiryDate}
-                       onChange={(e) => setExpiryDate(e.target.value)}
-                       className="date-input"
-                       min={new Date().toISOString().split('T')[0]}
-                     />
-   
-                     <label>Acompte</label>
-                     <input
-                       type="number"
-                       placeholder="0"
-                       value={depositAmount || ''}
-                       onChange={(e) => setDepositAmount(parseFloat(e.target.value) || 0)}
-                       className="deposit-input"
-                       min="0"
-                       max={total}
-                     />
-                   </div>
-                 )}
+                  {saleMode === 'reservation' && (
+                  <div className="reservation-options">
+                    <label>Date limite de retrait</label>
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      className="date-input"
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+
+                    <label>Acompte</label>
+                    <div className="deposit-control">
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={depositAmount || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          // Limiter l'acompte au maximum du total
+                          setDepositAmount(Math.min(value, total));
+                        }}
+                        className="deposit-input"
+                        min="0"
+                        max={total}
+                        step="1"
+                      />
+                      <span>Ar</span>
+                    </div>
+                    
+                    {/* Afficher le pourcentage de l'acompte */}
+                    {depositAmount > 0 && (
+                      <div className="deposit-percentage">
+                        <span>
+                          {((depositAmount / total) * 100).toFixed(1)}% du total
+                          {depositAmount >= total && ' (Paiement complet)'}
+                        </span>
+                        {depositAmount >= total && (
+                          <div className="full-payment-warning">
+                            <AlertCircle size={12} />
+                            <span>Attention : l'acompte couvre la totalité</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Boutons d'acompte prédéfinis */}
+                    <div className="deposit-presets">
+                      <button
+                        className="deposit-preset-btn"
+                        onClick={() => setDepositAmount(Math.round(total * 0.1))}
+                      >
+                        10%
+                      </button>
+                      <button
+                        className="deposit-preset-btn"
+                        onClick={() => setDepositAmount(Math.round(total * 0.25))}
+                      >
+                        25%
+                      </button>
+                      <button
+                        className="deposit-preset-btn"
+                        onClick={() => setDepositAmount(Math.round(total * 0.5))}
+                      >
+                        50%
+                      </button>
+                      <button
+                        className="deposit-preset-btn"
+                        onClick={() => setDepositAmount(total)}
+                      >
+                        100%
+                      </button>
+                    </div>
+                  </div>
+                )}
    
                  {submitError && (
                    <div className="submit-error">

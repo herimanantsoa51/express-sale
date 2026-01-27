@@ -36,21 +36,52 @@ class ProductVariantLocationController extends Controller
         return response()->json($variantLocation);
     }
 
+
+
     /**
-     * Obtenir toutes les variantes dans une location spécifique
+     * Obtenir toutes les variantes dans une location (avec pagination et optimisation)
      * GET /api/locations/{locationId}/variants
      */
-    public function getByLocation($locationId)
+    public function getByLocation(Request $request, $locationId)
     {
-        $variantLocations = ProductVariantLocation::with([
-            'variant.product',
-            'location'
+        $perPage = $request->input('per_page', 20);
+        $search = $request->input('search', '');
+        $availableOnly = $request->boolean('available_only', false);
+        
+        $query = ProductVariantLocation::with([
+            'variant' => function($q) {
+                $q->select('id', 'product_id', 'sku', 'stock_quantity', 'reserved_quantity')
+                ->with('product:id,name,base_price,image_url');
+            }
         ])
         ->where('location_id', $locationId)
-        ->orderBy('created_at', 'desc')
-        ->get();
+        ->select('id', 'variant_id', 'location_id', 'quantity', 'reserved_quantity');
+        
+        // Filtrer uniquement les variants avec stock disponible
+        if ($availableOnly) {
+            $query->whereRaw('quantity - reserved_quantity > 0');
+        }
+        
+        // Recherche par nom de produit ou SKU
+        if ($search) {
+            $query->whereHas('variant', function($q) use ($search) {
+                $q->where('sku', 'like', "%{$search}%")
+                ->orWhereHas('product', function($p) use ($search) {
+                    $p->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+        
+        $result = $query->orderBy('quantity', 'desc')
+            ->paginate($perPage);
+        
+        // Ajouter available_quantity calculée
+        $result->getCollection()->transform(function($item) {
+            $item->available_quantity = max(0, $item->quantity - $item->reserved_quantity);
+            return $item;
+        });
 
-        return response()->json($variantLocations);
+        return response()->json($result);
     }
 
     /**

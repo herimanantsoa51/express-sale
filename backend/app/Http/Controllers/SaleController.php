@@ -27,7 +27,10 @@ use App\Http\Resources\ImmediateSaleDetailResource;
 use Carbon\Carbon;
 use App\Http\Resources\ReservationListResource;
 use App\Services\PosPrintService;
-
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
+use App\Models\ActivityLog;
+use App\Models\InstallmentTransaction;
 
 class SaleController extends Controller
 {
@@ -142,13 +145,30 @@ class SaleController extends Controller
                 'immediate_sale',
                 fn() => $this->posPrintService->printSale($sale)
             );
-
+            ActivityLogger::success(
+                ActivityAction::SALE_CREATED,
+                " a créé une vente rapide d'une valeur de {$sale->total_amount}",
+                [
+                    "model_type"=>Sale::class,
+                    "model_id"=>$sale->id,
+                    "metadata"=>$sale->toArray()
+                ],
+                "/ventes/rapide/{$sale->id}"
+            );
             return response()->json([
                 'message' => 'Vente créée avec succès',
                 'data' => new SaleResource($sale),
                 'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::SALE_CREATED,
+                " la creation de la vente rapide a échoué",
+                $e,
+                [    
+                    "metadata"=>$request->validated()
+                ]
+            );
             Log::error('Erreur création vente immédiate', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -181,13 +201,30 @@ class SaleController extends Controller
                 'credit',
                 fn() => $this->posPrintService->printCredit($sale->credit)
             );
-
+            ActivityLogger::success(
+                ActivityAction::CREDIT_CREATED,
+                " a créé une vente à crédit d'une valeur de {$sale->total_amount}",
+                [
+                    "model_type"=>Credit::class,
+                    "model_id"=>$sale->credit->id,
+                    "metadata"=>$sale->toArray()
+                ],
+                "/ventes/credits/{$sale->credit->id}"
+            );
             return response()->json([
                 'message' => 'Vente à crédit créée avec succès',
                 'data' => new SaleResource($sale),
                 'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::CREDIT_CREATED,
+                " la création d'une vente à crédit a échoué",
+                $e,
+                [
+                    "metadata"=>$request->validated()
+                ]
+            );
             Log::error('Erreur création vente crédit', [
                 'message' => $e->getMessage(),
             ]);
@@ -213,13 +250,33 @@ class SaleController extends Controller
                 'reservation',
                 fn() => $this->posPrintService->printReservation($sale->reservation)
             );
+            ActivityLogger::success(
+                ActivityAction::RESERVATION_CREATED,
+                " a créé une réservation d'une valeur de {$sale->total_amount}",
+                [
+                    "model_type"=>Reservation::class,
+                    "model_id"=>$sale->reservation->id,
+                    "metadata"=>$sale->toArray(),
+                ],
+                "/ventes/reservations/{$sale->reservation->id}"
 
+            );
             return response()->json([
                 'message' => 'Réservation créée avec succès',
                 'data' => new SaleResource($sale),
                 'print_info' => $printResult,
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::RESERVATION_CREATED,
+                " la création d'une réservation a échoué ",
+                $e,
+                [   
+                    "metadata"=>$request->validated(),
+                ]
+                
+
+            );
             Log::error('Erreur création réservation', [
                 'message' => $e->getMessage(),
             ]);
@@ -474,13 +531,31 @@ class SaleController extends Controller
                     fn() => $this->posPrintService->printCreditPayment($installmentTransaction)
                 );
             }
-
+            ActivityLogger::success(
+                ActivityAction::INSTALLMENT_PAID,
+                " a reçu le paiement d'un crédit de montant {$installmentTransaction->amount}",
+                [
+                    "model_type"=>InstallmentTransaction::class,
+                    "model_id"=>$installmentTransaction->id,
+                    "metadata"=>$installmentTransaction->toArray(),
+                ],
+                "/transactions/{$installmentTransaction->transaction->id}"
+            );
             return response()->json([
                 'message' => 'Paiement enregistré avec succès',
                 'data' => new CreditInstallmentResource($installment),
                 'print_info' => $printResult,
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::INSTALLMENT_PAID,
+                "le paiement d'un crédit a échoué",
+                $e,
+                [
+                    "metadata"=>$request->validated()
+                ],
+                
+            );
             Log::error('Erreur paiement échéance', [
                 'credit_id' => $creditId,
                 'installment_id' => $installmentId,
@@ -700,13 +775,31 @@ class SaleController extends Controller
                 'reservation_complete',
                 fn() => $this->posPrintService->printReservationReceipt($reservation)
             );
-
+            
+            ActivityLogger::success(
+                ActivityAction::RESERVATION_COMPLETED,
+                " a reçu le paiement de finalisation d'une reservation",
+                [
+                    "model_type"=>Reservation::class,
+                    "model_id"=>$reservation->id,
+                    "metadata"=>$reservation->toArray(),
+                ],
+                "/ventes/reservations/{$reservation->id}"
+            );
             return response()->json([
                 'message' => 'Réservation complétée avec succès',
                 'data' => new ReservationResource($reservation),
                 'print_info' => $printResult,
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::RESERVATION_COMPLETED,
+                " la finalisation d'une reservation a échoué",
+                $e,
+                [
+                    "metadata"=>$request->validated(),
+                ],
+            );
             Log::error('Erreur complétion réservation', [
                 'reservation_id' => $id,
                 'message' => $e->getMessage(),
@@ -731,12 +824,29 @@ class SaleController extends Controller
 
         try {
             $reservation = $this->saleService->cancelReservation($id, $request->reason);
-
+            ActivityLogger::success(
+                ActivityAction::RESERVATION_CANCELLED,
+                " a annulée la reservation {$reservation->sale->sale_number}",
+                [
+                    "model_type"=>Reservation::class,
+                    "model_id"=>$reservation->id,
+                    "metadata"=>$reservation->toArray(),
+                ],
+                "/ventes/reservations/{$reservation->id}"
+            );
             return response()->json([
                 'message' => 'Réservation annulée avec succès',
                 'data' => new ReservationResource($reservation),
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::RESERVATION_CANCELLED,
+                " l'annulation d'une reservation a échoué",
+                $e,
+                [
+                    "metadata"=>$request,
+                ],
+            );
             return response()->json([
                 'message' => 'Erreur lors de l\'annulation de la réservation',
                 'error' => $e->getMessage(),
@@ -918,11 +1028,28 @@ class SaleController extends Controller
     {
         try {
             $sale = $this->saleService->cancelImmediateSale($sale);
-
+            ActivityLogger::success(
+                ActivityAction::SALE_CANCELLED,
+                " a annulée la vente rapide {$sale->sale_number}",
+                [
+                    "model_type"=>Sale::class,
+                    "model_id"=>$sale->id,
+                    "metadata"=>$sale->toArray(),
+                ],
+                "/ventes/rapide/{$sale->id}"
+            );
             return response()->json([
                 'message' => 'Vente immédiate annulée avec succès',
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::SALE_CANCELLED,
+                " l'annulation d'une vente rapide a échouée {$sale->sale_number}",
+                $e,
+                [
+                    "metadata"=>$sale->toArray(),
+                ]
+            );
             return response()->json([
                 'message' => 'Erreur lors de l\'annulation de la réservation immédiate',
                 'error' => $e->getMessage(),
@@ -933,11 +1060,31 @@ class SaleController extends Controller
     {
         try {
             $credit = $this->saleService->cancelCredit($credit);
-
+            ActivityLogger::success(
+                ActivityAction::CREDIT_CANCELLED,
+                " a annulée la vente à crédit  {$credit->sale->sale_number}",
+                [
+                    "model_type"=>Credit::class,
+                    "model_id"=>$credit->id,
+                    "metadata"=>$credit->toArray(),
+                ],
+                "/ventes/credits/{$credit->id}"
+            );
             return response()->json([
                 'message' => 'Vente à crédit annulée avec succès',
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::CREDIT_CANCELLED,
+                " l'annulation de la vente à crédit  {$credit->sale->sale_number} a échouée",
+                $e,
+                [
+                    "model_type"=>Credit::class,
+                    "model_id"=>$credit->id,
+                    "metadata"=>$credit->toArray(),
+                ],
+     
+            );
             return response()->json([
                 'message' => 'Erreur lors de l\'annulation de la vente à crédit',
                 'error' => $e->getMessage(),

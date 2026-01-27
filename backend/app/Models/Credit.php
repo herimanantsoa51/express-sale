@@ -271,4 +271,21 @@ class Credit extends Model
             ->orderBy('paid_date')
             ->get();
     }
+    protected static function booted()
+    {
+        // Quand un crédit est annulé, annuler la vente
+        static::updating(function ($credit) {
+            if ($credit->isDirty('status') && $credit->status === 'cancelled') {
+                $credit->sale()->update(['status' => 'CANCELLED']);
+            }
+        });
+        
+        // Quand un crédit est complété, marquer la vente comme payée
+        static::updating(function ($credit) {
+            if ($credit->isDirty('status') && $credit->status === 'completed') {
+                $credit->sale()->update(['payment_status' => 'paid']);
+            }
+        });
+    }
+    
 }

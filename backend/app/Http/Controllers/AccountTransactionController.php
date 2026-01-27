@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Resources\AccountTransactionListResource;
 use App\Http\Resources\ExpenseTransactionListResource;
 use App\Models\ExpenseCategory;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 
 /**
  * Controller pour la gestion des transactions
@@ -122,6 +124,17 @@ class AccountTransactionController extends Controller
 
     //     return new TransactionCollection($transactions);
     // }
+    /**
+     * Liste des opérations de dépenses avec statistiques par catégorie
+     * GET /api/transactions/operational-expenses
+     * 
+     * Query params:
+     * - account_id: Filtrer par compte
+     * - expense_category_id: Filtrer par catégorie de dépense
+     * - start_date: Date de début
+     * - end_date: Date de fin
+     * - per_page: Nombre d'éléments par page (default: 15)
+     */
     public function indexExpenseOperation(Request $request): JsonResponse
     {
         $perPage   = (int) $request->get('per_page', 15);
@@ -134,6 +147,7 @@ class AccountTransactionController extends Controller
         $baseQuery = AccountTransaction::query()
             ->with([
                 'account:id,name,account_number',
+                'plannedExpense:id,name'
             ])
             ->whereHas('transactionType', fn ($q) =>
                 $q->where('category', 'expense')
@@ -300,13 +314,32 @@ class AccountTransactionController extends Controller
                 'sale',
                 'creator'
             ]);
-
+                ActivityLogger::success(
+                    ActivityAction::ACCOUNT_TRANSACTION_CREATED,
+                    "Transaction créée : ID {$transaction->id}, Montant {$transaction->amount}",
+                    [
+                        'model_type' => AccountTransaction::class,
+                        'model_id' => $transaction->id,
+                        'metadata' => $request->validated(),
+                    ],
+                    "transactions/$transaction->id"
+                );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Transaction créée avec succès',
                 'data' => new TransactionResource($transaction)
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::ACCOUNT_TRANSACTION_CREATED,
+                "erreur de transaction",
+                $e,
+                [
+                    'model_type' => AccountTransaction::class,
+                    'metadata' => $request->validated(),
+                ]
+
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la création de la transaction',
@@ -344,8 +377,18 @@ class AccountTransactionController extends Controller
                 'relatedAccount',
                 'creator'
             ]);
-
+            ActivityLogger::success(
+                ActivityAction::ACCOUNT_TRANSACTION_TRANSFER,
+                "a transféré {$request->amount} de ".$result['outgoing']->account->name,
+                [
+                    'model_type' => AccountTransaction::class,
+                    'model_id' => $result['outgoing']->id,
+                    'metadata' => $result
+                ],
+                "transactions/".$result['outgoing']->id
+            );
             return response()->json([
+                
                 'status' => 'success',
                 'message' => 'Transfert effectué avec succès',
                 'data' => [
@@ -354,6 +397,15 @@ class AccountTransactionController extends Controller
                 ]
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::ACCOUNT_TRANSACTION_TRANSFER,
+                "erreur de transfert",
+                $e,
+                [
+                    'model_type' => AccountTransaction::class,
+                    'metadata' => $request->validated(),
+                ]
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors du transfert',
@@ -376,7 +428,8 @@ class AccountTransactionController extends Controller
                 $request->recipient_name,
                 $request->notes, // Maintenant c'est notes qui devient description
                 $request->transaction_date,
-                $request->reference_number
+                $request->reference_number,
+                $request->planned_expense_id
             );
 
             $transaction->load([
@@ -385,13 +438,32 @@ class AccountTransactionController extends Controller
                 'expenseCategory',
                 'creator'
             ]);
-
+            ActivityLogger::success(
+                    ActivityAction::ACCOUNT_TRANSACTION_CREATED,
+                    "a enregistré une Dépense opérationnelle : ID {$transaction->reference_number}, Montant {$transaction->amount}",
+                    [
+                        'model_type' => AccountTransaction::class,
+                        'model_id' => $transaction->id,
+                        'metadata' => $transaction->toArray(),
+                    ],
+                    "transactions/$transaction->id"
+                );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Dépense enregistrée avec succès',
                 'data' => new TransactionResource($transaction)
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::class::error(
+                ActivityAction::ACCOUNT_TRANSACTION_CREATED,
+                "erreur lors de l'enregistrement de la dépense",
+                $e,
+                [
+                    'model_type' => AccountTransaction::class,
+                    'metadata' => $request->validated(),
+                ]
+
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de l\'enregistrement de la dépense',
@@ -450,6 +522,20 @@ class AccountTransactionController extends Controller
     {
         // Vérifier que l'utilisateur est le créateur
         if (!$transaction->canBeCancelledBy(Auth::id())) {
+            
+                ActivityLogger::error(
+                    ActivityAction::ACCOUNT_TRANSACTION_CANCELLED,
+                    "tentative non autorisée d'annuler la transaction ID {$transaction->id} {$transaction->reference_number} par l'utilisateur ID ".Auth::id(),
+                    new \Exception('Unauthorized cancellation attempt'),
+                    [
+                        'model_type' => AccountTransaction::class,
+                        'model_id' => $transaction->id,
+                        'metadata' => [
+                            'user_id' => Auth::id(),
+                        ],
+                    ]
+                );
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Vous n\'êtes pas autorisé à annuler cette transaction'
@@ -458,12 +544,31 @@ class AccountTransactionController extends Controller
 
         try {
             $transaction->cancel();
-
+                ActivityLogger::success(
+                    ActivityAction::ACCOUNT_TRANSACTION_CANCELLED,
+                    "a annulé la transaction ID {$transaction->id} {$transaction->reference_number} montant {$transaction->amount}",
+                    [
+                        'model_type' => AccountTransaction::class,
+                        'model_id' => $transaction->id,
+                        'metadata' => $transaction->toArray(),
+                    ],
+                    "transactions/{$transaction->id}"
+                );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Transaction annulée avec succès'
             ]);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::ACCOUNT_TRANSACTION_CANCELLED,
+                "erreur lors de l'annulation de la transaction ID {$transaction->id} {$transaction->reference_number}",
+                $e,
+                [
+                    'model_type' => AccountTransaction::class,
+                    'model_id' => $transaction->id,
+                    'metadata' => $transaction->toArray(),
+                ]
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de l\'annulation de la transaction',

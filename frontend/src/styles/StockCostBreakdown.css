@@ -1,0 +1,279 @@
+/* ============================================
+   StockCostBreakdown.css
+   ============================================ */
+
+   .stock-cost {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--border-color);
+    animation: fadeIn 0.6s var(--transition-smooth) 0.5s backwards;
+    margin-top: var(--spacing-lg);
+  }
+  
+  .stock-cost__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .stock-cost__title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: -0.022em;
+  }
+  
+  .stock-cost__total {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+  }
+  
+  .stock-cost__total svg {
+    color: var(--primary);
+  }
+  
+  .stock-cost__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  
+  .stock-cost__item {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    transition: all var(--transition-speed) var(--transition-smooth);
+    border: 1px solid transparent;
+  }
+  
+  .stock-cost__item:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
+    transform: translateX(4px);
+  }
+  
+  .stock-cost__item-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .stock-cost__item-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--bg-tertiary);
+    border-radius: 50%;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  
+  .stock-cost__item:nth-child(1) .stock-cost__item-rank {
+    color: #FFD700;
+    background: rgba(255, 215, 0, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+  }
+  
+  .stock-cost__item:nth-child(2) .stock-cost__item-rank {
+    color: #C0C0C0;
+    background: rgba(192, 192, 192, 0.15);
+    border: 1px solid rgba(192, 192, 192, 0.3);
+  }
+  
+  .stock-cost__item:nth-child(3) .stock-cost__item-rank {
+    color: #CD7F32;
+    background: rgba(205, 127, 50, 0.15);
+    border: 1px solid rgba(205, 127, 50, 0.3);
+  }
+  
+  .stock-cost__item-image-wrapper {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  
+  .stock-cost__item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .stock-cost__item-placeholder {
+    color: var(--text-tertiary);
+    position: absolute;
+  }
+  
+  .stock-cost__item-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .stock-cost__item-name {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .stock-cost__item-sku {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  }
+  
+  .stock-cost__variants-count {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: var(--spacing-sm);
+    padding: 2px 6px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+  
+  .stock-cost__item-cost {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    text-align: right;
+  }
+  
+  .stock-cost__item-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+  }
+  
+  .stock-cost__item-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: var(--font-size-sm);
+  }
+  
+  .stock-cost__stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--text-secondary);
+  }
+  
+  .stock-cost__stat svg {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+  
+  .stock-cost__percentage-bar {
+    height: 20px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  
+  .stock-cost__percentage-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    border-radius: 10px;
+    transition: width 0.8s var(--transition-smooth);
+  }
+  
+  .stock-cost__percentage-text {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+  }
+  
+  .stock-cost__empty {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .stock-cost__item-header {
+      flex-wrap: wrap;
+    }
+    
+    .stock-cost__item-cost {
+      width: 100%;
+      text-align: left;
+      margin-top: var(--spacing-sm);
+      order: 3;
+    }
+    
+    .stock-cost__item-stats {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+    
+    .stock-cost__percentage-text {
+      font-size: 10px;
+      right: 4px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .stock-cost__header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+    }
+    
+    .stock-cost__total {
+      align-self: flex-start;
+    }
+    
+    .stock-cost__item-image-wrapper {
+      width: 40px;
+      height: 40px;
+    }
+  }

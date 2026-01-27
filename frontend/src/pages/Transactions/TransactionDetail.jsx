@@ -34,13 +34,15 @@ const formatAmount = (amount) => {
 const formatDateTime = (dateString) => {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
+  const madagascarTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+  
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(date);
+  }).format(madagascarTime);
 };
 
 const getCategoryConfig = (category) => {
@@ -537,13 +539,13 @@ const TransactionDetail = () => {
             )}
 
             {/* Expense Category */}
-            {transaction.expense_category && (
+            {transaction.planned_expense && (
               <RelatedCard
                 icon={Tag}
                 iconClass="expense"
-                label="Catégorie de dépense"
-                name={transaction.expense_category.name}
-                onClick={() => {}}
+                label="Dépense Previsionnelle"
+                name={transaction.planned_expense.title}
+                onClick={() => navigate("/depenses/planifie/"+transaction.planned_expense.id)}
               />
             )}
 

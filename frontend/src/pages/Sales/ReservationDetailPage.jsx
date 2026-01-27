@@ -177,7 +177,7 @@ const ReservationDetailPage = () => {
   const daysRemaining = daysUntil(reservation.expiry_date);
   const isExpiringSoon = daysRemaining <= 7 && daysRemaining > 0;
   const isExpired = daysRemaining < 0;
-  const canComplete = ['pending', 'confirmed', 'partial_paid'].includes(reservation.status) && reservation.remaining_amount > 0;
+  const canComplete = ['pending', 'confirmed', 'partial_paid','completed'].includes(reservation.status) && reservation.remaining_amount > 0;
 
   return (
     <div className="reservation-detail-page">
@@ -221,7 +221,7 @@ const ReservationDetailPage = () => {
               <CreditCard size={18} /><span>Compléter</span>
             </button>
           )}
-          {reservation.status !== 'cancelled' && reservation.status !== 'completed' && (
+          {reservation.status !== 'cancelled' && (
             <button className="action-btn action-btn--danger" onClick={handleCancel} disabled={actionLoading}>
               <X size={18} /><span>Annuler</span>
             </button>

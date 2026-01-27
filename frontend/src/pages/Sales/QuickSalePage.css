@@ -12,7 +12,102 @@
      position: relative;
      overflow: hidden;
    }
-   
+   /* QuickSalePage.css - Ajoutez ces styles */
+
+/* Avertissements pour la remise */
+.discount-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Pour les échéances */
+.installments-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning);
+  font-size: 12px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: var(--warning-10);
+  border-radius: 6px;
+}
+
+.installments-ok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-size: 12px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: var(--success-10);
+  border-radius: 6px;
+}
+
+.btn-balance-installments {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-balance-installments:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Pour l'acompte */
+.deposit-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deposit-percentage {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.full-payment-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--warning);
+  margin-top: 2px;
+}
+
+.deposit-presets {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.deposit-preset-btn {
+  flex: 1;
+  padding: 6px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deposit-preset-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
    .quick-sale-page::before {
      content: '';
      position: fixed;
@@ -2688,4 +2783,130 @@ select:focus-visible {
 .stock-info {
   margin-left: auto;
   font-weight: var(--font-weight-bold);
+}
+/* QuickSalePage.css - Ajoutez ces règles */
+
+/* Supprimer les flèches sur tous les inputs number */
+input[type="number"] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Appliquer spécifiquement aux inputs problématiques */
+.discount-input,
+.deposit-input,
+.amount-input-small {
+  -moz-appearance: textfield;
+}
+
+.discount-input::-webkit-outer-spin-button,
+.discount-input::-webkit-inner-spin-button,
+.deposit-input::-webkit-outer-spin-button,
+.deposit-input::-webkit-inner-spin-button,
+.amount-input-small::-webkit-outer-spin-button,
+.amount-input-small::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Pour le quantity dans le modal */
+.quantity-selector-modal input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.quantity-selector-modal input[type="number"]::-webkit-outer-spin-button,
+.quantity-selector-modal input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Styles pour les filtres actifs */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.active-filter button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  font-size: 10px;
+}
+
+.active-filter button:hover {
+  background: var(--primary-dark);
+}
+
+/* Améliorer l'apparence des selects */
+.filter-group-compact {
+  position: relative;
+}
+
+.filter-group-compact select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 30px;
+}
+
+/* Indicateur visuel pour les filtres actifs */
+.filter-group-compact:has(select:not(:empty)) {
+  position: relative;
+}
+
+.filter-group-compact:has(select:not(:empty))::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+
+/* Responsive pour les filtres */
+@media (max-width: 768px) {
+  .category-filters {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .filter-group-compact {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .active-filters {
+    font-size: 11px;
+  }
 }

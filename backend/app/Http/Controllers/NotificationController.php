@@ -127,7 +127,7 @@ class NotificationController extends Controller
     public function dismissByType(Request $request)
     {
         $request->validate([
-            'type' => 'required|string|in:stock_low,stock_out,reservation_expiring,credit_due'
+            'type' => 'required|string|in:stock_low,stock_out,reservation_expiring,credit_due,planned_expense_due'
         ]);
 
         $updated = Notification::where('user_id', Auth::id())
@@ -186,7 +186,13 @@ class NotificationController extends Controller
             ->get();
 
         // Créer les préférences manquantes avec valeurs par défaut
-        $types = ['stock_low', 'stock_out', 'reservation_expiring', 'credit_due'];
+        $types = [
+            'stock_low',
+            'stock_out',
+            'reservation_expiring',
+            'credit_due',
+            'planned_expense_due',
+        ];        
         $existingTypes = $preferences->pluck('notification_type')->toArray();
 
         foreach ($types as $type) {
@@ -245,6 +251,7 @@ class NotificationController extends Controller
                 'stock_out' => $this->notificationService->generateStockOutNotifications(),
                 'reservation_expiring' => $this->notificationService->generateReservationExpiringNotifications(),
                 'credit_due' => $this->notificationService->generateCreditDueNotifications(),
+                'planned_expense_due' => $this->notificationService->generatePlannedExpenseDueNotifications(),
                 default => 0
             };
 

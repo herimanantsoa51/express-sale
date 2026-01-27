@@ -19,10 +19,12 @@ class StoreOperationalExpenseRequest extends FormRequest
         return [
             'account_id' => 'required|exists:accounts,id',
             'expense_category_id' => 'required|exists:expense_categories,id',
+            'planned_expense_id' => 'nullable|exists:planned_expenses,id',
             'amount' => 'required|numeric|min:0.01',
             'transaction_date' => 'nullable|date',
             'recipient_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            
         ];
     }
 
@@ -33,6 +35,7 @@ class StoreOperationalExpenseRequest extends FormRequest
             'expense_category_id.required' => 'La catégorie de dépense est requise',
             'amount.required' => 'Le montant est requis',
             'amount.min' => 'Le montant doit être supérieur à zéro',
+            'planned_expense_id.exists' => 'La charge planifiée sélectionnée est invalide',
         ];
     }
 }

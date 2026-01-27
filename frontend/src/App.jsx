@@ -86,7 +86,8 @@ import CurrencyRates from './pages/Accounts/CurrencyRates';
 // Dépenses
 import ExpenseList from './pages/Expenses/ExpenseList';
 import ExpenseCreate from './pages/Expenses/ExpenseCreate';
-
+import PlannedExpensesList from './pages/Expenses/PlannedExpensesList';
+import PlannedExpenseDetail from './pages/Expenses/PlannedExpenseDetail';
 // Transactions
 import TransactionDetail from './pages/Transactions/TransactionDetail';
 
@@ -104,6 +105,8 @@ import CashCountDetail from './pages/CashCount/CashCountDetail';
 // Paramètres
 import CompanyConfiguration from './pages/Settings/CompanyConfiguration';
 import InventoryReconciliationForm from './pages/StockMovement/InventoryReconciliationForm';
+import PlannedExpenseCreate from './pages/Expenses/PlannedExpenseCreate';
+import FinancialStatistics from './pages/Statistics/FinancialStatistics';
 // Styles globaux
 import './styles/variables.css';
 import './styles/reset.css';
@@ -239,12 +242,17 @@ function App() {
               <Route path="depenses">
                 <Route index element={<ExpenseList/>}/>
                 <Route path="nouveau" element={<ExpenseCreate/>}/>
+                <Route path="planifie/nouveau" element={<PlannedExpenseCreate/>}/>
+                <Route path="planifie/modifier/:id" element={<PlannedExpenseCreate/>}/>
+                <Route path="planifie" element={<PlannedExpensesList/>}/>
+                <Route path="planifie/:id" element={<PlannedExpenseDetail/>}/>
               </Route>
               <Route path='transactions'>
                 <Route path=':id' element={<TransactionDetail />} />
               </Route>
               <Route path="statistiques">
                 <Route index element={<SalesStatistics/>} />
+                <Route path="financieres" element={<FinancialStatistics/>} />
               </Route>
               <Route path="utilisateurs">
                 <Route index element={<UsersPage/>} />

@@ -48,11 +48,11 @@ const CreditRow = ({ credit }) => {
       </div>
       
       <div className="credit-cell" style={{ minWidth: '130px' }}>
-        <div className="amount">{formatAmount(credit.total_amount)}</div>
+        <div className="credit-amount">{formatAmount(credit.total_amount)}</div>
       </div>
       
       <div className="credit-cell" style={{ minWidth: '130px' }}>
-        <div className="amount-due">{formatAmount(credit.amount_due)}</div>
+        <div className="credit-amount-due">{formatAmount(credit.amount_due)}</div>
       </div>
       
       <div className="credit-cell" style={{ minWidth: '120px' }}>

@@ -22,4 +22,27 @@ class AttributeValue extends Model
     {
         return $this->belongsTo(AttributeType::class);
     }
+
+    // Relation avec les variantes via la table de jointure
+    public function productVariants()
+    {
+        return $this->belongsToMany(
+            ProductVariant::class,
+            'variant_attribute_values',
+            'attribute_value_id',
+            'variant_id'
+        );
+    }
+
+    // Alias plus court
+    public function variants()
+    {
+        return $this->productVariants();
+    }
+
+    // Vérifie si utilisé par des variantes
+    public function hasVariants()
+    {
+        return $this->variants()->exists();
+    }
 }

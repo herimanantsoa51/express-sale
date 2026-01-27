@@ -15,6 +15,7 @@ class UpdateAccountRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|string|max:255',
+            'account_type_id' => 'sometimes|exists:account_types,id',
             'account_number' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',

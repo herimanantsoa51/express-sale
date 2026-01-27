@@ -17,7 +17,8 @@ use App\Models\AttributeValue;
 use App\Models\ProductAttribute;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 class ProductVariantController extends Controller
 {
     /**
@@ -74,153 +75,243 @@ class ProductVariantController extends Controller
      * Créer une variante
      */
     public function store(Request $request, $productId)
-    {
-        $validator = Validator::make($request->all(), [
-            'price_adjustment' => 'nullable|numeric',
-            'low_stock_threshold' => 'nullable|integer|min:0',
-            'image_path' => 'nullable|string',
-            'attributes' => 'required|array',
-            'attributes.*.attribute_type_id' => 'required|exists:attribute_types,id',
-            'attributes.*.value' => 'required',
-        ]);
+    {   
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // ✅ Récupérer le produit pour générer le SKU
-        $product = Product::findOrFail($productId);
-
-        // ✅ Générer le SKU
-        $sku = $this->generateSKU($product, $request->attributes);
-
-        // Créer la variante avec SKU
-        $variant = ProductVariant::create([
-            'product_id' => $productId,
-            'sku' => $sku, // ✅ Ajouté
-            'price_adjustment' => $request->price_adjustment ?? 0,
-            'low_stock_threshold' => $request->low_stock_threshold ?? 5,
-            'image_path' => $request->image_path,
-            'stock_quantity' => 0,
-            'is_active' => true,
-        ]);
-
-        $attributes = $request->input('attributes');
-
-        foreach ($attributes as $attr) {
-            $attributeTypeId = $attr['attribute_type_id'];
-            $value = $attr['value'];
-
-            $attributeValue = AttributeValue::firstOrCreate(
+        try {
+            $validator = Validator::make($request->all(), [
+                'price_adjustment' => 'nullable|numeric',
+                'low_stock_threshold' => 'nullable|integer|min:0',
+                'image_path' => 'nullable|string',
+                'attributes' => 'required|array',
+                'attributes.*.attribute_type_id' => 'required|exists:attribute_types,id',
+                'attributes.*.value' => 'required',
+            ]);
+    
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+    
+            // ✅ Récupérer le produit pour générer le SKU
+            $product = Product::findOrFail($productId);
+    
+            // ✅ Générer le SKU
+            $sku = $this->generateSKU($product, $request->attributes);
+    
+            // Créer la variante avec SKU
+            $variant = ProductVariant::create([
+                'product_id' => $productId,
+                'sku' => $sku, // ✅ Ajouté
+                'price_adjustment' => $request->price_adjustment ?? 0,
+                'low_stock_threshold' => $request->low_stock_threshold ?? 5,
+                'image_path' => $request->image_path,
+                'stock_quantity' => 0,
+                'is_active' => true,
+            ]);
+    
+            $attributes = $request->input('attributes');
+    
+            foreach ($attributes as $attr) {
+                $attributeTypeId = $attr['attribute_type_id'];
+                $value = $attr['value'];
+    
+                $attributeValue = AttributeValue::firstOrCreate(
+                    [
+                        'attribute_type_id' => $attributeTypeId,
+                        'value' => $value
+                    ],
+                    [
+                        'sort_order' => 999
+                    ]
+                );
+    
+                VariantAttributeValue::create([
+                    'variant_id' => $variant->id,
+                    'attribute_value_id' => $attributeValue->id,
+                ]);
+            }
+            $variant->load('attributeValues.attributeType');
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_VARIANT_CREATED,
+                "a créé une nouvelle variante (SKU: {$variant->sku}) pour le produit {$product->name}",
                 [
-                    'attribute_type_id' => $attributeTypeId,
-                    'value' => $value
+                    'model_type' => 'App\Models\ProductVariant',
+                    'model_id' => $variant->id,
+                    'metadata' => [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'sku' => $variant->sku,
+                    ]
                 ],
+                "/produits/{$product->id}"
+            );
+            return response()->json($variant, 201);
+        } catch (\ErrorException $e) {
+
+            ActivityLogger::error(
+                ActivityAction::PRODUCT_VARIANT_CREATED,
+                "une erreur est survenue lors de la création d'une variante pour le produit ID {$productId}",
+                $e,
                 [
-                    'sort_order' => 999
+                    'model_type' => 'App\Models\ProductVariant',
+                    'metadata' => [
+                        'product_id' => $productId,
+                    ],
                 ]
             );
-
-            VariantAttributeValue::create([
-                'variant_id' => $variant->id,
-                'attribute_value_id' => $attributeValue->id,
-            ]);
-        }
-
-        return response()->json($variant->load('attributeValues.attributeType'), 201);
+            return response()->json([
+                'message' => 'Erreur lors de la création de la variante',
+                'error' => $e->getMessage()
+            ], 500);
+        }   
+        
     }
 
     /**
      * Mettre à jour une variante
      */
     public function update(Request $request, $productId, $id)
-    {
-        $variant = ProductVariant::where('product_id', $productId)->findOrFail($id);
+    {   
+        
+        try {
+            $variant = ProductVariant::where('product_id', $productId)->findOrFail($id);
 
-        $validator = Validator::make($request->all(), [
-            'price_adjustment' => 'nullable|numeric',
-            'low_stock_threshold' => 'nullable|integer|min:0',
-            'is_active' => 'boolean',
-            'image_path' => 'nullable|string',
-            'attributes' => 'required|array',
-            'attributes.*.attribute_type_id' => 'required|exists:attribute_types,id',
-            'attributes.*.value' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // ✅ Vérifier si l'image est supprimée (image_path est null)
-        $oldImagePath = $variant->image_path;
-        $newImagePath = $request->image_path;
-
-        // ✅ Logique de suppression d'image
-        if ($oldImagePath && ($newImagePath === null || $newImagePath === '')) {
-            // Supprimer l'ancienne image du storage
-            $this->deleteImageFromStorage($oldImagePath);
-            Log::info("Image supprimée pour la variante {$variant->id}: {$oldImagePath}");
-        }
-
-        // ✅ Récupérer le produit
-        $product = Product::findOrFail($productId);
-
-        // ✅ Régénérer le SKU si les attributs ont changé
-        $newSku = $this->generateSKU($product, $request->attributes);
-
-        // Mettre à jour les champs de base
-        $variant->update([
-            'sku' => $newSku, // ✅ Mettre à jour le SKU
-            'price_adjustment' => $request->price_adjustment ?? 0,
-            'low_stock_threshold' => $request->low_stock_threshold ?? 5,
-            'is_active' => $request->is_active ?? $variant->is_active,
-            'image_path' => $newImagePath,
-        ]);
-
-        $attributes = $request->input('attributes');
-
-        // Supprimer les anciennes valeurs d'attributs
-        VariantAttributeValue::where('variant_id', $variant->id)->delete();
-
-        foreach ($attributes as $attr) {
-            $attributeValue = AttributeValue::firstOrCreate(
-                [
-                    'attribute_type_id' => $attr['attribute_type_id'],
-                    'value' => $attr['value']
-                ],
-                ['sort_order' => 999]
-            );
-
-            VariantAttributeValue::create([
-                'variant_id' => $variant->id,
-                'attribute_value_id' => $attributeValue->id
+            $validator = Validator::make($request->all(), [
+                'price_adjustment' => 'nullable|numeric',
+                'low_stock_threshold' => 'nullable|integer|min:0',
+                'is_active' => 'boolean',
+                'image_path' => 'nullable|string',
+                'attributes' => 'required|array',
+                'attributes.*.attribute_type_id' => 'required|exists:attribute_types,id',
+                'attributes.*.value' => 'required',
             ]);
+    
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+    
+            // ✅ Vérifier si l'image est supprimée (image_path est null)
+            $oldImagePath = $variant->image_path;
+            $newImagePath = $request->image_path;
+    
+            // ✅ Logique de suppression d'image
+            if ($oldImagePath && ($newImagePath === null || $newImagePath === '')) {
+                // Supprimer l'ancienne image du storage
+                $this->deleteImageFromStorage($oldImagePath);
+                Log::info("Image supprimée pour la variante {$variant->id}: {$oldImagePath}");
+            }
+    
+            // ✅ Récupérer le produit
+            $product = Product::findOrFail($productId);
+    
+            // ✅ Régénérer le SKU si les attributs ont changé
+            $newSku = $this->generateSKU($product, $request->attributes);
+    
+            // Mettre à jour les champs de base
+            $variant->update([
+                'sku' => $newSku, // ✅ Mettre à jour le SKU
+                'price_adjustment' => $request->price_adjustment ?? 0,
+                'low_stock_threshold' => $request->low_stock_threshold ?? 5,
+                'is_active' => $request->is_active ?? $variant->is_active,
+                'image_path' => $newImagePath,
+            ]);
+    
+            $attributes = $request->input('attributes');
+    
+            // Supprimer les anciennes valeurs d'attributs
+            VariantAttributeValue::where('variant_id', $variant->id)->delete();
+    
+            foreach ($attributes as $attr) {
+                $attributeValue = AttributeValue::firstOrCreate(
+                    [
+                        'attribute_type_id' => $attr['attribute_type_id'],
+                        'value' => $attr['value']
+                    ],
+                    ['sort_order' => 999]
+                );
+    
+                VariantAttributeValue::create([
+                    'variant_id' => $variant->id,
+                    'attribute_value_id' => $attributeValue->id
+                ]);
+            }
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_VARIANT_UPDATED,
+                "a mis à jour la variante (SKU: {$variant->sku}) du produit {$product->name}",
+                [
+                    'model_type' => 'App\Models\ProductVariant',
+                    'model_id' => $variant->id,
+                    'metadata' => [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'sku' => $variant->sku,
+                    ]
+                ],
+                "/produits/{$product->id}"
+            );
+            return response()->json($variant->load('attributeValues.attributeType'));
+        } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::PRODUCT_VARIANT_UPDATED,
+                "une erreur est survenue lors de la mise à jour de la variante ID {$id} pour le produit ID {$productId}",
+                $e,
+                [
+                    'model_type' => 'App\Models\ProductVariant',
+                    'model_id' => $id,
+                    'metadata' => [
+                        'product_id' => $productId,
+                    ],
+                ]
+            );
+            return response()->json([
+                'message' => 'Erreur lors de la mise à jour de la variante',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json($variant->load('attributeValues.attributeType'));
+        
     }
 
     /**
      * Supprimer une variante
      */
     public function destroy($productId, $id)
-    {
-        $variant = ProductVariant::where('product_id', $productId)->findOrFail($id);
+    {   
 
-        // Supprimer l'image associée si elle existe
-        if ($variant->image_path) {
-            $this->deleteImageFromStorage($variant->image_path);
-        }
+        try{
+            $variant = ProductVariant::where('product_id', $productId)->findOrFail($id);
 
-        if ($variant->stock_quantity > 0) {
+            // Supprimer l'image associée si elle existe
+            if ($variant->image_path) {
+                $this->deleteImageFromStorage($variant->image_path);
+            }
+    
+            if ($variant->stock_quantity > 0) {
+                return response()->json([
+                    'message' => 'Impossible de supprimer une variante avec du stock'
+                ], 400);
+            }
+    
+            $variant->delete();
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_VARIANT_DELETED,
+                "a supprimé la variante (SKU: {$variant->sku}) du produit ID {$productId}",
+                [
+                    'model_type' => 'App\Models\ProductVariant',
+                    'model_id' => $variant->id,     
+                    'metadata' => [
+                        'product_id' => $productId,
+                        'sku' => $variant->sku,
+                    ]
+                ],                "/produits/{$productId}"
+
+            );
+            return response()->json(['message' => 'Variante supprimée'], 200);
+        }catch(\Exception $e){
             return response()->json([
-                'message' => 'Impossible de supprimer une variante avec du stock'
-            ], 400);
+                'message' => 'Erreur lors de la suppression de la variante',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $variant->delete();
-
-        return response()->json(['message' => 'Variante supprimée'], 200);
+       
     }
 
     public function show($productId, $id)
@@ -347,8 +438,32 @@ class ProductVariantController extends Controller
             
             Log::warning("Image non trouvée dans le storage: {$imageUrl}");
             return false;
+
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_VARIANT_UPDATED,
+                "L'image associée à la variante ID {$imageUrl} a été supprimée du storage.",
+                [
+                    'model_type' => 'App\Models\ProductVariant',
+                    'metadata' => [
+                        'image_url' => $imageUrl,
+                    ],
+                ],
+                '/produits/'
+            );
             
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::PRODUCT_VARIANT_UPDATED,
+                "une erreur est survenue lors de la suppression de l'image associée à la variante ID {$imageUrl}",
+                $e,
+                [
+                    'model_type' => 'App\Models\ProductVariant',
+                    'metadata' => [
+                        'image_url' => $imageUrl,
+                    ],
+                ],
+                
+                );
             Log::error("Erreur lors de la suppression de l'image {$imageUrl}: " . $e->getMessage());
             return false;
         }

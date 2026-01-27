@@ -228,7 +228,7 @@
   
   /* ========== QUANTITY CELL ========== */
   .it-qty-cell {
-    width: 100px;
+    width: 150px;
   }
   
   .it-qty-input {
@@ -255,7 +255,7 @@
   
   /* ========== PRICE CELL ========== */
   .it-price-cell {
-    width: 140px;
+    width: 200px;
   }
   
   .it-price-wrapper {

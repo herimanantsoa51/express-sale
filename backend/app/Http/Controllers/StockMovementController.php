@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\StockBatch;
 use Illuminate\Support\Facades\Log;
+use App\Enums\ActivityAction;
+use App\Helpers\ActivityLogger;
 class StockMovementController extends Controller
 {
     /**
@@ -227,10 +229,27 @@ class StockMovementController extends Controller
                 'toLocation',
                 'performedBy'
             ]);
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_TRANSFERRED,
+                " a transféré des produits de {$movement->fromLocation->name} vers {$movement->toLocation->name}",
+                [
+                    "model_type"=>StockMovement::class,
+                    "model_id"=>$movement->id,
+                    "metadata"=>$movement
+                ],
+                "/movements-stock"
+            );
             return response()->json($movement, 201);
 
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::STOCK_TRANSFERRED,
+                "transfert échoué",
+                $e,
+                [
+                    "metadata"=>$request
+                ]
+            );
             DB::rollBack();
             return response()->json([
                 'message' => 'Erreur lors du transfert',
@@ -316,7 +335,7 @@ class StockMovementController extends Controller
             }
 
             DB::commit();
-
+            
             $movementIds = collect($movements)->pluck('id');
             $loadedMovements = StockMovement::with([
                 'variant.product',
@@ -325,7 +344,16 @@ class StockMovementController extends Controller
                 'toLocation',
                 'performedBy'
             ])->whereIn('id', $movementIds)->get();
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_TRANSFERRED,
+                " a transféré des produits de {$loadedMovements->fromLocation->name} vers {$loadedMovements->toLocation->name}",
+                [
+                    "model_type"=>StockMovement::class,
+                    "model_id"=>$loadedMovements->id,
+                    "metadata"=>$loadedMovements
+                ],
+                "/movements-stock"
+            );
             return response()->json([
                 'message' => count($movements) . ' transfert(s) effectué(s)',
                 'batch_id' => $batchId,
@@ -337,6 +365,14 @@ class StockMovementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            ActivityLogger::error(
+                ActivityAction::STOCK_TRANSFERRED,
+                "transfert échoué",
+                $e,
+                [
+                    "metadata"=>$request
+                ]
+            );
             return response()->json([
                 'message' => 'Erreur lors du transfert multiple',
                 'error' => $e->getMessage()
@@ -671,7 +707,16 @@ class StockMovementController extends Controller
             ]);
 
             DB::commit();
-
+            ActivityLogger::success(
+                ActivityAction::STOCK_LOSS_DECLARED,
+                " a déclaré des pertes de produits de {$movement->fromLocation->name} ",
+                [
+                    "model_type"=>StockMovement::class,
+                    "model_id"=>$movement->id,
+                    "metadata"=>$movement
+                ],
+                "/movements-stock"
+            );
             return response()->json([
                 'message' => 'Perte déclarée avec succès',
                 'movement' => $movement->load(['variant.product', 'fromLocation', 'performedBy']),
@@ -681,6 +726,14 @@ class StockMovementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            ActivityLogger::error(
+                ActivityAction::STOCK_LOSS_DECLARED,
+                "déclaration de perte échoué",
+                $e,
+                [
+                    "metadata"=>$request
+                ]
+            );
             return response()->json([
                 'message' => 'Erreur lors de la déclaration de perte',
                 'error' => $e->getMessage()

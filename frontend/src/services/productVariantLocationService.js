@@ -31,8 +31,19 @@ const productVariantLocationService = {
    * @param {number} locationId - ID de la location
    * @returns {Promise<Array>} Liste des variantes dans cette location
    */
-  getByLocation: async (locationId) => {
-    const response = await api.get(`/locations/${locationId}/variants`);
+  // services/productVariantLocationService.js (UPDATE)
+
+  getByLocation: async (locationId, params = {}) => {
+    const response = await api.get(`/locations/${locationId}/variants`, { params });
+    return response.data; // Retourne directement l'objet paginé
+  },
+  // services/stockMovementService.js (UPDATE)
+
+  /**
+   * Déclarer une perte de stock
+   */
+  declareLoss: async (data) => {
+    const response = await api.post('/stock-movements/loss', data);
     return response.data;
   },
 

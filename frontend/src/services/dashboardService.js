@@ -12,13 +12,15 @@ const dashboardService = {
    * @param {string} params.period - Période (7days, 1month, 2months, 3months)
    * @returns {Promise} Données du dashboard
    */
+    // src/services/dashboardService.js
   getDashboardData: async (params) => {
-    console.log('Dashboard Service - Fetching with params:', params);
+    const queryParams = new URLSearchParams({
+      date: params.date,
+      period: params.period,
+      top_products_sort: params.top_products_sort || 'revenue'
+    });
     
-    const response = await api.get("/dashboard?date=" + params.date + "&period=" + params.period);
-    
-    console.log('Dashboard Service - Response received:', response.data);
-    
+    const response = await api.get(`/dashboard?${queryParams}`);
     return response.data;
   }
 };

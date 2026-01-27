@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import accountService from '../../services/accountService';
 import '../../styles/AccountTransfer.css';
+import { toast } from 'react-toastify';
 
 // === HELPERS ===
 const formatAmount = (amount) => {
@@ -160,7 +161,7 @@ const AccountTransfer = () => {
         title: 'Transfert effectué',
         message: `${formatAmount(amount)} Ar transférés avec succès.`
       });
-
+      toast.success('Transfert effectué avec succès.');
       // Reset form after delay and redirect
       setTimeout(() => {
         navigate('/comptes');
@@ -168,7 +169,7 @@ const AccountTransfer = () => {
 
     } catch (err) {
       console.error('Erreur transfert:', err);
-
+      toast.error('Erreur lors du transfert.');
       if (err.response?.data?.errors) {
         const apiErrors = {};
         Object.entries(err.response.data.errors).forEach(([key, messages]) => {
@@ -176,6 +177,7 @@ const AccountTransfer = () => {
           else if (key === 'to_account_id') apiErrors.to = messages[0];
           else if (key === 'amount') apiErrors.amount = messages[0];
         });
+        toast.error(apiErrors.from || apiErrors.to || apiErrors.amount || 'Erreur de validation.');
         setErrors(apiErrors);
       }
 

@@ -150,7 +150,7 @@ const ClientQuickCreateForm = ({ onSuccess, onClose }) => {
               {errors.phone && <span className="client-quick-error">{errors.phone}</span>}
             </div>
 
-            <div className="client-quick-form-group">
+            {/* <div className="client-quick-form-group">
               <label htmlFor="credit_limit" className="client-quick-label">
                 Limite de crédit
               </label>
@@ -165,7 +165,7 @@ const ClientQuickCreateForm = ({ onSuccess, onClose }) => {
                 min="0"
                 step="0.01"
               />
-            </div>
+            </div> */}
           </div>
 
           <div className="client-quick-form-group">

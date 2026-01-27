@@ -82,39 +82,52 @@ const NotificationModal = ({ isOpen, onClose, onNavigate, onUpdate }) => {
   const handleDismiss = async (notification) => {
     try {
       await notificationsService.dismiss(notification.id);
-      loadNotifications();
+  
+      setNotifications(prev =>
+        prev.filter(n => n.id !== notification.id)
+      );
+  
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Erreur suppression:', error);
     }
   };
+  
 
   const handleNotificationClick = (notification) => {
     if (!notification.is_read) {
       handleMarkAsRead(notification);
     }
-
+  
     const data = notification.data || {};
     let path = null;
-
+  
     switch (notification.type) {
       case 'stock_low':
       case 'stock_out':
         path = `/produits/${data.product_id}`;
         break;
+  
       case 'reservation_expiring':
         path = `/ventes/reservations/${data.reservation_id}`;
         break;
+  
       case 'credit_due':
         path = `/ventes/credits/${data.credit_id}`;
         break;
+  
+      case 'planned_expense_due':
+      case 'planned_expense_overdue':
+        path = `/depenses/planifie/${data.planned_expense_id}`;
+        break;
     }
-
+  
     if (path && onNavigate) {
       onNavigate(path);
       onClose();
     }
   };
+  
 
   const getNotificationIcon = (type, severity) => {
     const iconProps = { size: 20 };
@@ -127,8 +140,12 @@ const NotificationModal = ({ isOpen, onClose, onNavigate, onUpdate }) => {
         return <Calendar {...iconProps} />;
       case 'credit_due':
         return <CreditCard {...iconProps} />;
+      case 'planned_expense_due':
+      case 'planned_expense_overdue':
+          return <Calendar {...iconProps} />;
       default:
         return severity === 'critical' ? <AlertCircle {...iconProps} /> : <Info {...iconProps} />;
+      
     }
   };
 

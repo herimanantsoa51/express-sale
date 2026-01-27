@@ -10,7 +10,8 @@ use App\Http\Resources\AccountCollection;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 /**
  * Controller pour la gestion des comptes monétaires
  */
@@ -87,13 +88,43 @@ class AccountController extends Controller
             );
 
             $account = Account::with('accountType', 'creator')->find($accountId);
-
+            ActivityLogger::success(
+                ActivityAction::ACCOUNT_CREATED,
+                "a créé le compte {$account->name} ({$account->account_number}) avec un solde initial de " . number_format($request->initial_balance, 2, ',', ' ') . ' Ar',
+                [
+                    'model_type' => Account::class,
+                    'model_id' => $account->id,
+                    'metadata' => [
+                        'account_number' => $account->account_number,
+                        'account_type_id' => $account->account_type_id,
+                        'initial_balance' => $request->initial_balance,
+                        'notes' => $account->notes,
+                    ]
+                ],
+                "/comptes/{$account->id}",
+              
+            );
             return response()->json([
                 'status' => 'success',
                 'message' => 'Compte créé avec succès',
                 'data' => new AccountResource($account)
             ], 201);
         } catch (\Exception $e) {
+            ActivityLogger::error(
+                ActivityAction::ACCOUNT_CREATED,
+                "une erreur est survenue lors de la création du compte : " . $e->getMessage(),
+                $e,
+                [
+                    'model_type' => Account::class,
+                    'metadata' => [
+                        'account_type_id' => $request->account_type_id,
+                        'name' => $request->name,
+                        'account_number' => $request->account_number,
+                        'initial_balance' => $request->initial_balance,
+                        'notes' => $request->notes,
+                    ]
+                ]
+            );
             return response()->json([
                 'status' => 'error',
                 'message' => 'Erreur lors de la création du compte',
@@ -124,15 +155,51 @@ class AccountController extends Controller
      * PUT/PATCH /api/accounts/{id}
      */
     public function update(UpdateAccountRequest $request, Account $account): JsonResponse
-    {
-        $account->update($request->validated());
-        $account->load('accountType', 'creator');
+    {   
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Compte mis à jour avec succès',
-            'data' => new AccountResource($account)
-        ]);
+        try {
+            $account->update($request->validated());
+            $account->load('accountType', 'creator');
+
+            ActivityLogger::success(
+                ActivityAction::ACCOUNT_UPDATED,
+                "a mis à jour le compte {$account->name} ({$account->account_number})",
+                [
+                    'model_type' => Account::class,
+                    'model_id' => $account->id,
+                    'metadata' => [
+                        'old_fields' => $account->getOriginal(),
+                        'updated_fields' => $request->validated(),
+                    ] 
+                ],
+                "/comptes/{$account->id}",
+            );
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Compte mis à jour avec succès',
+                'data' => new AccountResource($account)
+            ]);
+        } catch (\Exception $th) {
+            //throw $th;
+            ActivityLogger::error(
+                ActivityAction::ACCOUNT_UPDATED,
+                "une erreur est survenue lors de la mise à jour du compte {$account->name} ({$account->account_number}) : " . $th->getMessage(),
+                $th,
+                [
+                    'model_type' => Account::class,
+                    'model_id' => $account->id,
+                    'metadata' => [
+                        'updated_fields' => $request->validated(),
+                    ]
+                ]
+            );
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la mise à jour du compte',
+                'error' => $th->getMessage()
+            ], 500);
+        }
+       
     }
 
     

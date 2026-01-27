@@ -6,6 +6,7 @@ import {
   ClipboardList, CheckCircle2, Loader2
 } from 'lucide-react';
 import '../../styles/StockReceiptFormStyle.css';
+import { toast } from 'react-toastify';
 
 // Services
 import productService from '../../services/productService';
@@ -238,6 +239,7 @@ useEffect(() => {
       setVariants(variants);
     } catch (err) {
       console.error('❌ Error loading variants:', err);
+      toast.error('Erreur lors du chargement des variantes')
       setError('Erreur lors du chargement des variantes');
     }
   };
@@ -359,14 +361,17 @@ useEffect(() => {
       case 1:
         if (items.length === 0) {
           setError('Veuillez ajouter au moins un article');
+          toast.error('Veuillez ajouter au moins un article')
           return false;
         }
         for (const item of items) {
           if (!item.quantity || item.quantity <= 0) {
             setError('Toutes les quantités doivent être supérieures à 0');
+            toast.error('Toutes les quantités doivent être supérieures à 0')
             return false;
           }
           if (!item.priceInCurrency || parseFloat(item.priceInCurrency) <= 0) {
+            toast.error('Tous les prix doivent être supérieurs à 0')
             setError('Tous les prix doivent être supérieurs à 0');
             return false;
           }
@@ -375,10 +380,12 @@ useEffect(() => {
         
       case 2:
         if (!selectedSupplier) {
+          toast.error('Veuillez sélectionner un fournisseur')
           setError('Veuillez sélectionner un fournisseur');
           return false;
         }
         if (!expectedDeliveryDate) {
+          toast.error('Veuillez sélectionner une date de livraison prévue')
           setError('Veuillez sélectionner une date de livraison prévue');
           return false;
         }
@@ -386,6 +393,7 @@ useEffect(() => {
         
         case 3:
           if (!supplierPayment.accountId) {
+            toast.error('Veuillez sélectionner un compte pour le paiement fournisseur')
             setError('Veuillez sélectionner un compte pour le paiement fournisseur');
             return false;
           }

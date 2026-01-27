@@ -24,6 +24,11 @@ class ExpenseTransactionListResource extends JsonResource
 
             'amount' => (float) abs($this->amount),
 
+            'planned_expense' => $this->whenLoaded('plannedExpense', fn()=>[
+                    'id'=>$this->plannedExpense?->id,
+                    'name'=>$this->plannedExpense?->name,
+            ]),
+            
             'transaction_date' => $this->transaction_date?->format('Y-m-d H:i:s'),
         ];
     }

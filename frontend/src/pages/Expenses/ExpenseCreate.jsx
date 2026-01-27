@@ -10,6 +10,8 @@ import {
 import expenseService from '../../services/expenseService';
 import accountService from '../../services/accountService';
 import '../../styles/ExpenseForm.css';
+import { useLocation } from 'react-router-dom';
+import plannedExpenseService from '../../services/plannedExpenseService';
 
 // === ICON MAPS ===
 const accountTypeIcons = {
@@ -293,76 +295,100 @@ const StepAccount = ({ accounts, selectedId, onSelect, loading }) => {
 };
 
 // === STEP 2: CATEGORY SELECTION ===
-const StepCategory = ({ categories, selectedId, onSelect, loading, onAddCategory }) => {
-  if (loading) {
-    return (
-      <div className="step-loading">
-        <RefreshCw className="loading-spinner" size={24} />
-        <p>Chargement des catégories...</p>
-      </div>
-    );
-  }
+  const StepCategory = ({ categories, selectedId, onSelect, loading, onAddCategory, disabled }) => {
+    if (loading) {
+      return (
+        <div className="step-loading">
+          <RefreshCw className="loading-spinner" size={24} />
+          <p>Chargement des catégories...</p>
+        </div>
+      );
+    }
 
-  return (
-    <div className="step-content">
-      <div className="step-header">
-        <h2>Type de dépense</h2>
-        <p>Choisissez la catégorie de cette dépense</p>
-      </div>
+    if (disabled) {
+      const selectedCategory = categories.find(c => c.id === selectedId);
+      const Icon = selectedCategory ? getCategoryIcon(selectedCategory.icon) : Tag;
       
-      <div className="category-grid">
-        {categories.map((category) => {
-          const Icon = getCategoryIcon(category.icon);
-          const isSelected = selectedId === category.id;
+      return (
+        <div className="step-content">
+          <div className="step-header">
+            <h2>Type de dépense</h2>
+            <p>Catégorie pré-définie par la dépense planifiée</p>
+          </div>
           
-          return (
-            <motion.div
-              key={category.id}
-              className={`category-card ${isSelected ? 'selected' : ''}`}
-              onClick={() => onSelect(category.id)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
+          <div className="category-grid">
+            <div className="category-card selected" style={{ pointerEvents: 'none' }}>
               <div className="category-card-icon">
                 <Icon size={20} />
               </div>
-              <span className="category-card-name">{category.name}</span>
-              {isSelected && (
-                <div className="category-check">
-                  <Check size={14} />
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-        
-        {/* Add new category button */}
-        <motion.div
-          className="category-card add-category-card"
-          onClick={onAddCategory}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <div className="category-card-icon add-icon">
-            <Plus size={20} />
+              <span className="category-card-name">{selectedCategory?.name}</span>
+              <div className="category-check">
+                <Check size={14} />
+              </div>
+            </div>
           </div>
-          <span className="category-card-name">Nouvelle catégorie</span>
-        </motion.div>
-      </div>
-      
-      {categories.length === 0 && (
-        <div className="step-empty">
-          <Tag size={32} />
-          <p>Aucune catégorie disponible</p>
-          <button className="btn btn-primary btn-sm" onClick={onAddCategory}>
-            <Plus size={16} /> Créer une catégorie
-          </button>
         </div>
-      )}
-    </div>
-  );
-};
+      );
+    }
 
+    return (
+      <div className="step-content">
+        <div className="step-header">
+          <h2>Type de dépense</h2>
+          <p>Choisissez la catégorie de cette dépense</p>
+        </div>
+        
+        <div className="category-grid">
+          {categories.map((category) => {
+            const Icon = getCategoryIcon(category.icon);
+            const isSelected = selectedId === category.id;
+            
+            return (
+              <motion.div
+                key={category.id}
+                className={`category-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => onSelect(category.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="category-card-icon">
+                  <Icon size={20} />
+                </div>
+                <span className="category-card-name">{category.name}</span>
+                {isSelected && (
+                  <div className="category-check">
+                    <Check size={14} />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+          
+          <motion.div
+            className="category-card add-category-card"
+            onClick={onAddCategory}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="category-card-icon add-icon">
+              <Plus size={20} />
+            </div>
+            <span className="category-card-name">Nouvelle catégorie</span>
+          </motion.div>
+        </div>
+        
+        {categories.length === 0 && (
+          <div className="step-empty">
+            <Tag size={32} />
+            <p>Aucune catégorie disponible</p>
+            <button className="btn btn-primary btn-sm" onClick={onAddCategory}>
+              <Plus size={16} /> Créer une catégorie
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 // === STEP 3: DETAILS ===
 const StepDetails = ({ formData, onChange, errors }) => {
   const today = new Date().toISOString().split('T')[0];
@@ -532,6 +558,9 @@ const StepConfirmation = ({ formData, account, category }) => {
 // === MAIN COMPONENT ===
 const ExpenseCreate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const plannedExpenseId = searchParams.get('plannedExpenseId');
   
   // Steps configuration
   const steps = [
@@ -551,6 +580,8 @@ const ExpenseCreate = () => {
   const [alert, setAlert] = useState(null);
   const [errors, setErrors] = useState({});
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [plannedExpense, setPlannedExpense] = useState(null);
+  const [loadingPlannedExpense, setLoadingPlannedExpense] = useState(false);
   
   // Form data
   const [formData, setFormData] = useState({
@@ -559,7 +590,8 @@ const ExpenseCreate = () => {
     amount: '',
     transaction_date: new Date().toISOString().split('T')[0],
     recipient_name: '',
-    notes: ''
+    notes: '',
+    planned_expense_id: null // AJOUTER CETTE LIGNE
   });
 
   // Load accounts
@@ -596,6 +628,42 @@ const ExpenseCreate = () => {
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
+  // Load planned expense if ID is provided
+  useEffect(() => {
+    const loadPlannedExpense = async () => {
+      if (!plannedExpenseId) return;
+      
+      try {
+        setLoadingPlannedExpense(true);
+        const response = await plannedExpenseService.getById(plannedExpenseId);
+        const planned = response.data;
+        
+        setPlannedExpense(planned);
+        
+        // Pré-remplir le formulaire
+        setFormData(prev => ({
+          ...prev,
+          expense_category_id: planned.expense_category.id,
+          amount: planned.estimated_amount.toString(),
+          recipient_name: planned.recipient_name || '',
+          planned_expense_id: planned.id
+        }));
+        
+        // Passer directement à l'étape de sélection du compte
+        // La catégorie est déjà définie
+      } catch (err) {
+        console.error('Erreur chargement dépense planifiée:', err);
+        setAlert({ 
+          type: 'error', 
+          message: 'Impossible de charger la dépense planifiée' 
+        });
+      } finally {
+        setLoadingPlannedExpense(false);
+      }
+    };
+    
+    loadPlannedExpense();
+  }, [plannedExpenseId]);
 
   // Get selected account and category
   const selectedAccount = accounts.find(a => a.id === formData.account_id);
@@ -669,17 +737,43 @@ const ExpenseCreate = () => {
     try {
       setSubmitting(true);
       setAlert(null);
+       // Vérifier si l'utilisateur a modifié la date
+      const today = new Date().toISOString().split('T')[0]; // Date du jour au format YYYY-MM-DD
+      const userSelectedDate = formData.transaction_date; // Date sélectionnée par l'utilisateur
       
+      let transactionDateToSend;
+      
+      if (userSelectedDate === today) {
+        // Si l'utilisateur n'a pas changé la date (c'est aujourd'hui), envoyer l'heure UTC actuelle
+        transactionDateToSend = new Date().toISOString(); // Date/heure actuelle en UTC
+      } else {
+        // Si l'utilisateur a choisi une autre date, utiliser minuit UTC de cette date
+        transactionDateToSend = `${userSelectedDate}T00:00:00Z`;
+      }
       const payload = {
         account_id: formData.account_id,
         expense_category_id: formData.expense_category_id,
         amount: parseFloat(formData.amount),
-        transaction_date: formData.transaction_date,
+        transaction_date: transactionDateToSend,
         recipient_name: formData.recipient_name || null,
         notes: formData.notes || null
       };
       
+      // Ajouter l'ID de la dépense planifiée si présent
+      if (formData.planned_expense_id) {
+        payload.planned_expense_id = formData.planned_expense_id;
+      }
+      
       await expenseService.storeOperationalTransaction(payload);
+      
+      // Si c'est une dépense planifiée, marquer comme payée
+      if (formData.planned_expense_id) {
+        try {
+          await plannedExpenseService.markPaid(formData.planned_expense_id);
+        } catch (err) {
+          console.error('Erreur mise à jour échéance:', err);
+        }
+      }
       
       setAlert({ type: 'success', message: 'Dépense enregistrée avec succès!' });
       
@@ -720,15 +814,16 @@ const ExpenseCreate = () => {
           />
         );
       case 2:
-        return (
-          <StepCategory
-            categories={categories}
-            selectedId={formData.expense_category_id}
-            onSelect={(id) => handleChange('expense_category_id', id)}
-            loading={loadingCategories}
-            onAddCategory={() => setShowCategoryModal(true)}
-          />
-        );
+          return (
+            <StepCategory
+              categories={categories}
+              selectedId={formData.expense_category_id}
+              onSelect={(id) => handleChange('expense_category_id', id)}
+              loading={loadingCategories}
+              onAddCategory={() => setShowCategoryModal(true)}
+              disabled={!!plannedExpense} // Désactiver si dépense planifiée
+            />
+          );
       case 3:
         return (
           <StepDetails
@@ -774,9 +869,22 @@ const ExpenseCreate = () => {
           <Receipt size={28} />
         </div>
         <div>
-          <h1>Nouvelle dépense</h1>
-          <p>Enregistrer une dépense opérationnelle</p>
+          <h1>
+            {plannedExpense ? 'Payer une dépense planifiée' : 'Nouvelle dépense'}
+          </h1>
+          <p>
+            {plannedExpense 
+              ? `${plannedExpense.name} - ${formatAmount(plannedExpense.estimated_amount)} Ar`
+              : 'Enregistrer une dépense opérationnelle'
+            }
+          </p>
         </div>
+        {plannedExpense && (
+          <div className="planned-expense-badge">
+            <Calendar size={16} />
+            Dépense planifiée
+          </div>
+        )}
       </motion.div>
 
       {/* Step Indicator */}

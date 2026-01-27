@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Models\Reservation;
 use App\Models\Credit;
 use App\Models\User;
+use App\Models\PlannedExpense;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -22,17 +23,30 @@ class NotificationService
             'stock_low' => 0,
             'stock_out' => 0,
             'reservation_expiring' => 0,
-            'credit_due' => 0
+            'credit_due' => 0,
+            'planned_expense_due' => 0, // ✅ NOUVEAU
         ];
 
         $stats['stock_low'] = $this->generateStockLowNotifications();
         $stats['stock_out'] = $this->generateStockOutNotifications();
         $stats['reservation_expiring'] = $this->generateReservationExpiringNotifications();
         $stats['credit_due'] = $this->generateCreditDueNotifications();
+        $stats['planned_expense_due'] = $this->generatePlannedExpenseDueNotifications(); // ✅ NOUVEAU
+
+        $this->cleanupOldNotifications(60);
 
         return $stats;
     }
 
+    protected function cleanupOldNotifications(int $days): void
+    {
+        Notification::where(function ($q) {
+            $q->where('is_read', true)
+              ->orWhereNotNull('dismissed_at');
+        })
+        ->where('created_at', '<', now()->subDays($days))
+        ->delete();
+    }
     /**
      * Génère les notifications de stock faible
      */
@@ -324,6 +338,122 @@ class NotificationService
         ]);
     }
 
+    /**
+     * ✅ NOUVEAU - Génère les notifications de charges planifiées à venir
+     */
+    public function generatePlannedExpenseDueNotifications(): int
+    {
+        $count = 0;
+        $admins = $this->getAdminUsers();
+
+        foreach ($admins as $admin) {
+            $preference = NotificationPreference::getOrCreateForUser(
+                $admin->id,
+                NotificationPreference::TYPE_PLANNED_EXPENSE_DUE
+            );
+
+            if (!$preference->enabled) {
+                continue;
+            }
+
+            // Charges à venir dans X jours
+            $expenses = PlannedExpense::dueForNotification($preference->reminder_interval_days)
+                ->with('expenseCategory')
+                ->get();
+
+            foreach ($expenses as $expense) {
+                if ($this->shouldNotify($admin->id, $expense->id, 'planned_expense_due', $preference->reminder_interval_days)) {
+                    $this->createPlannedExpenseDueNotification($admin->id, $expense);
+                    $count++;
+                }
+            }
+
+            // Charges en retard
+            $overdueExpenses = PlannedExpense::overdue()
+                ->with('expenseCategory')
+                ->get();
+
+            foreach ($overdueExpenses as $expense) {
+                if ($this->shouldNotify($admin->id, $expense->id, 'planned_expense_overdue', $preference->reminder_interval_days)) {
+                    $this->createPlannedExpenseOverdueNotification($admin->id, $expense);
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * ✅ NOUVEAU - Crée une notification de charge planifiée à venir
+     */
+    private function createPlannedExpenseDueNotification(int $userId, PlannedExpense $expense): void
+    {
+        $daysLeft = $expense->daysUntilDue();
+        
+        Notification::create([
+            'user_id' => $userId,
+            'type' => 'planned_expense_due',
+            'title' => 'Charge fixe à payer bientôt',
+            'message' => sprintf(
+                '%s (%s) dans %d jour(s) - Montant estimé: %s Ar%s',
+                $expense->name,
+                $expense->expenseCategory->name,
+                $daysLeft,
+                number_format($expense->estimated_amount, 0, ',', ' '),
+                $expense->recipient_name ? " - {$expense->recipient_name}" : ''
+            ),
+            'severity' => $daysLeft <= 1 ? 'warning' : 'info',
+            'dedup_key' => "planned_expense_due_{$expense->id}_{$expense->next_due_date->format('Y-m-d')}",
+            'data' => [
+                'planned_expense_id' => $expense->id,
+                'expense_category_id' => $expense->expense_category_id,
+                'estimated_amount' => (float) $expense->estimated_amount,
+                'due_date' => $expense->next_due_date->toDateTimeString(),
+                'days_left' => $daysLeft,
+                'frequency' => $expense->frequency,
+                'recipient_name' => $expense->recipient_name,
+            ]
+        ]);
+    }
+
+    /**
+     * ✅ NOUVEAU - Crée une notification de charge planifiée en retard
+     */
+    private function createPlannedExpenseOverdueNotification(int $userId, PlannedExpense $expense): void
+    {
+        $daysOverdue = abs($expense->daysUntilDue());
+        
+        Notification::create([
+            'user_id' => $userId,
+            'type' => 'planned_expense_due',
+            'title' => 'Charge fixe en retard',
+            'message' => sprintf(
+                '⚠️ %s (%s) en retard de %d jour(s) - Montant estimé: %s Ar%s',
+                $expense->name,
+                $expense->expenseCategory->name,
+                $daysOverdue,
+                number_format($expense->estimated_amount, 0, ',', ' '),
+                $expense->recipient_name ? " - {$expense->recipient_name}" : ''
+            ),
+            'severity' => 'critical',
+            'dedup_key' => "planned_expense_overdue_{$expense->id}",
+            'data' => [
+                'planned_expense_id' => $expense->id,
+                'expense_category_id' => $expense->expense_category_id,
+                'estimated_amount' => (float) $expense->estimated_amount,
+                'due_date' => $expense->next_due_date->toDateTimeString(),
+                'days_overdue' => $daysOverdue,
+                'frequency' => $expense->frequency,
+                'recipient_name' => $expense->recipient_name,
+                'is_overdue' => true,
+            ]
+        ]);
+    }
+
+    
+
+  
     /**
      * Récupère tous les utilisateurs admin
      */

@@ -19,9 +19,10 @@ import {
   Loader2,
   Check,
   ArrowUpDown,
-  Filter,
   Grid,
-  List
+  List,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import stockMovementService from '../../services/stockMovementService';
 import locationService from '../../services/locationService';
@@ -47,6 +48,12 @@ const StockTransferForm = () => {
   const [fromLocationId, setFromLocationId] = useState('');
   const [sourceVariants, setSourceVariants] = useState([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0
+  });
 
   // Sélection destination
   const [toLocationId, setToLocationId] = useState('');
@@ -76,8 +83,21 @@ const StockTransferForm = () => {
     } else {
       setSourceVariants([]);
       setTransferItems([]);
+      setPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 20,
+        total: 0
+      });
     }
   }, [fromLocationId]);
+
+  // Charger les variantes quand on change de page, recherche ou filtre
+  useEffect(() => {
+    if (fromLocationId && step === 2) {
+      loadSourceVariants();
+    }
+  }, [pagination.current_page, searchTerm, selectedCategory, fromLocationId, step]);
 
   const loadInitialData = async () => {
     try {
@@ -99,15 +119,47 @@ const StockTransferForm = () => {
   const loadSourceVariants = async () => {
     try {
       setLoadingVariants(true);
-      const data = await productVariantLocationService.getByLocation(fromLocationId);
-      // Filtrer uniquement les variantes avec stock > 0
-      const variantsWithStock = data.filter(vl => vl.quantity > 0);
+      const params = {
+        page: pagination.current_page,
+        per_page: pagination.per_page,
+        search: searchTerm,
+        available_only: true
+      };
+      
+      const response = await productVariantLocationService.getByLocation(fromLocationId, params);
+      
+      // Accéder aux données paginées correctement
+      const variantsData = response.data || []; // Les données sont dans response.data
+      const paginationData = {
+        current_page: response.current_page || 1,
+        last_page: response.last_page || 1,
+        per_page: response.per_page || 20,
+        total: response.total || 0
+      };
+      
+      // Filtrer uniquement les variantes avec available_quantity > 0
+      const variantsWithStock = variantsData.filter(vl => vl.available_quantity > 0);
       setSourceVariants(variantsWithStock);
+      setPagination(paginationData);
+      
     } catch (err) {
       console.error('Erreur chargement variantes:', err);
       setSourceVariants([]);
+      setPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 20,
+        total: 0
+      });
     } finally {
       setLoadingVariants(false);
+    }
+  };
+
+  // Gestion de la pagination
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.last_page) {
+      setPagination(prev => ({ ...prev, current_page: newPage }));
     }
   };
 
@@ -121,7 +173,7 @@ const StockTransferForm = () => {
     const matchesCategory = !selectedCategory || 
       vl.variant?.product?.category_id === parseInt(selectedCategory);
 
-    const matchesLowStock = !showLowStockOnly || vl.quantity <= 10;
+    const matchesLowStock = !showLowStockOnly || vl.available_quantity <= 10;
 
     // Exclure les variantes déjà ajoutées
     const notAlreadyAdded = !transferItems.some(item => item.variantLocationId === vl.id);
@@ -136,11 +188,10 @@ const StockTransferForm = () => {
       variantLocationId: variantLocation.id,
       variantId: variantLocation.variant_id,
       variant: variantLocation.variant,
-      availableQuantity: variantLocation.quantity,
+      availableQuantity: variantLocation.available_quantity,
       quantity: 1
     };
     setTransferItems(prev => [...prev, newItem]);
-    setSearchTerm('');
   };
 
   // Supprimer une variante du transfert
@@ -219,7 +270,7 @@ const StockTransferForm = () => {
   const getTotalVariants = () => transferItems.length;
 
   const getProductImage = (variant) => {
-    return variant?.image_path || variant?.product?.image_url || null;
+    return variant?.product?.image_url || null;
   };
 
   const getVariantAttributes = (variant) => {
@@ -358,7 +409,7 @@ const StockTransferForm = () => {
                   </div>
                   <div className="summary-content">
                     <strong>{getSourceLocation()?.name}</strong>
-                    <span>{getSourceLocation()?.warehouse} • {sourceVariants.length} produit(s) en stock</span>
+                    <span>{getSourceLocation()?.warehouse} • {pagination.total} produit(s) en stock</span>
                   </div>
                 </div>
               )}
@@ -392,6 +443,7 @@ const StockTransferForm = () => {
                 <div>
                   <h2>Sélectionnez les produits à transférer</h2>
                   <p>Depuis: <strong>{getSourceLocation()?.name}</strong> ({getSourceLocation()?.warehouse})</p>
+                  <p className="stock-total">{pagination.total} produit(s) disponible(s) dans cette location</p>
                 </div>
               </div>
 
@@ -404,24 +456,33 @@ const StockTransferForm = () => {
                       type="text"
                       placeholder="Rechercher par nom ou SKU..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setPagination(prev => ({ ...prev, current_page: 1 }));
+                      }}
                     />
                     {searchTerm && (
-                      <button className="clear-btn" onClick={() => setSearchTerm('')}>
+                      <button className="clear-btn" onClick={() => {
+                        setSearchTerm('');
+                        setPagination(prev => ({ ...prev, current_page: 1 }));
+                      }}>
                         <X size={14} />
                       </button>
                     )}
                   </div>
-                  <select
+                  {/* <select
                     value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedCategory(e.target.value);
+                      setPagination(prev => ({ ...prev, current_page: 1 }));
+                    }}
                     className="category-select"
                   >
                     <option value="">Toutes catégories</option>
                     {rootCategories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
-                  </select>
+                  </select> */}
                   <div className="view-toggle">
                     <button 
                       className={viewMode === 'grid' ? 'active' : ''}
@@ -449,16 +510,24 @@ const StockTransferForm = () => {
                 </div>
               ) : (
                 <div className="available-products">
-                  <h3 className="section-title">
-                    <Package size={18} />
-                    Produits disponibles ({filteredVariants.length})
-                  </h3>
+                  <div className="section-header">
+                    <h3 className="section-title">
+                      <Package size={18} />
+                      Produits disponibles ({filteredVariants.length})
+                    </h3>
+                    {pagination.total > 0 && (
+                      <div className="pagination-info">
+                        Page {pagination.current_page} sur {pagination.last_page} 
+                        ({pagination.total} résultats)
+                      </div>
+                    )}
+                  </div>
                   
                   {filteredVariants.length === 0 ? (
                     <div className="no-products">
                       <Package size={48} />
                       <p>
-                        {sourceVariants.length === 0 
+                        {pagination.total === 0 
                           ? 'Aucun produit en stock dans cette location'
                           : searchTerm || selectedCategory
                             ? 'Aucun produit ne correspond à vos critères'
@@ -467,44 +536,92 @@ const StockTransferForm = () => {
                       </p>
                     </div>
                   ) : viewMode === 'grid' ? (
-                    <div className="products-grid compact">
-                      {filteredVariants.slice(0, 18).map(vl => {
-                        const image = getProductImage(vl.variant);
-                        return (
-                          <div 
-                            key={vl.id} 
-                            className="product-card compact"
-                            onClick={() => addTransferItem(vl)}
-                          >
-                            <div className="product-image">
-                              {image ? (
-                                <img src={image} alt={vl.variant?.product?.name} />
-                              ) : (
-                                <div className="no-image">
-                                  <ImageIcon size={20} />
+                    <>
+                      <div className="products-grid compact">
+                        {filteredVariants.map(vl => {
+                          const image = getProductImage(vl.variant);
+                          return (
+                            <div 
+                              key={vl.id} 
+                              className="product-card compact"
+                              onClick={() => addTransferItem(vl)}
+                            >
+                              <div className="product-image">
+                                {image ? (
+                                  <img src={image} alt={vl.variant?.product?.name} />
+                                ) : (
+                                  <div className="no-image">
+                                    <ImageIcon size={20} />
+                                  </div>
+                                )}
+                                <div className="add-overlay">
+                                  <Plus size={24} />
                                 </div>
-                              )}
-                              <div className="add-overlay">
-                                <Plus size={24} />
+                              </div>
+                              <div className="product-info">
+                                <h5>{vl.variant?.product?.name}</h5>
+                                <span className="sku">{vl.variant?.sku}</span>
+                                <div className="product-attributes">
+                                  {getVariantAttributes(vl.variant)}
+                                </div>
+                                <div className="stock-info">
+                                  <span className="stock-badge">{vl.available_quantity} disponible(s)</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="product-info">
-                              <h5>{vl.variant?.product?.name}</h5>
-                              <span className="sku">{vl.variant?.sku}</span>
-                              <div className="product-attributes">
-                                {getVariantAttributes(vl.variant)}
-                              </div>
-                              <div className="stock-info">
-                                <span className="stock-badge">{vl.quantity} en stock</span>
-                              </div>
-                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Pagination */}
+                      {pagination.last_page > 1 && (
+                        <div className="pagination-controls">
+                          <button 
+                            className="pagination-btn"
+                            onClick={() => handlePageChange(pagination.current_page - 1)}
+                            disabled={pagination.current_page === 1}
+                          >
+                            <ChevronLeft size={18} />
+                            Précédent
+                          </button>
+                          <div className="pagination-numbers">
+                            {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
+                              let pageNum;
+                              if (pagination.last_page <= 5) {
+                                pageNum = i + 1;
+                              } else if (pagination.current_page <= 3) {
+                                pageNum = i + 1;
+                              } else if (pagination.current_page >= pagination.last_page - 2) {
+                                pageNum = pagination.last_page - 4 + i;
+                              } else {
+                                pageNum = pagination.current_page - 2 + i;
+                              }
+                              
+                              return (
+                                <button
+                                  key={pageNum}
+                                  className={`pagination-number ${pagination.current_page === pageNum ? 'active' : ''}`}
+                                  onClick={() => handlePageChange(pageNum)}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                          <button 
+                            className="pagination-btn"
+                            onClick={() => handlePageChange(pagination.current_page + 1)}
+                            disabled={pagination.current_page === pagination.last_page}
+                          >
+                            Suivant
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="products-list">
-                      {filteredVariants.slice(0, 20).map(vl => {
+                      {filteredVariants.map(vl => {
                         const image = getProductImage(vl.variant);
                         return (
                           <div 
@@ -530,7 +647,7 @@ const StockTransferForm = () => {
                               </div>
                             </div>
                             <div className="stock-info">
-                              <span className="stock-badge">{vl.quantity} en stock</span>
+                              <span className="stock-badge">{vl.available_quantity} disponible(s)</span>
                             </div>
                             <button className="btn-add-item">
                               <Plus size={18} />
@@ -538,13 +655,32 @@ const StockTransferForm = () => {
                           </div>
                         );
                       })}
+                      
+                      {/* Pagination pour la vue liste */}
+                      {pagination.last_page > 1 && (
+                        <div className="pagination-controls">
+                          <button 
+                            className="pagination-btn"
+                            onClick={() => handlePageChange(pagination.current_page - 1)}
+                            disabled={pagination.current_page === 1}
+                          >
+                            <ChevronLeft size={18} />
+                            Précédent
+                          </button>
+                          <span className="pagination-info">
+                            Page {pagination.current_page} sur {pagination.last_page}
+                          </span>
+                          <button 
+                            className="pagination-btn"
+                            onClick={() => handlePageChange(pagination.current_page + 1)}
+                            disabled={pagination.current_page === pagination.last_page}
+                          >
+                            Suivant
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  
-                  {filteredVariants.length > 18 && viewMode === 'grid' && (
-                    <p className="more-products-hint">
-                      Et {filteredVariants.length - 18} autres produits... Utilisez la recherche pour affiner.
-                    </p>
                   )}
                 </div>
               )}
@@ -562,77 +698,77 @@ const StockTransferForm = () => {
                     <p>Cliquez sur un produit ci-dessus pour l'ajouter au transfert</p>
                   </div>
                 ) : (
-                  <div className="transfer-items-list">
-                    {transferItems.map(item => {
-                      const image = getProductImage(item.variant);
-                      return (
-                        <div key={item.id} className="transfer-item">
-                          <div className="item-image">
-                            {image ? (
-                              <img src={image} alt={item.variant?.product?.name} />
-                            ) : (
-                              <div className="no-image">
-                                <ImageIcon size={16} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="item-info">
-                            <h5>{item.variant?.product?.name}</h5>
-                            <span className="sku">{item.variant?.sku}</span>
-                            <div className="item-attributes">
-                              {getVariantAttributes(item.variant)}
+                  <>
+                    <div className="transfer-items-list">
+                      {transferItems.map(item => {
+                        const image = getProductImage(item.variant);
+                        return (
+                          <div key={item.id} className="transfer-item">
+                            <div className="item-image">
+                              {image ? (
+                                <img src={image} alt={item.variant?.product?.name} />
+                              ) : (
+                                <div className="no-image">
+                                  <ImageIcon size={16} />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <div className="item-quantity">
-                            <div className="quantity-control">
+                            <div className="item-info">
+                              <h5>{item.variant?.product?.name}</h5>
+                              <span className="sku">{item.variant?.sku}</span>
+                              <div className="item-attributes">
+                                {getVariantAttributes(item.variant)}
+                              </div>
+                            </div>
+                            <div className="item-quantity">
+                              <div className="quantity-control">
+                                <button 
+                                  className="qty-btn"
+                                  onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                >
+                                  <Minus size={14} />
+                                </button>
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                  min="1"
+                                  max={item.availableQuantity}
+                                />
+                                <button 
+                                  className="qty-btn"
+                                  onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                                  disabled={item.quantity >= item.availableQuantity}
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
                               <button 
-                                className="qty-btn"
-                                onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
+                                className="max-qty-btn"
+                                onClick={() => setMaxQuantity(item.id)}
+                                title="Quantité maximum"
                               >
-                                <Minus size={14} />
-                              </button>
-                              <input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                                min="1"
-                                max={item.availableQuantity}
-                              />
-                              <button 
-                                className="qty-btn"
-                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                                disabled={item.quantity >= item.availableQuantity}
-                              >
-                                <Plus size={14} />
+                                Max: {item.availableQuantity}
                               </button>
                             </div>
                             <button 
-                              className="max-qty-btn"
-                              onClick={() => setMaxQuantity(item.id)}
-                              title="Quantité maximum"
+                              className="remove-item-btn"
+                              onClick={() => removeTransferItem(item.id)}
                             >
-                              Max: {item.availableQuantity}
+                              <Trash2 size={16} />
                             </button>
                           </div>
-                          <button 
-                            className="remove-item-btn"
-                            onClick={() => removeTransferItem(item.id)}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
 
-                {transferItems.length > 0 && (
-                  <div className="transfer-summary-bar">
-                    <span>{getTotalVariants()} variante(s)</span>
-                    <span className="separator">•</span>
-                    <span><strong>{getTotalItems()}</strong> unités au total</span>
-                  </div>
+                    <div className="transfer-summary-bar">
+                      <span>{getTotalVariants()} variante(s)</span>
+                      <span className="separator">•</span>
+                      <span><strong>{getTotalItems()}</strong> unités au total</span>
+                    </div>
+                  </>
                 )}
               </div>
 

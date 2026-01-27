@@ -80,6 +80,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
                  'id'   => $this->expenseCategory->id,
                  'name' => $this->expenseCategory->name,
              ]),
+             'planned_expense' => $this->when($this->planned_expense_id, fn () => [
+                 'id'          => $this->plannedExpense->id,
+                 'title'       => $this->plannedExpense->name,
+             ]),
+
  
              /* ===================== VENTE (LOGIQUE MÉTIER) ===================== */
              'sale_context' => $this->when($this->sale, function () {

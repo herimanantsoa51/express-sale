@@ -599,13 +599,13 @@ class SaleService
         return DB::transaction(function () use ($reservationId, $data) {
             $reservation = Reservation::with(['sale.items', 'customer'])->findOrFail($reservationId);
 
-            if (!$reservation->isActive()) {
-                throw new \Exception("Cette réservation n'est plus active");
-            }
+            // if (!$reservation->isActive()) {
+            //     throw new \Exception("Cette réservation n'est plus active");
+            // }
 
-            if ($reservation->isExpired()) {
-                throw new \Exception("Cette réservation a expiré");
-            }
+            // if ($reservation->isExpired()) {
+            //     throw new \Exception("Cette réservation a expiré");
+            // }
 
             $remainingAmount = $reservation->remaining_amount;
 
@@ -656,20 +656,20 @@ class SaleService
         return DB::transaction(function () use ($reservationId, $reason) {
             $reservation = Reservation::with(['sale.items', 'customer'])->findOrFail($reservationId);
 
-            if ($reservation->isCompleted()) {
-                throw new \Exception("Une réservation complétée ne peut pas être annulée");
-            }
+            // if ($reservation->isCompleted()) {
+            //     throw new \Exception("Une réservation complétée ne peut pas être annulée");
+            // }
 
             // ✅ Libérer tous les items réservés
             foreach ($reservation->sale->items as $item) {
                 $this->stockService->releaseFifo($item->id);
             }
+           
 
             $reservation->status = 'cancelled';
             $reservation->cancellation_reason = $reason;
             $reservation->save();
-
-            $reservation->sale->update(['payment_status' => PaymentStatus::CANCELLED]);
+            $reservation->sale->update(['status' => SaleStatus::CANCELLED]);
 
             $reservation->customer->recordCancelledReservation();
 
@@ -1026,8 +1026,8 @@ class SaleService
             if($sale->status != SaleStatus::CONFIRMED){
                 throw new \Exception("Cette vente a deja été annulé.");
             }
-            if ($sale->payment_status === PaymentStatus::CANCELLED) {
-                throw new \Exception("Cette vente est déjà annulée.");
+            if ($credit->status === 'cancelled') {
+                throw new \Exception("Ce crédit est déjà annulé.");
             }
             // Restaurer le stock
             $batchId = 'CAND-' . now()->format('Ymd-His') . '-' . Str::random(6);

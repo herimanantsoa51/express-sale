@@ -243,6 +243,21 @@ class Sale extends Model
         static::creating(function ($sale) {
             $sale->status = SaleStatus::CONFIRMED;
         });
+        static::updating(function ($sale) {
+            if ($sale->isDirty('status') && $sale->status === 'CANCELLED') {
+                // ✅ Vérifier le type avant d'annuler
+                if ($sale->sale_type === 'credit') {
+                    Credit::where('sale_id', $sale->id)
+                        ->update(['status' => 'cancelled', 'updated_at' => now()]);
+                }
+                
+                if ($sale->sale_type === 'reservation') {
+                    Reservation::where('sale_id', $sale->id)
+                        ->update(['status' => 'cancelled', 'updated_at' => now()]);
+                }
+                
+                // Note: Les ventes 'immediate' n'ont pas de crédit/réservation
+            }
+        });
     }
-    
 }

@@ -292,7 +292,6 @@ const CategoryModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-// === EXPENSE ITEM ===
 const ExpenseItem = ({ expense, category, index, onNavigate }) => {
   const IconComp = category ? getIconComponent(category.icon) : Tag;
   
@@ -320,6 +319,23 @@ const ExpenseItem = ({ expense, category, index, onNavigate }) => {
           <span className="expense-item-account">
             {expense.account?.name}
           </span>
+          
+          {/* AJOUTER CE BLOC ICI */}
+          {expense.planned_expense && (
+            <>
+              <span className="expense-item-separator">•</span>
+              <span 
+                className="expense-item-planned-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate(`/depenses/planifie/${expense.planned_expense.id}`);
+                }}
+              >
+                <Hash size={12} />
+                {expense.planned_expense.name}
+              </span>
+            </>
+          )}
         </div>
       </div>
       
@@ -542,6 +558,18 @@ const ExpenseList = () => {
             <FolderPlus size={18} />
             Nouvelle catégorie
           </motion.button>
+          
+          {/* AJOUTER CE BOUTON ICI */}
+          <motion.button
+            className="btn btn-secondary"
+            onClick={() => navigate('/depenses/planifie')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Calendar size={18} />
+            Dépenses planifiées
+          </motion.button>
+          
           <motion.button
             className="btn btn-primary"
             onClick={() => navigate('/depenses/nouveau')}

@@ -10,6 +10,9 @@ use App\Http\Resources\CurrencyRateCollection;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
+
 
 class CurrencyRateController extends Controller
 {
@@ -52,27 +55,56 @@ class CurrencyRateController extends Controller
      * POST /api/currency-rates
      */
     public function store(StoreCurrencyRateRequest $request): JsonResponse
-{
-    $validated = $request->validated();
+{   
 
-    // Vérifier unicité par date
-    $existingRate = CurrencyRate::where('effective_date', $validated['effective_date'])->first();
 
-    if ($existingRate) {
+    try {
+        $validated = $request->validated();
+
+        // Vérifier unicité par date
+        $existingRate = CurrencyRate::where('effective_date', $validated['effective_date'])->first();
+    
+        if ($existingRate) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Un taux de change existe déjà pour cette date',
+                'existing_rate' => new CurrencyRateResource($existingRate)
+            ], 422);
+        }
+    
+        $currencyRate = CurrencyRate::create($validated);
+        ActivityLogger::success(
+            ActivityAction::CURRENCY_RATE_CREATED,
+            "Taux de change créé pour la date : {$currencyRate->effective_date}",
+            [
+                'model_type' => CurrencyRate::class,
+                'model_id' => $currencyRate->id,
+                'metadata' => $currencyRate->toArray(),
+            ],
+            "/comptes/conversion"
+        );
         return response()->json([
+            'status' => 'success',
+            'message' => 'Taux de change créé avec succès',
+            'data' => new CurrencyRateResource($currencyRate)
+        ], 201);
+    } catch (\Exception $th) {
+        //throw $th;
+
+        ActivityLogger::error(
+            ActivityAction::CURRENCY_RATE_CREATED,
+            "Erreur lors de la création du taux de change",
+            $th,
+        );
+
+        return(response()->json([
             'status' => 'error',
-            'message' => 'Un taux de change existe déjà pour cette date',
-            'existing_rate' => new CurrencyRateResource($existingRate)
-        ], 422);
+            'message' => 'Erreur lors de la création du taux de change',
+            'error' => $th->getMessage()
+        ], 500));
+
     }
-
-    $currencyRate = CurrencyRate::create($validated);
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Taux de change créé avec succès',
-        'data' => new CurrencyRateResource($currencyRate)
-    ], 201);
+   
 }
 
 
@@ -95,32 +127,58 @@ class CurrencyRateController extends Controller
      * PUT/PATCH /api/currency-rates/{id}
      */
     public function update(UpdateCurrencyRateRequest $request, CurrencyRate $currencyRate): JsonResponse
-    {
-        $validated = $request->validated();
+    {   
+
+        try {
+            $validated = $request->validated();
         
-        // Vérifier si la modification de date crée un doublon
-        if (isset($validated['effective_date']) && 
-            $validated['effective_date'] != $currencyRate->effective_date) {
-            
-            $existingRate = CurrencyRate::where('effective_date', $validated['effective_date'])
-                                        ->where('id', '!=', $currencyRate->id)
-                                        ->first();
-
-            if ($existingRate) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Un autre taux existe déjà pour cette date'
-                ], 422);
+            // Vérifier si la modification de date crée un doublon
+            if (isset($validated['effective_date']) && 
+                $validated['effective_date'] != $currencyRate->effective_date) {
+                
+                $existingRate = CurrencyRate::where('effective_date', $validated['effective_date'])
+                                            ->where('id', '!=', $currencyRate->id)
+                                            ->first();
+    
+                if ($existingRate) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Un autre taux existe déjà pour cette date'
+                    ], 422);
+                }
             }
+    
+            $currencyRate->update($validated);
+            
+            ActivityLogger::success(
+                ActivityAction::CURRENCY_RATE_UPDATED,
+                "Taux de change mis à jour pour la date : {$currencyRate->effective_date}",
+                [
+                    'model_type' => CurrencyRate::class,
+                    'model_id' => $currencyRate->id,
+                    'metadata' => $currencyRate->toArray(),
+                ],               
+                 "/comptes/conversion"
+            );
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Taux de change mis à jour avec succès',
+                'data' => new CurrencyRateResource($currencyRate)
+            ]);
+        } catch (\Exception $th) {
+            //throw $th;
+            ActivityLogger::error(
+                ActivityAction::CURRENCY_RATE_UPDATED,
+                "Erreur lors de la mise à jour du taux de change",
+                $th,
+            );
+            return(response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la mise à jour du taux de change',
+                'error' => $th->getMessage()
+            ], 500));
         }
-
-        $currencyRate->update($validated);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Taux de change mis à jour avec succès',
-            'data' => new CurrencyRateResource($currencyRate)
-        ]);
+       
     }
 
     /**
@@ -129,20 +187,43 @@ class CurrencyRateController extends Controller
      */
     public function destroy(CurrencyRate $currencyRate): JsonResponse
     {
-        // Empêcher la suppression du taux actuel
-        if ($currencyRate->isCurrent()) {
+        try {
+                // Empêcher la suppression du taux actuel
+            if ($currencyRate->isCurrent()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Impossible de supprimer le taux de change actuel'
+                ], 422);
+            }
+
+            $currencyRate->delete();
+            ActivityLogger::success(
+                ActivityAction::CURRENCY_RATE_DELETED,
+                "Taux de change supprimé pour la date : {$currencyRate->effective_date}",
+                [
+                    'model_type' => CurrencyRate::class,
+                    'model_id' => $currencyRate->id,
+                    'metadata' => $currencyRate->toArray(),
+                ],
+                "/comptes/conversion"
+            );
             return response()->json([
+                'status' => 'success',
+                'message' => 'Taux de change supprimé avec succès'
+            ]);
+        } catch (\Exception $th) {
+            //throw $th;
+            ActivityLogger::error(
+                ActivityAction::CURRENCY_RATE_DELETED,
+                "Erreur lors de la suppression du taux de change",
+                $th,
+            );
+            return(response()->json([
                 'status' => 'error',
-                'message' => 'Impossible de supprimer le taux de change actuel'
-            ], 422);
+                'message' => 'Erreur lors de la suppression du taux de change',
+                'error' => $th->getMessage()
+            ], 500));
         }
-
-        $currencyRate->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Taux de change supprimé avec succès'
-        ]);
     }
 
     /**

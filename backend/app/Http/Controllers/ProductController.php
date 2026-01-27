@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ProductAttribute;
 use App\Models\ProductVariant;
+use App\Helpers\ActivityLogger;
+use App\Models\AttributeType;
+use App\Enums\ActivityAction;
 
 class ProductController extends Controller
 {
@@ -145,7 +148,24 @@ public function index(Request $request)
             }
 
             DB::commit();
-
+                        
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_CREATED,
+                "a créé le produit '{$product->name}' - Prix de base: " . number_format($product->base_price, 2) . " AR",
+                [
+                    'model_type' => 'App\Models\Product',
+                    'model_id' => $product->id,
+                    'metadata' => [
+                        'name' => $product->name,
+                        'category_id' => $product->category_id,
+                        'subcategory_id' => $product->subcategory_id,
+                        'base_price' => $product->base_price,
+                        'has_attributes' => !empty($attributes),
+                        'attributes_count' => count($attributes),
+                    ]
+                ],
+                "/produits/{$product->id}"
+            );
             $product->load('category', 'subcategory', 'attributeTypes.values');
             return response()->json([
                 'message' => 'Produit créé avec succès',
@@ -569,7 +589,14 @@ public function index(Request $request)
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-
+        // Avant $product->update($data), sauvegarder les anciennes valeurs
+        $oldValues = [
+            'name' => $product->name,
+            'base_price' => $product->base_price,
+            'category_id' => $product->category_id,
+            'subcategory_id' => $product->subcategory_id,
+            'is_active' => $product->is_active,
+        ];
         DB::beginTransaction();
         try {
             $data = $request->only(['name','description','base_price','is_active']);
@@ -593,6 +620,40 @@ public function index(Request $request)
 
             DB::commit();
 
+            $changes = [];
+            if (isset($data['name']) && $data['name'] !== $oldValues['name']) {
+                $changes[] = "nom: '{$oldValues['name']}' → '{$data['name']}'";
+            }
+            if (isset($data['base_price']) && $data['base_price'] !== $oldValues['base_price']) {
+                $changes[] = "prix: " . number_format($oldValues['base_price'], 2) . " → " . number_format($data['base_price'], 2) . " AR";
+            }
+            if (isset($data['category_id']) && $data['category_id'] !== $oldValues['category_id']) {
+                $changes[] = "catégorie modifiée";
+            }
+            if (isset($data['is_active']) && $data['is_active'] !== $oldValues['is_active']) {
+                $status = $data['is_active'] ? 'activé' : 'désactivé';
+                $changes[] = "statut: {$status}";
+            }
+
+            $description = count($changes) > 0 
+                ? "a modifié le produit '{$product->name}' - " . implode(', ', $changes)
+                : "a modifié le produit '{$product->name}'";
+
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_UPDATED,
+                $description,
+                [
+                    'model_type' => 'App\Models\Product',
+                    'model_id' => $product->id,
+                    'metadata' => [
+                        'old_values' => $oldValues,
+                        'new_values' => $product->only(['name', 'base_price', 'category_id', 'subcategory_id', 'is_active']),
+                        'changes' => $changes,
+                        'attributes_updated' => $request->has('attributes'),
+                    ]
+                ],
+                "/produits/{$product->id}"
+            );
             $product->load('category', 'subcategory', 'attributeTypes.values');
             return response()->json([
                 'message' => 'Produit mis à jour avec succès',
@@ -615,13 +676,49 @@ public function index(Request $request)
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
-        $hasStock = $product->variants()->where('stock_quantity', '>', 0)->exists();
+        // Avant $product->delete(), vérifier le stock
+            $hasStock = $product->variants()->where('stock_quantity', '>', 0)->exists();
 
-        if ($hasStock) {
-            return response()->json(['message' => 'Impossible de supprimer un produit avec du stock'], 400);
-        }
+            if ($hasStock) {
+                // ⚠️ Log tentative échouée
+                ActivityLogger::failed(
+                    ActivityAction::PRODUCT_DELETED,
+                    "a tenté de supprimer le produit '{$product->name}' ayant du stock",
+                    [
+                        'model_type' => 'App\Models\Product',
+                        'model_id' => $product->id,
+                        'metadata' => [
+                            'reason' => 'has_stock',
+                            'variants_count' => $product->variants()->count(),
+                        ]
+                    ]
+                );
+                
+                return response()->json(['message' => 'Impossible de supprimer un produit avec du stock'], 400);
+            }
+
+            // Sauvegarder les données avant suppression
+            $productData = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'base_price' => $product->base_price,
+                'category_id' => $product->category_id,
+                'variants_count' => $product->variants()->count(),
+            ];
 
         $product->delete();
+        ActivityLogger::success(
+            ActivityAction::PRODUCT_DELETED,
+            "a supprimé le produit '{$productData['name']}'",
+            [
+                'model_type' => 'App\Models\Product',
+                'model_id' => $productData['id'],
+                'metadata' => [
+                    'deleted_data' => $productData,
+                ]
+            ],
+            '/produits'
+        );
         return response()->json(['message' => 'Produit supprimé'], 200);
     }
 
@@ -669,209 +766,228 @@ public function index(Request $request)
 
 
     public function getProductsForSale(Request $request)
-    {
-        $query = Product::query()
-            ->select([
-                'products.id',
-                'products.name',
-                'products.description',
-                'products.base_price',
-                'products.image_url',
-                'products.category_id',
-                'products.subcategory_id',
-                'products.is_active',
-                'categories.name as category_name',
-                'subcategories.name as subcategory_name',
-                DB::raw('COALESCE(SUM(product_variants.available_quantity), 0) as total_stock'),
-                DB::raw('COUNT(DISTINCT product_variants.id) as variants_count')
-            ])
-            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
-            ->leftJoin('categories as subcategories', 'products.subcategory_id', '=', 'subcategories.id')
-            ->leftJoin('product_variants', function ($join) {
-                $join->on('products.id', '=', 'product_variants.product_id')
-                    ->where('product_variants.is_active', true)
-                    ->where('product_variants.stock_quantity', '>', 0);
-            })
-            ->with([
-                'variants' => function ($query) {
-                    $query->where('is_active', true)
-                        ->where('stock_quantity', '>', 0)
-                        ->with([
-                            'attributeValues.attributeType',
-                            'attributeValues.attributeValue',
-                            'locations.location'
-                        ])
-                        ->select([
-                            'id',
-                            'product_id',
-                            'sku',
-                            'stock_quantity',
-                            'image_path',
-                            'is_active'
-                        ]);
-                },
-                'category:id,name',
-                'subcategory:id,name',
-                'attributeTypes.values'
-            ])
-            ->where('products.is_active', true)
-            ->groupBy(
-                'products.id',
-                'products.name',
-                'products.description',
-                'products.base_price',
-                'products.image_url',
-                'products.category_id',
-                'products.subcategory_id',
-                'products.is_active',
-                'categories.name',
-                'subcategories.name'
-            )
-            // CORRECTION: Utiliser l'expression complète au lieu de l'alias
-            ->having(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), '>', 0);
+{
+    $query = Product::query()
+        ->select([
+            'products.id',
+            'products.name',
+            'products.description',
+            'products.base_price',
+            'products.image_url',
+            'products.category_id',
+            'products.subcategory_id',
+            'products.is_active',
+            'categories.name as category_name',
+            'subcategories.name as subcategory_name',
+            DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0) as total_stock'),
+            DB::raw('COUNT(DISTINCT product_variants.id) as variants_count')
+        ])
+        ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+        ->leftJoin('categories as subcategories', 'products.subcategory_id', '=', 'subcategories.id')
+        ->leftJoin('product_variants', function ($join) {
+            $join->on('products.id', '=', 'product_variants.product_id')
+                ->where('product_variants.is_active', true)
+                ->where('product_variants.stock_quantity', '>', 0);
+        })
+        ->with([
+            'variants' => function ($query) {
+                $query->where('is_active', true)
+                    ->where('stock_quantity', '>', 0)
+                    ->with([
+                        'attributeValues.attributeValue.attributeType',
+                        'locations.location'
+                    ])
+                    ->select([
+                        'id',
+                        'product_id',
+                        'sku',
+                        'stock_quantity',
+                        'image_path',
+                        'is_active'
+                    ]);
+            },
+            'category:id,name',
+            'subcategory:id,name',
+            'attributeTypes.values'
+        ])
+        ->where('products.is_active', true)
+        ->groupBy(
+            'products.id',
+            'products.name',
+            'products.description',
+            'products.base_price',
+            'products.image_url',
+            'products.category_id',
+            'products.subcategory_id',
+            'products.is_active',
+            'categories.name',
+            'subcategories.name'
+        )
+        ->having(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), '>', 0);
 
-        // Recherche textuelle
-        if ($request->has('search') && !empty($request->search)) {
-            $searchTerm = '%' . $request->search . '%';
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('products.name', 'ILIKE', $searchTerm)
-                    ->orWhere('products.description', 'ILIKE', $searchTerm)
-                    ->orWhereHas('variants', function ($q) use ($searchTerm) {
-                        $q->where('sku', 'ILIKE', $searchTerm);
-                    });
-            });
-        }
+    // Recherche textuelle
+    if ($request->has('search') && !empty($request->search)) {
+        $searchTerm = '%' . $request->search . '%';
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('products.name', 'ILIKE', $searchTerm)
+                ->orWhere('products.description', 'ILIKE', $searchTerm)
+                ->orWhereHas('variants', function ($q) use ($searchTerm) {
+                    $q->where('sku', 'ILIKE', $searchTerm);
+                });
+        });
+    }
 
-        // Filtre par catégorie
-        if ($request->has('category_id') && !empty($request->category_id)) {
-            $query->where('products.category_id', $request->category_id);
-        }
+    // Filtre par catégorie
+    if ($request->has('category_id') && !empty($request->category_id)) {
+        $query->where('products.category_id', $request->category_id);
+    }
 
-        // Filtre par sous-catégorie
-        if ($request->has('subcategory_id') && !empty($request->subcategory_id)) {
-            $query->where('products.subcategory_id', $request->subcategory_id);
-        }
+    // Filtre par sous-catégorie
+    if ($request->has('subcategory_id') && !empty($request->subcategory_id)) {
+        $query->where('products.subcategory_id', $request->subcategory_id);
+    }
 
-        // Filtre par attributs
-        if ($request->has('attributes')) {
-            $attributes = $request->attributes;
-            if (is_array($attributes)) {
+    // ✅ FILTRE PAR ATTRIBUTS - VERSION OPTIMISÉE AVEC JOIN
+    if ($request->has('attributes')) {
+        try {
+            $attributesInput = $request->input('attributes');
+            $attributes = null;
+
+            if (is_string($attributesInput)) {
+                $decoded = json_decode($attributesInput, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $attributes = $decoded;
+                }
+            } elseif (is_array($attributesInput)) {
+                $attributes = $attributesInput;
+            }
+
+            if (is_array($attributes) && !empty($attributes)) {
                 foreach ($attributes as $attributeTypeId => $value) {
-                    $query->whereHas('variants.attributeValues', function ($q) use ($attributeTypeId, $value) {
-                        $q->where('attribute_type_id', $attributeTypeId)
-                            ->whereHas('attributeValue', function ($q) use ($value) {
-                                $q->where('value', $value);
-                            });
+                    // ✅ OPTIMISATION : Utiliser JOIN au lieu de whereHas
+                    $query->whereExists(function ($subQuery) use ($attributeTypeId, $value) {
+                        $subQuery->select(DB::raw(1))
+                            ->from('product_variants as pv')
+                            ->join('variant_attribute_values as vav', 'vav.variant_id', '=', 'pv.id')
+                            ->join('attribute_values as av', 'av.id', '=', 'vav.attribute_value_id')
+                            ->whereColumn('pv.product_id', 'products.id')
+                            ->where('pv.is_active', true)
+                            ->where('pv.stock_quantity', '>', 0)
+                            ->where('av.attribute_type_id', $attributeTypeId)
+                            ->whereRaw('LOWER(av.value) = LOWER(?)', [$value]);
                     });
                 }
             }
+        } catch (\Exception $e) {
+            Log::error('❌ Erreur traitement attributs:', [
+                'error' => $e->getMessage(),
+                'input' => $request->input('attributes')
+            ]);
         }
-
-        // Filtre par plage de prix
-        if ($request->has('min_price') && is_numeric($request->min_price)) {
-            $query->where('products.base_price', '>=', $request->min_price);
-        }
-        if ($request->has('max_price') && is_numeric($request->max_price)) {
-            $query->where('products.base_price', '<=', $request->max_price);
-        }
-
-        // Filtre par stock minimum - CORRECTION: utiliser DB::raw
-        if ($request->has('min_stock') && is_numeric($request->min_stock)) {
-            $query->having(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), '>=', $request->min_stock);
-        }
-
-        // Tri
-        $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
-        
-        $allowedSortColumns = ['name', 'base_price', 'created_at'];
-        
-        if (!in_array($sortBy, $allowedSortColumns)) {
-            $sortBy = 'name';
-        }
-        
-        // Gestion spéciale pour le tri par stock
-        if ($sortBy === 'total_stock') {
-            $query->orderBy(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), $sortOrder);
-        } else {
-            $query->orderBy($sortBy, $sortOrder);
-        }
-
-        // Pagination
-        $perPage = min($request->get('per_page', 24), 100);
-        $products = $query->paginate($perPage);
-
-        // Formatage de la réponse
-        $formattedProducts = $products->getCollection()->map(function ($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description,
-                'base_price' => (float) $product->base_price,
-                'image_url' => $product->image_url,
-                'category' => $product->category ? [
-                    'id' => $product->category->id,
-                    'name' => $product->category->name
-                ] : null,
-                'subcategory' => $product->subcategory ? [
-                    'id' => $product->subcategory->id,
-                    'name' => $product->subcategory->name
-                ] : null,
-                'total_stock' => (int) $product->total_stock,
-                'variants_count' => (int) $product->variants_count,
-                'variants' => $product->variants->map(function ($variant) {
-                    return [
-                        'id' => $variant->id,
-                        'sku' => $variant->sku,
-                        'stock_quantity' => (int) $variant->stock_quantity,
-                        'image_path' => $variant->image_path,
-                        'attributes' => $variant->attributeValues->map(function ($attributeValue) {
-                            return [
-                                'type_id' => $attributeValue->attributeType->id ?? null,
-                                'type_name' => $attributeValue->attributeType->display_name ?? null,
-                                'value_id' => $attributeValue->attributeValue->id ?? null,
-                                'value' => $attributeValue->attributeValue->value ?? null
-                            ];
-                        })->toArray(),
-                        'locations' => $variant->locations->map(function ($location) {
-                            return [
-                                'location_id' => $location->location->id ?? null,
-                                'location_name' => $location->location->name ?? null,
-                                'code'=>$location->location->code ?? null,
-                                'quantity' => (int) $location->quantity -$location->reserved_quantity,
-                                'full_path' => $location->location->getFullPath() ?? null
-                            ];
-                        })->toArray()
-                    ];
-                })->toArray(),
-                'attribute_types' => $product->attributeTypes->map(function ($attributeType) {
-                    return [
-                        'id' => $attributeType->id,
-                        'name' => $attributeType->name,
-                        'display_name' => $attributeType->display_name,
-                        'values' => $attributeType->values->map(function ($value) {
-                            return [
-                                'id' => $value->id,
-                                'value' => $value->value
-                            ];
-                        })->toArray()
-                    ];
-                })->toArray()
-            ];
-        });
-
-        return response()->json([
-            'data' => $formattedProducts,
-            'pagination' => [
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
-                'from' => $products->firstItem(),
-                'to' => $products->lastItem()
-            ]
-        ]);
     }
+
+    // Reste de la requête...
+    if ($request->has('min_price') && is_numeric($request->min_price)) {
+        $query->where('products.base_price', '>=', $request->min_price);
+    }
+    if ($request->has('max_price') && is_numeric($request->max_price)) {
+        $query->where('products.base_price', '<=', $request->max_price);
+    }
+
+    if ($request->has('min_stock') && is_numeric($request->min_stock)) {
+        $query->having(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), '>=', $request->min_stock);
+    }
+
+    // Tri
+    $sortBy = $request->get('sort_by', 'name');
+    $sortOrder = $request->get('sort_order', 'asc');
+    
+    $allowedSortColumns = ['name', 'base_price', 'created_at'];
+    
+    if (!in_array($sortBy, $allowedSortColumns)) {
+        $sortBy = 'name';
+    }
+    
+    if ($sortBy === 'total_stock') {
+        $query->orderBy(DB::raw('COALESCE(SUM(product_variants.stock_quantity), 0)'), $sortOrder);
+    } else {
+        $query->orderBy($sortBy, $sortOrder);
+    }
+    
+    $perPage = min($request->get('per_page', 24), 100);
+    $products = $query->paginate($perPage);
+
+    // Formatage identique...
+    $formattedProducts = $products->getCollection()->map(function ($product) {
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'base_price' => (float) $product->base_price,
+            'image_url' => $product->image_url,
+            'category' => $product->category ? [
+                'id' => $product->category->id,
+                'name' => $product->category->name
+            ] : null,
+            'subcategory' => $product->subcategory ? [
+                'id' => $product->subcategory->id,
+                'name' => $product->subcategory->name
+            ] : null,
+            'total_stock' => (int) $product->total_stock,
+            'variants_count' => (int) $product->variants_count,
+            'variants' => $product->variants->map(function ($variant) {
+                return [
+                    'id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'stock_quantity' => (int) $variant->stock_quantity,
+                    'image_path' => $variant->image_path,
+                    'attributes' => $variant->attributeValues->map(function ($attributeValue) {
+                        return [
+                            'type_id' => $attributeValue->attributeValue->attributeType->id ?? null,
+                            'type_name' => $attributeValue->attributeValue->attributeType->display_name ?? null,
+                            'value_id' => $attributeValue->attributeValue->id ?? null,
+                            'value' => $attributeValue->attributeValue->value ?? null
+                        ];
+                    })->toArray(),
+                    'locations' => $variant->locations->map(function ($location) {
+                        return [
+                            'location_id' => $location->location->id ?? null,
+                            'location_name' => $location->location->name ?? null,
+                            'code' => $location->location->code ?? null,
+                            'quantity' => (int) $location->quantity - $location->reserved_quantity,
+                            'full_path' => $location->location->getFullPath() ?? null
+                        ];
+                    })->toArray()
+                ];
+            })->toArray(),
+            'attribute_types' => $product->attributeTypes->map(function ($attributeType) {
+                return [
+                    'id' => $attributeType->id,
+                    'name' => $attributeType->name,
+                    'display_name' => $attributeType->display_name,
+                    'values' => $attributeType->values->map(function ($value) {
+                        return [
+                            'id' => $value->id,
+                            'value' => $value->value
+                        ];
+                    })->toArray()
+                ];
+            })->toArray()
+        ];
+    });
+
+    return response()->json([
+        'data' => $formattedProducts,
+        'pagination' => [
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+            'per_page' => $products->perPage(),
+            'total' => $products->total(),
+            'from' => $products->firstItem(),
+            'to' => $products->lastItem()
+        ]
+    ]);
+}
 
     public function updateBasePrices(Request $request)
     {
@@ -887,13 +1003,40 @@ public function index(Request $request)
 
         DB::beginTransaction();
         try {
+            $priceChanges = [];
+
             foreach ($request->products as $prodData) {
                 $product = Product::findOrFail($prodData['id']);
-                $product->base_price = $prodData['base_price'];
+                $oldPrice = $product->base_price;
+                $newPrice = $prodData['base_price'];
+                
+                if ($oldPrice != $newPrice) {
+                    $priceChanges[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'old_price' => $oldPrice,
+                        'new_price' => $newPrice,
+                    ];
+                }
+                
+                $product->base_price = $newPrice;
                 $product->save();
             }
 
+
             DB::commit();
+            ActivityLogger::success(
+                ActivityAction::PRODUCT_PRICES_UPDATED,
+                "a mis à jour les prix de base de {count($priceChanges)} produit(s)",
+                [
+                    'metadata' => [
+                        'products_count' => count($request->products),
+                        'changes_count' => count($priceChanges),
+                        'price_changes' => $priceChanges,
+                    ]
+                ],
+                '/products'
+            );
             return response()->json(['message' => 'Prix de base mis à jour avec succès']);
 
         } catch (\Exception $e) {
@@ -904,5 +1047,49 @@ public function index(Request $request)
             ]);
             return response()->json(['message' => 'Erreur lors de la mise à jour des prix', 'error' => $e->getMessage()], 500);
         }
+    }
+    public function getAvailableAttributes(Request $request)
+    {
+        // Récupérer tous les attributs utilisés par les produits actifs
+        $attributes = AttributeType::with(['values' => function($query) {
+            $query->whereHas('variants', function($q) {
+                $q->where('is_active', true)
+                    ->where('stock_quantity', '>', 0)
+                    ->whereHas('product', function($productQuery) {
+                        $productQuery->where('is_active', true);
+                    });
+            });
+        }])
+        ->whereHas('values.variants', function($query) {
+            $query->where('is_active', true)
+                ->where('stock_quantity', '>', 0)
+                ->whereHas('product', function($productQuery) {
+                    $productQuery->where('is_active', true);
+                });
+        })
+        ->get()
+        ->map(function ($attribute) {
+            return [
+                'id' => $attribute->id,
+                'name' => $attribute->name,
+                'display_name' => $attribute->display_name,
+                'values' => $attribute->values->map(function ($value) {
+                    return [
+                        'id' => $value->id,
+                        'value' => $value->value,
+                        'product_count' => $value->variants()
+                            ->where('is_active', true)
+                            ->where('stock_quantity', '>', 0)
+                            ->whereHas('product', function($q) {
+                                $q->where('is_active', true);
+                            })
+                            ->distinct('product_id')
+                            ->count('product_id')
+                    ];
+                })->toArray()
+            ];
+        });
+
+        return response()->json($attributes);
     }
 }

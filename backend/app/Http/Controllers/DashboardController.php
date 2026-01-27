@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sale;
-use App\Models\Credit;
-use App\Models\Reservation;
+
 use App\Models\Customer;
 use App\Models\AccountTransaction;
 use App\Models\ProductVariant;
-use App\Models\SaleItem;
+use App\Models\StockMovement;
+use App\Models\StockBatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -22,14 +22,11 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        // Date sélectionnée (par défaut aujourd'hui en timezone Madagascar)
         $selectedDate = $request->input('date') 
             ? Carbon::parse($request->input('date'), 'Indian/Antananarivo')
             : Carbon::now('Indian/Antananarivo');
         
-        $period = $request->input('period', '7days'); // 7days, 1month, 2months, 3months
-
-        // Date de la veille
+        $period = $request->input('period', '7days');
         $previousDate = $selectedDate->copy()->subDay();
 
         return response()->json([
@@ -37,12 +34,14 @@ class DashboardController extends Controller
             'summary' => [
                 'ca' => $this->getCAStats($selectedDate, $previousDate),
                 'immediate_sales' => $this->getImmediateSalesStats($selectedDate, $previousDate),
-                'new_credits' => $this->getNewCreditsStats($selectedDate, $previousDate),
-                'credit_payments' => $this->getCreditPaymentsStats($selectedDate, $previousDate),
-                'new_reservations' => $this->getNewReservationsStats($selectedDate, $previousDate),
+                'credit_sales' => $this->getCreditSalesStats($selectedDate, $previousDate),
+                'reservation_sales' => $this->getReservationSalesStats($selectedDate, $previousDate),
+                'profits' => $this->getProfitsStats($selectedDate, $previousDate),
                 'expenses' => $this->getExpensesStats($selectedDate, $previousDate),
+                'losses' => $this->getLossesStats($selectedDate, $previousDate),
                 'customers' => $this->getCustomersStats($selectedDate, $previousDate),
-                'stock_value' => $this->getStockValue()
+                'stock_value' => $this->getStockValue(), // Par prix de vente
+                'stock_cost_value' => $this->getStockCostValue() // Par coût (nouveau)
             ],
             'trends' => $this->getTrends($selectedDate, $period),
             'top_products' => $this->getTopProducts($selectedDate),
@@ -55,36 +54,34 @@ class DashboardController extends Controller
     }
 
     /**
-     * Chiffre d'affaires du jour
+     * ✅ CA FACTURÉ vs CA ENCAISSÉ
      */
     private function getCAStats(Carbon $date, Carbon $previousDate): array
     {
-        // CA Possible (tout ce qui est vendu aujourd'hui)
-        $caPossible = Sale::whereDate('sale_date', $date)
-            ->whereIn('payment_status', ['paid', 'partial', 'pending'])
+        // CA FACTURÉ (toutes ventes confirmées du jour)
+        $caFacture = Sale::whereDate('sale_date', $date)
+            ->where('status', 'CONFIRMED')
             ->sum('total_amount');
 
-        $caPossibleYesterday = Sale::whereDate('sale_date', $previousDate)
-            ->whereIn('payment_status', ['paid', 'partial', 'pending'])
+        $caFactureYesterday = Sale::whereDate('sale_date', $previousDate)
+            ->where('status', 'CONFIRMED')
             ->sum('total_amount');
 
-        // CA Encaissé (argent réellement reçu aujourd'hui)
+        // CA ENCAISSÉ (via AccountTransaction - argent réellement reçu)
         $caEncaisse = AccountTransaction::whereDate('transaction_date', $date)
-            ->whereHas('transactionType', function($q) {
-                $q->where('category', 'income');
-            })
+            ->whereNotNull('sale_id')
+            ->notCancelled() 
             ->sum('amount');
 
         $caEncaisseYesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
-            ->whereHas('transactionType', function($q) {
-                $q->where('category', 'income');
-            })
+            ->whereNotNull('sale_id')
+            ->notCancelled()
             ->sum('amount');
 
         return [
-            'possible' => [
-                'value' => (float) $caPossible,
-                'vs_yesterday' => $this->calculatePercentage($caPossible, $caPossibleYesterday)
+            'facture' => [
+                'value' => (float) $caFacture,
+                'vs_yesterday' => $this->calculatePercentage($caFacture, $caFactureYesterday)
             ],
             'encaisse' => [
                 'value' => (float) $caEncaisse,
@@ -94,130 +91,195 @@ class DashboardController extends Controller
     }
 
     /**
-     * Ventes immédiates du jour
+     * ✅ VENTES IMMÉDIATES avec bénéfice net
      */
     private function getImmediateSalesStats(Carbon $date, Carbon $previousDate): array
     {
-        $today = Sale::whereDate('sale_date', $date)
-            ->where('sale_type', 'immediate')
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
-
-        $yesterday = Sale::whereDate('sale_date', $previousDate)
-            ->where('sale_type', 'immediate')
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
+        $today = $this->getSaleTypeStats($date, 'immediate');
+        $yesterday = $this->getSaleTypeStats($previousDate, 'immediate');
 
         return [
-            'count' => (int) ($today->count ?? 0),
-            'value' => (float) ($today->value ?? 0),
+            'count' => (int) $today['count'],
+            'revenue' => (float) $today['revenue'],
+            'costs' => (float) $today['costs'],
+            'profit' => (float) $today['profit'],
+            'margin' => $today['revenue'] > 0 ? round(($today['profit'] / $today['revenue']) * 100, 2) : 0,
             'vs_yesterday' => [
-                'count' => $this->calculatePercentage($today->count ?? 0, $yesterday->count ?? 0),
-                'value' => $this->calculatePercentage($today->value ?? 0, $yesterday->value ?? 0)
+                'count' => $this->calculatePercentage($today['count'], $yesterday['count']),
+                'revenue' => $this->calculatePercentage($today['revenue'], $yesterday['revenue']),
+                'profit' => $this->calculatePercentage($today['profit'], $yesterday['profit']),
             ]
         ];
     }
 
     /**
-     * Nouveaux crédits créés aujourd'hui
+     * ✅ CRÉDITS avec bénéfice net
      */
-    private function getNewCreditsStats(Carbon $date, Carbon $previousDate): array
+    private function getCreditSalesStats(Carbon $date, Carbon $previousDate): array
     {
-        $today = Credit::whereDate('credit_date', $date)
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
+        $today = $this->getSaleTypeStats($date, 'credit');
+        $yesterday = $this->getSaleTypeStats($previousDate, 'credit');
 
-        $yesterday = Credit::whereDate('credit_date', $previousDate)
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
-
-        return [
-            'count' => (int) ($today->count ?? 0),
-            'value' => (float) ($today->value ?? 0),
-            'vs_yesterday' => [
-                'count' => $this->calculatePercentage($today->count ?? 0, $yesterday->count ?? 0),
-                'value' => $this->calculatePercentage($today->value ?? 0, $yesterday->value ?? 0)
-            ]
-        ];
-    }
-
-    /**
-     * Paiements de crédits reçus aujourd'hui (échéances)
-     */
-    private function getCreditPaymentsStats(Carbon $date, Carbon $previousDate): array
-    {
-        // Transactions de type CREDIT_PAYMENT
-        $today = AccountTransaction::whereDate('transaction_date', $date)
-            ->whereHas('transactionType', function($q) {
-                $q->where('code', 'CREDIT_PAYMENT');
+        // Paiements de crédits reçus aujourd'hui
+        $paymentsToday = AccountTransaction::whereDate('transaction_date', $date)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'credit');
             })
-            ->selectRaw('COUNT(*) as count, SUM(amount) as value')
-            ->first();
+            ->notCancelled()
+            ->sum('amount');
 
-        $yesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
-            ->whereHas('transactionType', function($q) {
-                $q->where('code', 'CREDIT_PAYMENT');
+        $paymentsYesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
+            ->whereNotNull('sale_id')
+            ->whereDoesntHave('reversingTransaction')
+            ->whereNull('reversed_transaction_id')
+            ->notCancelled()
+            ->sum('amount');
+
+        // Compter le nombre de paiements (crédits distincts ayant reçu un paiement)
+        $paymentsCountToday = AccountTransaction::whereDate('transaction_date', $date)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'credit');
             })
-            ->selectRaw('COUNT(*) as count, SUM(amount) as value')
-            ->first();
+            ->notCancelled()
+            ->distinct('sale_id')
+            ->count('sale_id');
+
+        $paymentsCountYesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'credit');
+            })
+            ->notCancelled()
+            ->distinct('sale_id')
+            ->count('sale_id');
 
         return [
-            'count' => (int) ($today->count ?? 0),
-            'value' => (float) ($today->value ?? 0),
-            'vs_yesterday' => [
-                'count' => $this->calculatePercentage($today->count ?? 0, $yesterday->count ?? 0),
-                'value' => $this->calculatePercentage($today->value ?? 0, $yesterday->value ?? 0)
+            'new_credits' => [
+                'count' => (int) $today['count'],
+                'revenue' => (float) $today['revenue'],
+                'profit' => (float) $today['profit'],
+                'vs_yesterday' => [
+                    'count' => $this->calculatePercentage($today['count'], $yesterday['count']),
+                    'revenue' => $this->calculatePercentage($today['revenue'], $yesterday['revenue']),
+                ]
+            ],
+            'payments' => [
+                'value' => (float) $paymentsToday,
+                'count' => (int) $paymentsCountToday,
+                'vs_yesterday' => [
+                    'value' => $this->calculatePercentage($paymentsToday, $paymentsYesterday),
+                    'count' => $this->calculatePercentage($paymentsCountToday, $paymentsCountYesterday),
+                ]
             ]
         ];
     }
 
     /**
-     * Nouvelles réservations créées aujourd'hui
+     * ✅ RÉSERVATIONS avec bénéfice net ET paiements
      */
-    private function getNewReservationsStats(Carbon $date, Carbon $previousDate): array
+    private function getReservationSalesStats(Carbon $date, Carbon $previousDate): array
     {
-        $today = Reservation::whereDate('reservation_date', $date)
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
+        $today = $this->getSaleTypeStats($date, 'reservation');
+        $yesterday = $this->getSaleTypeStats($previousDate, 'reservation');
 
-        $yesterday = Reservation::whereDate('reservation_date', $previousDate)
-            ->selectRaw('COUNT(*) as count, SUM(total_amount) as value')
-            ->first();
+        // ✅ NOUVEAU : Paiements de réservations reçus aujourd'hui
+        $reservationPaymentsToday = AccountTransaction::whereDate('transaction_date', $date)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'reservation');
+            })
+            ->notCancelled()
+            ->sum('amount');
+
+        $reservationPaymentsYesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'reservation');
+            })
+            ->notCancelled()
+            ->sum('amount');
+
+        // Compter le nombre de paiements de réservations
+        $reservationPaymentsCountToday = AccountTransaction::whereDate('transaction_date', $date)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'reservation');
+            })
+            ->notCancelled()
+            ->distinct('sale_id')
+            ->count('sale_id');
+
+        $reservationPaymentsCountYesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'reservation');
+            })
+            ->notCancelled()
+            ->distinct('sale_id')
+            ->count('sale_id');
 
         return [
-            'count' => (int) ($today->count ?? 0),
-            'value' => (float) ($today->value ?? 0),
-            'vs_yesterday' => [
-                'count' => $this->calculatePercentage($today->count ?? 0, $yesterday->count ?? 0),
-                'value' => $this->calculatePercentage($today->value ?? 0, $yesterday->value ?? 0)
+            'new_reservations' => [
+                'count' => (int) $today['count'],
+                'revenue' => (float) $today['revenue'],
+                'profit' => (float) $today['profit'],
+                'margin' => $today['revenue'] > 0 ? round(($today['profit'] / $today['revenue']) * 100, 2) : 0,
+                'vs_yesterday' => [
+                    'count' => $this->calculatePercentage($today['count'], $yesterday['count']),
+                    'revenue' => $this->calculatePercentage($today['revenue'], $yesterday['revenue']),
+                    'profit' => $this->calculatePercentage($today['profit'], $yesterday['profit']),
+                ]
+            ],
+            'payments' => [
+                'value' => (float) $reservationPaymentsToday,
+                'count' => (int) $reservationPaymentsCountToday,
+                'vs_yesterday' => [
+                    'value' => $this->calculatePercentage($reservationPaymentsToday, $reservationPaymentsYesterday),
+                    'count' => $this->calculatePercentage($reservationPaymentsCountToday, $reservationPaymentsCountYesterday),
+                ]
             ]
         ];
     }
 
     /**
-     * Dépenses du jour (tous types confondus)
-     * Inclut: EXPENSE, REFUND + toutes les dépenses avec expense_category_id
+     * ✅ BÉNÉFICES GLOBAUX
+     */
+    private function getProfitsStats(Carbon $date, Carbon $previousDate): array
+    {
+        $today = $this->calculateDayProfits($date);
+        $yesterday = $this->calculateDayProfits($previousDate);
+
+        return [
+            'gross_profit' => [
+                'value' => (float) $today['gross_profit'],
+                'vs_yesterday' => $this->calculatePercentage($today['gross_profit'], $yesterday['gross_profit'])
+            ],
+            'net_profit' => [
+                'value' => (float) $today['net_profit'],
+                'vs_yesterday' => $this->calculatePercentage($today['net_profit'], $yesterday['net_profit'])
+            ],
+            'margins' => [
+                'gross_margin' => $today['revenue'] > 0 ? round(($today['gross_profit'] / $today['revenue']) * 100, 2) : 0,
+                'net_margin' => $today['revenue'] > 0 ? round(($today['net_profit'] / $today['revenue']) * 100, 2) : 0,
+            ]
+        ];
+    }
+
+    /**
+     * ✅ DÉPENSES (hors approvisionnements)
      */
     private function getExpensesStats(Carbon $date, Carbon $previousDate): array
     {
-        // Toutes transactions de catégorie expense + refund
-        // ou ayant un expense_category_id (paiements fournisseurs, transitaires, dépenses opérationnelles)
         $today = AccountTransaction::whereDate('transaction_date', $date)
-            ->where(function($q) {
-                $q->whereHas('transactionType', function($q2) {
-                    $q2->whereIn('category', ['expense']);
-                })
-                ->orWhereNotNull('expense_category_id');
-            })
+            ->whereNotNull('expense_category_id')
+            ->notCancelled()
             ->sum('amount');
 
         $yesterday = AccountTransaction::whereDate('transaction_date', $previousDate)
-            ->where(function($q) {
-                $q->whereHas('transactionType', function($q2) {
-                    $q2->whereIn('category', ['expense']);
-                })
-                ->orWhereNotNull('expense_category_id');
-            })
+            ->whereNotNull('expense_category_id')
+            ->notCancelled()
             ->sum('amount');
 
         return [
@@ -228,40 +290,33 @@ class DashboardController extends Controller
     }
 
     /**
-     * Détail des dépenses par catégorie pour aujourd'hui
+     * ✅ PERTES (stock + crédits defaulted)
      */
-    private function getExpensesBreakdown(Carbon $date): array
+    private function getLossesStats(Carbon $date, Carbon $previousDate): array
     {
-        return AccountTransaction::selectRaw('
-                expense_categories.name as category,
-                expense_categories.icon,
-                SUM(account_transactions.amount) as total
-            ')
-            ->join('expense_categories', 'account_transactions.expense_category_id', '=', 'expense_categories.id')
-            ->whereDate('account_transactions.transaction_date', $date)
-            ->groupBy('expense_categories.id', 'expense_categories.name', 'expense_categories.icon')
-            ->orderByDesc('total')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'category' => $item->category,
-                    'icon' => $item->icon,
-                    'total' => (float) $item->total
-                ];
-            })
-            ->toArray();
+        $todayLosses = $this->calculateDayLosses($date);
+        $yesterdayLosses = $this->calculateDayLosses($previousDate);
+
+        return [
+            'stock_losses' => [
+                'value' => (float) $todayLosses['stock_losses'],
+                'vs_yesterday' => $this->calculatePercentage($todayLosses['stock_losses'], $yesterdayLosses['stock_losses'])
+            ],
+            'total_losses' => [
+                'value' => (float) $todayLosses['total'],
+                'vs_yesterday' => $this->calculatePercentage($todayLosses['total'], $yesterdayLosses['total'])
+            ]
+        ];
     }
 
     /**
-     * Statistiques clients du jour
+     * Statistiques clients
      */
     private function getCustomersStats(Carbon $date, Carbon $previousDate): array
     {
-        // Nouveaux clients créés
         $newToday = Customer::whereDate('created_at', $date)->count();
         $newYesterday = Customer::whereDate('created_at', $previousDate)->count();
 
-        // Clients revenus (ayant fait une transaction aujourd'hui mais pas leur première)
         $returningToday = Sale::whereDate('sale_date', $date)
             ->whereNotNull('customer_id')
             ->distinct('customer_id')
@@ -285,7 +340,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Valeur totale du stock actuel (base_price × stock_quantity)
+     * Valeur totale du stock par prix de vente (original)
      */
     private function getStockValue(): array
     {
@@ -299,8 +354,67 @@ class DashboardController extends Controller
         ];
     }
 
+    private function getStockCostValue(): array
+    {
+        // Calcul basé sur les stock_batches disponibles (non vendus)
+        $value = StockBatch::where('remaining_quantity', '>', 0)
+            ->selectRaw('SUM(remaining_quantity * total_unit_cost) as total_cost')
+            ->value('total_cost');
+
+        return [
+            'value' => (float) ($value ?? 0),
+            'breakdown' => $this->getStockCostBreakdown()
+        ];
+    }
+
     /**
-     * Tendances financières sur période
+     * ✅ NOUVEAU : Détail de la valeur du stock par produit (regroupé des variants)
+     */
+    private function getStockCostBreakdown(): array
+    {
+        return StockBatch::selectRaw('
+                products.id as product_id,
+                products.name as product_name,
+                COUNT(DISTINCT product_variants.id) as variants_count,
+                SUM(stock_batches.remaining_quantity) as total_quantity,
+                SUM(stock_batches.remaining_quantity * stock_batches.total_unit_cost) as total_cost,
+                AVG(stock_batches.total_unit_cost) as avg_unit_cost
+            ')
+            ->join('product_variants', 'stock_batches.variant_id', '=', 'product_variants.id')
+            ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->where('stock_batches.remaining_quantity', '>', 0)
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('total_cost')
+            ->limit(10)
+            ->get()
+            ->map(function($item) {
+                // Récupérer le SKU du variant principal (le premier par ordre alphabétique)
+                $mainVariant = ProductVariant::where('product_id', $item->product_id)
+                    ->orderBy('sku')
+                    ->first();
+                
+                // Récupérer l'image du produit ou du premier variant
+                $imageUrl = $item->product_image;
+                if (!$imageUrl && $mainVariant) {
+                    $imageUrl = $mainVariant->image_path;
+                }
+
+                return [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name,
+                    'image_url' => $imageUrl,
+                    'variants_count' => (int) $item->variants_count,
+                    'main_sku' => $mainVariant?->sku ?? 'N/A',
+                    'total_quantity' => (int) $item->total_quantity,
+                    'total_cost' => (float) $item->total_cost,
+                    'avg_unit_cost' => (float) $item->avg_unit_cost
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * ✅ TENDANCES avec bénéfice
      */
     private function getTrends(Carbon $selectedDate, string $period): array
     {
@@ -310,50 +424,109 @@ class DashboardController extends Controller
         $groupBy = $periodData['group_by'];
 
         if ($groupBy === 'day') {
-            // Données par jour
-            $data = Sale::selectRaw("
-                DATE(sale_date) as date,
-                SUM(CASE WHEN sale_type = 'immediate' THEN total_amount ELSE 0 END) as immediate_sales,
-                SUM(CASE WHEN sale_type = 'credit' THEN total_amount ELSE 0 END) as credits,
-                SUM(CASE WHEN sale_type = 'reservation' THEN total_amount ELSE 0 END) as reservations,
-                SUM(total_amount) as total
-            ")
-            ->whereBetween('sale_date', [$startDate, $endDate])
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'date' => $item->date,
-                    'immediate_sales' => (float) $item->immediate_sales,
-                    'credits' => (float) $item->credits,
-                    'reservations' => (float) $item->reservations,
-                    'total' => (float) $item->total
-                ];
-            });
+            $dateFormat = "DATE(sale_date)";
         } else {
-            // Données par semaine
-            $data = Sale::selectRaw("
-                DATE_TRUNC('week', sale_date) as week,
-                SUM(CASE WHEN sale_type = 'immediate' THEN total_amount ELSE 0 END) as immediate_sales,
-                SUM(CASE WHEN sale_type = 'credit' THEN total_amount ELSE 0 END) as credits,
-                SUM(CASE WHEN sale_type = 'reservation' THEN total_amount ELSE 0 END) as reservations,
-                SUM(total_amount) as total
-            ")
-            ->whereBetween('sale_date', [$startDate, $endDate])
-            ->groupBy('week')
-            ->orderBy('week')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'week' => Carbon::parse($item->week)->format('Y-m-d'),
-                    'immediate_sales' => (float) $item->immediate_sales,
-                    'credits' => (float) $item->credits,
-                    'reservations' => (float) $item->reservations,
-                    'total' => (float) $item->total
-                ];
-            });
+            $dateFormat = "DATE_TRUNC('week', sale_date)";
         }
+
+        // Revenus et coûts par période
+        $salesData = DB::table('sale_item_batches')
+            ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+            ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->selectRaw("
+                {$dateFormat} as period,
+                sales.sale_type,
+                SUM(sale_item_batches.quantity * (sale_item_batches.unit_price_at_sale - sale_item_batches.discount_at_sale)) as revenue,
+                SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as costs
+            ")
+            ->whereIn('sale_item_batches.status', ['sold','reserved'])
+            ->whereBetween('sales.sale_date', [$startDate, $endDate])
+            ->groupByRaw("{$dateFormat}, sales.sale_type")
+            ->orderByRaw($dateFormat)
+            ->get()
+            ->groupBy('period');
+
+        // Dépenses par période
+        $expensesDateFormat = $groupBy === 'day' 
+            ? "DATE(transaction_date)" 
+            : "DATE_TRUNC('week', transaction_date)";
+
+        $expensesData = AccountTransaction::selectRaw("
+                {$expensesDateFormat} as period,
+                SUM(amount) as expenses
+            ")
+            ->notCancelled()
+            ->whereNotNull('expense_category_id')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->groupByRaw($expensesDateFormat)
+            ->orderByRaw($expensesDateFormat)
+            ->get()
+            ->keyBy('period');
+
+        // ✅ NOUVEAU : Paiements de réservations par période
+        $reservationPaymentsDateFormat = $groupBy === 'day' 
+            ? "DATE(transaction_date)" 
+            : "DATE_TRUNC('week', transaction_date)";
+
+        $reservationPaymentsData = AccountTransaction::selectRaw("
+                {$reservationPaymentsDateFormat} as period,
+                SUM(amount) as reservation_payments
+            ")
+            ->whereNotNull('sale_id')
+            ->whereHas('sale', function($q) {
+                $q->where('sale_type', 'reservation');
+            })
+            ->notCancelled()
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->groupByRaw($reservationPaymentsDateFormat)
+            ->orderByRaw($reservationPaymentsDateFormat)
+            ->get()
+            ->keyBy('period');
+
+        // Fusionner les données
+        $allPeriods = $salesData->keys()
+            ->merge($expensesData->keys())
+            ->merge($reservationPaymentsData->keys())
+            ->unique()
+            ->sort();
+
+        $data = $allPeriods->map(function ($period) use ($salesData, $expensesData, $reservationPaymentsData, $groupBy) {
+            $sales = $salesData->get($period, collect());
+            
+            $immediate = $sales->where('sale_type', 'immediate')->first();
+            $credit = $sales->where('sale_type', 'credit')->first();
+            $reservation = $sales->where('sale_type', 'reservation')->first();
+
+            $immediateRevenue = (float) ($immediate->revenue ?? 0);
+            $immediateCosts = (float) ($immediate->costs ?? 0);
+            $creditRevenue = (float) ($credit->revenue ?? 0);
+            $creditCosts = (float) ($credit->costs ?? 0);
+            $reservationRevenue = (float) ($reservation->revenue ?? 0);
+            $reservationCosts = (float) ($reservation->costs ?? 0);
+
+            $totalRevenue = $immediateRevenue + $creditRevenue + $reservationRevenue;
+            $totalCosts = $immediateCosts + $creditCosts + $reservationCosts;
+            $expenses = (float) ($expensesData->get($period)->expenses ?? 0);
+            $reservationPayments = (float) ($reservationPaymentsData->get($period)->reservation_payments ?? 0);
+
+            $grossProfit = $totalRevenue - $totalCosts;
+            $netProfit = $grossProfit - $expenses;
+
+            return [
+                'period' => $groupBy === 'day' ? $period : Carbon::parse($period)->format('Y-m-d'),
+                'immediate_sales' => $immediateRevenue,
+                'immediate_profit' => $immediateRevenue - $immediateCosts,
+                'credits' => $creditRevenue,
+                'credit_profit' => $creditRevenue - $creditCosts,
+                'reservations' => $reservationRevenue,
+                'reservation_profit' => $reservationRevenue - $reservationCosts,
+                'reservation_payments' => $reservationPayments, // ✅ Nouveau
+                'total_revenue' => $totalRevenue,
+                'gross_profit' => $grossProfit,
+                'net_profit' => $netProfit,
+            ];
+        });
 
         return [
             'period' => $period,
@@ -365,32 +538,195 @@ class DashboardController extends Controller
     }
 
     /**
-     * Top 5 produits les plus vendus aujourd'hui (par valeur)
+     * ✅ TOP PRODUITS avec tri par bénéfice, quantité ou CA
      */
-    private function getTopProducts(Carbon $date): array
+    private function getTopProducts(Carbon $date, string $sortBy = 'revenue'): array
     {
-        return SaleItem::selectRaw('
-                product_variants.id as variant_id,
-                products.name as product_name,
-                products.image_url,
-                SUM(sale_items.quantity) as quantity_sold,
-                SUM(sale_items.subtotal) as total_value
-            ')
+        $products = DB::table('sale_item_batches')
+            ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+            ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('product_variants', 'sale_items.variant_id', '=', 'product_variants.id')
             ->join('products', 'product_variants.product_id', '=', 'products.id')
+            ->selectRaw('
+                products.id as product_id,
+                products.name as product_name,
+                products.image_url as product_image,
+                SUM(sale_item_batches.quantity) as quantity_sold,
+                SUM(sale_item_batches.quantity * (sale_item_batches.unit_price_at_sale - sale_item_batches.discount_at_sale)) as total_revenue,
+                SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as total_cost,
+                SUM(sale_item_batches.quantity * (sale_item_batches.unit_price_at_sale - sale_item_batches.discount_at_sale - stock_batches.total_unit_cost)) as total_profit
+            ')
+            ->whereIn('sale_item_batches.status', ['sold','reserved'])
             ->whereDate('sales.sale_date', $date)
-            ->groupBy('product_variants.id', 'products.name', 'products.image_url')
-            ->orderByDesc('total_value')
-            ->limit(5)
+            ->where('sales.status', 'CONFIRMED')
+            ->groupBy('products.id', 'products.name', 'products.image_url');
+
+        // Tri selon le critère
+        switch ($sortBy) {
+            case 'profit':
+                $products->orderByDesc('total_profit');
+                break;
+            case 'quantity':
+                $products->orderByDesc('quantity_sold');
+                break;
+            case 'revenue':
+            default:
+                $products->orderByDesc('total_revenue');
+                break;
+        }
+
+        return $products
+            ->limit(10)
+            ->get()
+            ->map(function($item) {
+                // Utiliser l'image du produit, ou chercher l'image du premier variant si null
+                $imageUrl = $item->product_image;
+                
+                if (!$imageUrl) {
+                    $variant = ProductVariant::where('product_id', $item->product_id)
+                        ->whereNotNull('image_path')
+                        ->first();
+                    $imageUrl = $variant?->image_path;
+                }
+
+                return [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name,
+                    'image_url' => $imageUrl,
+                    'quantity_sold' => (int) $item->quantity_sold,
+                    'total_revenue' => (float) $item->total_revenue,
+                    'total_cost' => (float) $item->total_cost,
+                    'total_profit' => (float) $item->total_profit,
+                    'profit_margin' => $item->total_revenue > 0 
+                        ? round(($item->total_profit / $item->total_revenue) * 100, 2) 
+                        : 0
+                ];
+            })
+            ->toArray();
+    }
+
+    // ========== MÉTHODES PRIVÉES UTILITAIRES ==========
+
+    /**
+     * Calcule revenus, coûts et bénéfice pour un type de vente
+     */
+    private function getSaleTypeStats(Carbon $date, string $saleType): array
+    {   
+        $status = ['sold'];
+        if ($saleType == 'reservation') {
+            array_push($status, 'reserved');
+        }
+        
+        $stats = DB::table('sale_item_batches')
+            ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+            ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->selectRaw('
+                COUNT(DISTINCT sales.id) as count,
+                SUM(sale_item_batches.quantity * (sale_item_batches.unit_price_at_sale - sale_item_batches.discount_at_sale)) as revenue,
+                SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as costs
+            ')
+            ->whereIn('sale_item_batches.status', $status)
+            ->where('sales.sale_type', $saleType)
+            ->where('sales.status','CONFIRMED')
+            ->whereDate('sales.sale_date', $date)
+            ->first();
+
+        $revenue = (float) ($stats->revenue ?? 0);
+        $costs = (float) ($stats->costs ?? 0);
+
+        return [
+            'count' => (int) ($stats->count ?? 0),
+            'revenue' => $revenue,
+            'costs' => $costs,
+            'profit' => $revenue - $costs,
+        ];
+    }
+
+    /**
+     * Calcule les bénéfices globaux du jour
+     */
+    private function calculateDayProfits(Carbon $date): array
+    {
+        // Revenus et coûts
+        $stats = DB::table('sale_item_batches')
+            ->join('stock_batches', 'sale_item_batches.batch_id', '=', 'stock_batches.id')
+            ->join('sale_items', 'sale_item_batches.sale_item_id', '=', 'sale_items.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->selectRaw('
+                SUM(sale_item_batches.quantity * (sale_item_batches.unit_price_at_sale - sale_item_batches.discount_at_sale)) as revenue,
+                SUM(sale_item_batches.quantity * stock_batches.total_unit_cost) as costs
+            ')
+            ->whereIn('sale_item_batches.status', ['sold','reserved'])
+            ->whereDate('sales.sale_date', $date)
+            ->where('sales.status','CONFIRMED')
+            ->first();
+
+        $revenue = (float) ($stats->revenue ?? 0);
+        $costs = (float) ($stats->costs ?? 0);
+
+        // Dépenses
+        $expenses = AccountTransaction::whereDate('transaction_date', $date)
+            ->whereNotNull('expense_category_id')
+            ->notCancelled()
+            ->whereNull('stock_receipt_id')
+            ->sum('amount');
+
+        $grossProfit = $revenue - $costs;
+        $netProfit = $grossProfit - $expenses;
+
+        return [
+            'revenue' => $revenue,
+            'costs' => $costs,
+            'expenses' => (float) $expenses,
+            'gross_profit' => $grossProfit,
+            'net_profit' => $netProfit,
+        ];
+    }
+
+    /**
+     * Calcule les pertes du jour
+     */
+    private function calculateDayLosses(Carbon $date): array
+    {
+        // Pertes de stock valorisées
+        $stockLosses = StockMovement::where('movement_type', StockMovement::TYPE_LOSS)
+            ->whereDate('created_at', $date)
+            ->with(['variant.product'])
+            ->get()
+            ->sum(function ($loss) {
+                $basePrice = $loss->variant->product->base_price ?? 0;
+                return $loss->quantity * $basePrice;
+            });
+
+        return [
+            'stock_losses' => (float) $stockLosses,
+            'total' => (float) $stockLosses,
+        ];
+    }
+
+    /**
+     * Détail des dépenses par catégorie
+     */
+    private function getExpensesBreakdown(Carbon $date): array
+    {
+        return AccountTransaction::selectRaw('
+                expense_categories.name as category,
+                expense_categories.icon,
+                SUM(account_transactions.amount) as total
+            ')
+            ->notCancelled()
+            ->join('expense_categories', 'account_transactions.expense_category_id', '=', 'expense_categories.id')
+            ->whereDate('account_transactions.transaction_date', $date)
+            ->groupBy('expense_categories.id', 'expense_categories.name', 'expense_categories.icon')
+            ->orderByDesc('total')
             ->get()
             ->map(function($item) {
                 return [
-                    'variant_id' => $item->variant_id,
-                    'product_name' => $item->product_name,
-                    'image_url' => $item->image_url,
-                    'quantity_sold' => (int) $item->quantity_sold,
-                    'total_value' => (float) $item->total_value
+                    'category' => $item->category,
+                    'icon' => $item->icon,
+                    'total' => (float) $item->total
                 ];
             })
             ->toArray();
@@ -412,7 +748,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Détermine la plage de dates et le groupement selon la période
+     * Détermine la plage de dates selon la période
      */
     private function getPeriodRange(Carbon $selectedDate, string $period): array
     {

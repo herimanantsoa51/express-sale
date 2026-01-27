@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\PosPrintService;
+use App\Helpers\ActivityLogger;
+use  App\Enums\ActivityAction;
 
 class CashCountController extends Controller
 {
@@ -138,11 +140,34 @@ class CashCountController extends Controller
                     'subtotal' => $subtotal,
                 ]);
             }
-
+            ActivityLogger::success(
+                ActivityAction::CASH_COUNT_UPDATED,
+                "a modifié une comptage de billet d'un total de {$total} Ar.",
+                [
+                    "model_type"=>CashCount::class,
+                    "model_id"=>$cashCount->id,
+                    "metadata"=>[
+                        "old"=>[
+                            'count_date'=>$cashCount->getOriginal('count_date'),
+                            'notes'=>$cashCount->getOriginal('notes'),
+                            'denominations'=> $cashCount->denominations->map(function ($item) {
+                                return [
+                                    'denomination' => $item->denomination,
+                                    'quantity' => $item->quantity,
+                                    'subtotal' => $item->subtotal,
+                                ];
+                            })->toArray()
+                        ],           
+                        "new"=>$request->toArray()
+                    ]
+                    ],
+                    "/comptages/{$cashCount->id}"
+            );
             $cashCount->update([
                 'total_amount' => $total,
             ]);
         });
+
 
         return response()->json([
             'message' => 'Comptage de caisse mis à jour avec succès'
@@ -201,7 +226,16 @@ class CashCountController extends Controller
                 'cash_count',
                 fn() => $this->posPrintService->printCashCount($cashCount)
             );
-
+            ActivityLogger::success(
+                ActivityAction::CASH_COUNT_CREATED,
+                "a créé une comptage de billet d'un total de {$total} Ar.",
+                [
+                        "model_type"=>CashCount::class,
+                        "model_id"=>$cashCount->id,
+                        "metadata"=>$cashCount->toArray()
+                ],
+                "/comptages/{$cashCount->id}"
+            );
             return response()->json([
                 'message' => 'Comptage enregistré avec succès',
                 'data' => $cashCount,

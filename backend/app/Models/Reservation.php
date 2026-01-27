@@ -239,4 +239,20 @@ class Reservation extends Model
         return in_array($this->status, ['pending', 'confirmed', 'partial_paid'])
             && !$this->isExpired();
     }
+    protected static function booted()
+    {
+        // Quand une réservation est annulée, annuler la vente
+        static::updating(function ($reservation) {
+            if ($reservation->isDirty('status') && $reservation->status === 'cancelled') {
+                $reservation->sale()->update(['status' => 'CANCELLED']);
+            }
+        });
+        
+        // Quand une réservation est complétée, marquer la vente comme payée
+        static::updating(function ($reservation) {
+            if ($reservation->isDirty('status') && $reservation->status === 'completed') {
+                $reservation->sale()->update(['payment_status' => 'paid']);
+            }
+        });
+    }
 }

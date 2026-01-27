@@ -1,213 +1,187 @@
 // src/components/statistics/DateRangeFilter.jsx
-import React, { useState, useEffect } from 'react';
-import { Calendar, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import '../../styles/DateRangeFilter.css';
 
-const DateRangeFilter = ({ onFilterChange, initialPeriod = 'month', initialDates = {} }) => {
-  const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
-  const [startDate, setStartDate] = useState(initialDates.start_date || '');
-  const [endDate, setEndDate] = useState(initialDates.end_date || '');
-  const [useCustomDates, setUseCustomDates] = useState(false);
+const DateRangeFilter = ({ onFilterChange, initialPeriod = 'month' }) => {
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    console.log('DateRangeFilter initialized with:', now.toLocaleDateString('fr-FR'));
+    return now;
+  });
+  
+  const [periodType, setPeriodType] = useState(initialPeriod);
+  const lastParamsRef = useRef(null);
+  const hasInitialized = useRef(false);
 
-  // Synchroniser avec les props
-  useEffect(() => {
-    if (initialDates.start_date && initialDates.end_date) {
-      setStartDate(initialDates.start_date);
-      setEndDate(initialDates.end_date);
-      setUseCustomDates(true);
-    } else {
-      setSelectedPeriod(initialPeriod);
-      setUseCustomDates(false);
-    }
-  }, [initialPeriod, initialDates]);
-
-  // Calculer les périodes prédéfinies
-  const getPredefinedDates = (period) => {
-    const today = new Date();
-    const start = new Date();
-    
-    switch(period) {
-      case 'today':
-        start.setHours(0, 0, 0, 0);
-        return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
-        };
+  const calculatePeriodDates = (type, date) => {
+    const d = new Date(date);
+    let start, end;
+  
+    // Helper pour formater en local (pas UTC)
+    const formatLocalDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+  
+    switch(type) {
       case 'week':
-        start.setDate(start.getDate() - 7);
-        return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
-        };
+        const dayOfWeek = d.getDay();
+        start = new Date(d);
+        start.setDate(d.getDate() - dayOfWeek);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        break;
+  
       case 'month':
-        start.setMonth(start.getMonth() - 1);
-        return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
-        };
+        start = new Date(d.getFullYear(), d.getMonth(), 1);
+        end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        break;
+  
       case 'year':
-        start.setFullYear(start.getFullYear() - 1);
-        return {
-          startDate: start.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
-        };
+        start = new Date(d.getFullYear(), 0, 1);
+        end = new Date(d.getFullYear(), 11, 31);
+        break;
+  
       default:
-        return null;
+        start = new Date(d.getFullYear(), d.getMonth(), 1);
+        end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     }
+  
+    const result = {
+      start: formatLocalDate(start),
+      end: formatLocalDate(end)
+    };
+  
+    console.log('📅 Calculated period:', result);
+    return result;
+  };
+  useEffect(() => {
+    const dates = calculatePeriodDates(periodType, currentDate);
+    const newParams = {
+      period: periodType,
+      start_date: dates.start,
+      end_date: dates.end
+    };
+
+    // Vérifier si les paramètres ont vraiment changé
+    const paramsString = JSON.stringify(newParams);
+    if (lastParamsRef.current === paramsString) {
+      return;
+    }
+
+    lastParamsRef.current = paramsString;
+    
+    // Premier appel immédiat, les suivants avec délai
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      onFilterChange(newParams);
+    } else {
+      const timer = setTimeout(() => {
+        onFilterChange(newParams);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [periodType, currentDate]);
+
+  const navigate = (direction) => {
+    const newDate = new Date(currentDate);
+    
+    switch(periodType) {
+      case 'week':
+        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+        break;
+      case 'month':
+        newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+        break;
+      case 'year':
+        newDate.setFullYear(newDate.getFullYear() + (direction === 'next' ? 1 : -1));
+        break;
+    }
+    
+    setCurrentDate(newDate);
   };
 
-  const handlePeriodChange = (period) => {
-    setSelectedPeriod(period);
-    setUseCustomDates(false);
-    setStartDate('');
-    setEndDate('');
-    
-    // Calculer les dates pour cette période
-    const dates = getPredefinedDates(period);
-    if (dates) {
-      onFilterChange({ 
-        period,
-        start_date: dates.startDate,
-        end_date: dates.endDate
-      });
-    }
+  const goToToday = () => {
+    setCurrentDate(new Date());
   };
 
-  const handleDateChange = (type, value) => {
-    const newStartDate = type === 'start' ? value : startDate;
-    const newEndDate = type === 'end' ? value : endDate;
+  const getPeriodLabel = () => {
+    const dates = calculatePeriodDates(periodType, currentDate);
+    const start = new Date(dates.start);
+    const end = new Date(dates.end);
 
-    if (type === 'start') setStartDate(value);
-    if (type === 'end') setEndDate(value);
+    const options = { day: '2-digit', month: 'short', year: 'numeric' };
 
-    // Si les deux dates sont remplies, activer le mode custom
-    if (newStartDate && newEndDate) {
-      setUseCustomDates(true);
-      setSelectedPeriod('');
-      
-      // Attendre un peu pour éviter les appels multiples
-      setTimeout(() => {
-        onFilterChange({
-          period: '',
-          start_date: newStartDate,
-          end_date: newEndDate
-        });
-      }, 300);
+    if (periodType === 'year') {
+      return start.getFullYear().toString();
     }
+
+    if (periodType === 'month') {
+      return start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    }
+
+    return `${start.toLocaleDateString('fr-FR', options)} - ${end.toLocaleDateString('fr-FR', options)}`;
   };
 
-  const handleClearDates = () => {
-    setStartDate('');
-    setEndDate('');
-    setUseCustomDates(false);
-    
-    // Revenir à la période par défaut
-    const defaultPeriod = 'month';
-    setSelectedPeriod(defaultPeriod);
-    
-    const dates = getPredefinedDates(defaultPeriod);
-    if (dates) {
-      onFilterChange({ 
-        period: defaultPeriod,
-        start_date: dates.startDate,
-        end_date: dates.endDate
-      });
-    }
+  const isCurrentPeriod = () => {
+    const today = new Date();
+    const dates = calculatePeriodDates(periodType, today);
+    const currentDates = calculatePeriodDates(periodType, currentDate);
+    return dates.start === currentDates.start && dates.end === currentDates.end;
   };
 
   return (
     <div className="date-range-filter">
       <div className="date-filter-header">
         <Calendar size={18} />
-        <span className="date-filter-title">Période</span>
+        <span className="date-filter-title">Période d'analyse</span>
       </div>
 
-      {/* Périodes prédéfinies */}
       <div className="period-buttons">
         {[
-          { value: 'today', label: "Aujourd'hui" },
-          { value: 'week', label: '7 derniers jours' },
-          { value: 'month', label: '30 derniers jours' },
-          { value: 'year', label: '365 derniers jours' }
+          { value: 'week', label: 'Semaine' },
+          { value: 'month', label: 'Mois' },
+          { value: 'year', label: 'Année' }
         ].map((period) => (
           <button
             key={period.value}
-            className={`period-btn ${!useCustomDates && selectedPeriod === period.value ? 'active' : ''}`}
-            onClick={() => handlePeriodChange(period.value)}
+            className={`period-btn ${periodType === period.value ? 'active' : ''}`}
+            onClick={() => setPeriodType(period.value)}
           >
             {period.label}
           </button>
         ))}
       </div>
 
-      {/* Séparateur */}
-      <div className="date-filter-divider">
-        <span>ou</span>
+      <div className="period-navigator">
+        <button 
+          className="dt-nav-btn" 
+          onClick={() => navigate('prev')}
+          title="Période précédente"
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        <div className="period-display">
+          <span className="period-label">{getPeriodLabel()}</span>
+        </div>
+
+        <button 
+          className="dt-nav-btn" 
+          onClick={() => navigate('next')}
+          title="Période suivante"
+        >
+          <ChevronRight size={20} />
+        </button>
       </div>
 
-      {/* Sélection de dates personnalisées */}
-      <div className="custom-date-inputs">
-        <div className="date-input-group">
-          <label className="date-input-label">Date de début</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => handleDateChange('start', e.target.value)}
-            className="date-input"
-            max={endDate || undefined}
-          />
-        </div>
-
-        <div className="date-input-group">
-          <label className="date-input-label">Date de fin</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => handleDateChange('end', e.target.value)}
-            className="date-input"
-            min={startDate || undefined}
-          />
-        </div>
-
-        {(useCustomDates || (startDate && endDate)) && (
-          <button
-            onClick={handleClearDates}
-            className="clear-dates-btn"
-            title="Réinitialiser les dates"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Indicateur de filtre actif */}
-      {(useCustomDates || selectedPeriod) && (
-        <div className="active-filter-indicator">
-          <span className="indicator-dot"></span>
-          <span className="indicator-text">
-            {useCustomDates ? (
-              <>
-                Du {new Date(startDate).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })} au{' '}
-                {new Date(endDate).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })}
-              </>
-            ) : (
-              {
-                'today': "Aujourd'hui",
-                'week': '7 derniers jours',
-                'month': '30 derniers jours',
-                'year': '365 derniers jours'
-              }[selectedPeriod]
-            )}
-          </span>
-        </div>
+      {!isCurrentPeriod() && (
+        <button className="today-btn" onClick={goToToday}>
+          Aujourd'hui
+        </button>
       )}
     </div>
   );

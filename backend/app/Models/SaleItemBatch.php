@@ -44,8 +44,15 @@ class SaleItemBatch extends Model
      */
     public function getUnitCostAttribute(): float
     {
+        if (!$this->batch) {
+            throw new \LogicException(
+                "SaleItemBatch #{$this->id} n'a pas de batch associé"
+            );
+        }
+
         return (float) $this->batch->total_unit_cost;
     }
+
 
     /**
      * Coût total de cette portion

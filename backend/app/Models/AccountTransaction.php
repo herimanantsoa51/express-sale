@@ -36,6 +36,7 @@ class AccountTransaction extends Model
         'sale_id',
         'reference_number',
         'description',
+        'planned_expense_id',
         'notes',
         'created_by',
         'created_at',
@@ -50,7 +51,10 @@ class AccountTransaction extends Model
     ];
 
     /* ===================== RELATIONS ===================== */
-
+    public function plannedExpense()
+    {
+        return $this->belongsTo(PlannedExpense::class);
+    }
     /**
      * Compte concerné par la transaction
      */
@@ -97,7 +101,7 @@ class AccountTransaction extends Model
     {
         return $this->hasOne(AccountTransaction::class, 'reversed_transaction_id');
     }
-
+    
     /**
      * Vérifie si la transaction a déjà été annulée
      */
@@ -137,7 +141,11 @@ class AccountTransaction extends Model
     {
         return $this->belongsTo(ExpenseCategory::class);
     }
-
+    public function scopeNotCancelled($query)
+    {
+        return $query->whereNull('reversed_transaction_id')
+                    ->whereDoesntHave('reversingTransaction');
+    }
     /**
      * Vente liée
      */
@@ -170,6 +178,18 @@ class AccountTransaction extends Model
         return $query->where('account_id', $accountId);
     }
 
+    // Ajoutez ce scope
+    public function scopeNotCancelledWithAlias($query, $alias = null)
+    {
+        $tableAlias = $alias ?: $this->getTable();
+        
+        return $query->where("{$tableAlias}.reversed_transaction_id", null)
+                    ->whereNotExists(function ($q) use ($tableAlias) {
+                        $q->select(DB::raw(1))
+                        ->from("account_transactions as at2")
+                        ->whereRaw("at2.reversed_transaction_id = {$tableAlias}.id");
+                    });
+    }
     /**
      * Filtre par type
      */
@@ -355,6 +375,15 @@ class AccountTransaction extends Model
             if ($this->installmentTransation()->exists()) {
                 $this->cancelCreditInstallmentTransaction($this);
             }
+            $this->load('sale.reservation');
+
+                if (
+                    in_array($this->sale?->reservation?->status, ['confirmed', 'completed'])
+                ) {
+                    $this->cancelReservationDeposit($this);
+                }
+
+
             // Créer la transaction inverse en copiant TOUS les champs de contexte
             $reversal = self::create([
                 'account_id' => $this->account_id,
@@ -370,10 +399,10 @@ class AccountTransaction extends Model
                 // Copier TOUS les champs de contexte (même s'ils sont null)
                 'supplier_id' => $this->supplier_id,
                 'freight_forwarder_id' => $this->freight_forwarder_id,
-                'stock_receipt_id' => $this->stock_receipt_id,
+                // 'stock_receipt_id' => $this->stock_receipt_id,
                 'expense_category_id' => $this->expense_category_id,
                 'recipient_name' => $this->recipient_name,
-                'sale_id' => $this->sale_id,
+                // 'sale_id' => $this->sale_id,
                 'related_account_id' => $this->related_account_id,
                 'created_by' => Auth::id(),
                 'created_at' => now(),
@@ -678,10 +707,11 @@ class AccountTransaction extends Model
         ?string $recipientName,
         ?string $notes,
         ?string $transactionDate = null,
-        ?string $referenceNumber = null
+        ?string $referenceNumber = null,
+        ?int $plannedExpenseId =null,
     ): self {
         try {
-            return DB::transaction(function () use ($accountId, $expenseCategoryId, $amount, $recipientName, $notes, $transactionDate, $referenceNumber) {
+            return DB::transaction(function () use ($accountId, $expenseCategoryId, $amount, $recipientName, $notes, $transactionDate, $referenceNumber,$plannedExpenseId) {
                 // Validation
                 if ($amount <= 0) {
                     throw new \Exception('Le montant doit être supérieur à zéro');
@@ -769,6 +799,7 @@ class AccountTransaction extends Model
                     'expense_category_id' => $expenseCategoryId,
                     'recipient_name' => $recipientName,
                     'description' => $description,
+                    'planned_expense_id'=>$plannedExpenseId,
                     'notes' => $notes,
                     'reference_number' => $generatedReference,
                     'created_by' => Auth::id(),
@@ -854,7 +885,22 @@ class AccountTransaction extends Model
                 }
             }
     }
+    private function cancelReservationDeposit(AccountTransaction $transaction)
+    {
+        // CHARGER TOUTES les relations nécessaires en UNE SEULE requête
+        $transaction->load('sale.reservation');
 
+        $reservation = $transaction->sale->reservation ?? null; 
+        if (!$reservation) {
+            return;
+        }
+        
+        $reservation->increment('remaining_amount', $transaction->amount);
+        if($reservation->deposit_amount <= $transaction->amount){
+            $reservation->decrement('deposit_amount', $transaction->amount);
+        }
+        $reservation->refresh();
+    }
     /* ===================== ÉVÉNEMENTS ===================== */
 
     protected static function booted()

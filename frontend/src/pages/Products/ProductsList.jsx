@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/ProductsList.css';
 import productService from '../../services/productService';
+import AttributeManagerModal from './AttributeValuesModal';
 
 
 // ============================================
@@ -104,6 +105,7 @@ const ProductFilters = ({ onFiltersChange, loading }) => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [categories, setCategories] = useState([]);
+
   const [subcategories, setSubcategories] = useState([]);
 
   useEffect(() => {
@@ -278,6 +280,7 @@ const ProductsList = () => {
   const [filters, setFilters] = useState({});
   const [pagination, setPagination] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAttributeModal, setShowAttributeModal] = useState(false); // <-- Ajoutez cette ligne
   const navigate = useNavigate();
   const loadProducts = useCallback(async (page = 1) => {
     setLoading(true);
@@ -312,21 +315,36 @@ const ProductsList = () => {
   return (
     <div className="products-page">
       <div className="products-page__container">
-        <div className="products-page__header">
-          <h1 className="products-page__title">Produits</h1>
+      <div className="products-page__header">
+          <div className="products-page__header-main">
+            <h1 className="products-page__title">Produits</h1>
+            {pagination && (
+              <div className="products-page__header-meta">
+                {pagination.total} {pagination.total === 1 ? 'product' : 'products'}
+              </div>
+            )}
+          </div>
           
-          {pagination && (
-            <div className="products-page__header-meta">
-              {pagination.total} {pagination.total === 1 ? 'product' : 'products'}
-            </div>
-          )}
-          <button 
-            className="produts-page-btn-primary"
-            onClick={() => navigate(`/produits/nouveau`)}
-          >
-            Nouveau Produit
-          </button>
-          
+          <div className="products-page__header-actions">
+            <button 
+              className="products-page__action-button"
+              onClick={() => setShowAttributeModal(true)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                <path d="M8 10h8" />
+                <path d="M8 14h6" />
+              </svg>
+              Attributes
+            </button>
+            
+            <button 
+              className="products-page__action-button products-page__action-button--primary"
+              onClick={() => navigate(`/produits/nouveau`)}
+            >
+              Nouveau Produit
+            </button>
+          </div>
         </div>
 
         <ProductFilters onFiltersChange={handleFiltersChange} loading={loading} />
@@ -387,6 +405,10 @@ const ProductsList = () => {
             )}
           </>
         )}
+        <AttributeManagerModal 
+          isOpen={showAttributeModal}
+          onClose={() => setShowAttributeModal(false)}
+        />
       </div>
     </div>
   );

@@ -33,7 +33,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CompanyInfoController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\PrintController;
-use Illuminate\Routing\RouteUri;
+use App\Http\Controllers\PlannedExpenseController;
+use App\Http\Controllers\AttributeValueController;
+use App\Http\Controllers\ActivityLogController;
+
 
 Route::get('/ping', fn () => response()->json(['status' => 'ok']));
 // toutes les routes d'auth sous le préfixe "auth""
@@ -65,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('products/for-sale', [ProductController::class, 'getProductsForSale']);
     // Produits
+    Route::get('/products/attributes/available',[ProductController::class, 'getAvailableAttributes']);
     Route::apiResource('products', ProductController::class);
 
     Route::get('products/with-variants/{id}', [ProductController::class, 'showWithVariants']);
@@ -81,6 +85,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('products/{product}/attribute-types', [ProductController::class, 'getProductAttributeTypes']);
     // Dans routes/api.php
     Route::get('products/{productId}/variants/{variantId}/batches', [ProductController::class, 'getVariantBatches']);
+    Route::prefix('attribute-types/{attributeType}')->group(function () {
+        Route::get('values', [AttributeValueController::class, 'index']);
+        Route::post('values', [AttributeValueController::class, 'store']);
+        Route::get('values/{attributeValue}', [AttributeValueController::class, 'show']);
+        Route::put('values/{attributeValue}', [AttributeValueController::class, 'update']);
+        Route::delete('values/{attributeValue}', [AttributeValueController::class, 'destroy']);
+        Route::post('values/reorder', [AttributeValueController::class, 'reorder']);
+    });
 
 
     // Types d'attributs
@@ -88,7 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('freight-forwarders/{id}/statistics', [FreightForwarderController::class, 'statistics']);
     Route::get('/freight-forwarders/{id}/stock-receipts', [FreightForwarderController::class, 'getStockReceipts']);
     Route::apiResource('attribute-types', AttributeTypeController::class);
-
+    // Attribute Values
+    
     Route::get('suppliers/{id}/statistics', [SupplierController::class, 'statistics']);
     Route::apiResource('suppliers', SupplierController::class);
    
@@ -329,7 +342,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/add-deposit', [SaleController::class, 'addDeposit']);
     });
 
+    // routes/api.php - Ajouter ces routes
 
+    Route::prefix('planned-expenses')->group(function () {
+        Route::get('/', [PlannedExpenseController::class, 'index']);
+        Route::post('/', [PlannedExpenseController::class, 'store']);
+        Route::get('/stats', [PlannedExpenseController::class, 'stats']);
+        Route::get('/{plannedExpense}', [PlannedExpenseController::class, 'show']);
+        Route::put('/{plannedExpense}', [PlannedExpenseController::class, 'update']);
+        Route::post('/{plannedExpense}/mark-paid', [PlannedExpenseController::class, 'markPaid']);
+        Route::delete('/{plannedExpense}', [PlannedExpenseController::class, 'destroy']);
+        Route::get('/{plannedExpense}/transactions', [PlannedExpenseController::class, 'transactions']);
+    });
 
     Route::prefix('statistics/sales')->group(function () {
         Route::get('overview', [SalesStatisticsController::class, 'overview']);
@@ -341,6 +365,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('discounts', [SalesStatisticsController::class, 'discounts']);
         Route::get('credits', [SalesStatisticsController::class, 'credits']);
         Route::get('reservations', [SalesStatisticsController::class, 'reservations']);
+    });
+    // ========== NOUVELLES ROUTES FINANCIÈRES (Ajoutées) ==========
+    Route::prefix('statistics/financial')->group(function () {
+        Route::get('dashboard', [SalesStatisticsController::class, 'financialDashboard']);
+        Route::get('timeline', [SalesStatisticsController::class, 'financialTimeline']);
+        Route::get('profits', [SalesStatisticsController::class, 'profitsOverview']);
+        Route::get('expenses', [SalesStatisticsController::class, 'expensesOverview']);
+        Route::get('losses', [SalesStatisticsController::class, 'lossesOverview']);
     });
     Route::get('dashboard', [DashboardController::class, 'index']);
     
@@ -370,6 +402,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/cash-count/{cashCount}', [PrintController::class, 'printCashCount']);
         Route::get('/installment-transaction/{installmentTransaction}', [PrintController::class, 'printInstallmentTransaction']);
         
+    });
+    // Dans routes/api.php, dans le groupe middleware('auth:sanctum')
+
+    Route::prefix('activity-logs')->group(function () {
+        // Consultation
+        Route::get('/', [ActivityLogController::class, 'index']);
+        Route::get('/statistics', [ActivityLogController::class, 'statistics']);
+        Route::get('/failures', [ActivityLogController::class, 'failures']);
+        Route::get('/actions-by-category', [ActivityLogController::class, 'actionsByCategory']);
+        Route::get('/by-model', [ActivityLogController::class, 'byModel']);
+        Route::get('/{activityLog}', [ActivityLogController::class, 'show']);
+        
+        // Suppression (réservée aux admins)
+        Route::middleware(['role:admin'])->group(function () {
+            Route::delete('/delete-between-dates', [ActivityLogController::class, 'deleteBetweenDates']);
+            Route::delete('/delete-older-than', [ActivityLogController::class, 'deleteOlderThan']);
+            Route::delete('/delete-by-status', [ActivityLogController::class, 'deleteByStatus']);
+            Route::post('/auto-cleanup', [ActivityLogController::class, 'autoCleanup']);
+        });
     });
 });
 Route::middleware('auth:sanctum')->group(function () {

@@ -9,6 +9,8 @@ use App\Http\Resources\ExpenseCategoryResource;
 use App\Http\Resources\ExpenseCategoryCollection;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Helpers\ActivityLogger;
+use App\Enums\ActivityAction;
 
 
 /**
@@ -37,14 +39,42 @@ class ExpenseCategoryController extends Controller
     }
 
     public function store(StoreExpenseCategoryRequest $request): JsonResponse
-    {
-        $category = ExpenseCategory::create($request->validated());
+    {   
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Catégorie de dépense créée avec succès',
-            'data' => new ExpenseCategoryResource($category)
-        ], 201);
+        try {
+            $category = ExpenseCategory::create($request->validated());
+                ActivityLogger::success(
+                    ActivityAction::EXPENSE_CATEGORY_CREATED,
+                    "a créé la catégorie de dépense {$category->name}",
+                    [
+                        'model_type' => 'App\Models\ExpenseCategory',
+                        'model_id' => $category->id,
+                        'metadata' => [
+                            'name' => $category->name,
+                            'description' => $category->description,
+                            'is_active' => $category->is_active,
+                        ]
+                    ],                    "/depenses",
+                );
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Catégorie de dépense créée avec succès',
+                'data' => new ExpenseCategoryResource($category)
+            ], 201);
+        } catch (\Exception $th) {
+            ActivityLogger::error(
+                ActivityAction::EXPENSE_CATEGORY_CREATED,
+                "a tenté de créer une catégorie de dépense et a échoué",
+                $th
+            );
+            //throw $th;
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Erreur lors de la création de la catégorie de dépense',
+                'error' => $th->getMessage()
+            ], 500);
+        }
+        
     }
 
     public function show(ExpenseCategory $expenseCategory): JsonResponse
