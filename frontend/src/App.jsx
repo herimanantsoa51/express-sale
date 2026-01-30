@@ -1,5 +1,5 @@
 // ============================================
-// src/App.jsx
+// src/App.jsx - Avec contrôle d'accès par rôle
 // ============================================
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -17,10 +17,12 @@ import { ThemeProvider } from './context/ThemeContext';
 
 // Layout & routes protégées
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleRoute from './components/RoleRoute';
 import Layout from './components/layout/Layout';
 
 // Pages publiques
 import Login from './pages/Login';
+import Unauthorized from './pages/Unauthorized';
 
 // Pages principales
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -82,6 +84,7 @@ import AccountsList from './pages/Accounts/AccountsList';
 import AccountDetail from './pages/Accounts/AccountDetail';
 import AccountTransfer from './pages/Accounts/AccountTransfer';
 import CurrencyRates from './pages/Accounts/CurrencyRates';
+import ActivityLogs from './pages/ActivityLogs/ActivityLogs';
 
 // Dépenses
 import ExpenseList from './pages/Expenses/ExpenseList';
@@ -107,6 +110,7 @@ import CompanyConfiguration from './pages/Settings/CompanyConfiguration';
 import InventoryReconciliationForm from './pages/StockMovement/InventoryReconciliationForm';
 import PlannedExpenseCreate from './pages/Expenses/PlannedExpenseCreate';
 import FinancialStatistics from './pages/Statistics/FinancialStatistics';
+
 // Styles globaux
 import './styles/variables.css';
 import './styles/reset.css';
@@ -114,9 +118,11 @@ import './styles/global.css';
 
 function App() {
   return (
-
-    <ThemeProvider>
-         <ToastContainer
+    <BrowserRouter>
+      <ThemeProvider>
+        <AuthProvider>
+          {/* ToastContainer DANS les providers et le Router */}
+          <ToastContainer
             position="top-right"
             autoClose={4000}
             hideProgressBar={false}
@@ -132,11 +138,11 @@ function App() {
             icon
             style={{ zIndex: 99999 }}
           />
-      <AuthProvider>
-        <BrowserRouter>
+          
           <Routes>
-            {/* Route publique */}
+            {/* Routes publiques */}
             <Route path="/login" element={<Login />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Routes protégées */}
             <Route
@@ -147,75 +153,178 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              {/* Dashboard */}
+              {/* Dashboard - Accessible à tous */}
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               
-              {/* === PRODUITS === */}
+              {/* === PRODUITS - Admin + Vendeur === */}
               <Route path="produits">
                 <Route index element={<ProductsList />} />
-                <Route path="nouveau" element={<ProductForm />} />
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <ProductForm />
+                  </RoleRoute>
+                } />
                 <Route path=":id" element={<ProductDetails />} />
-                <Route path=":id/modifier" element={<ProductForm />} />
-                <Route path=":productId/variante/nouvelle" element={<VariantForm />} />
-                <Route path=":productId/variante/:variantId/modifier" element={<VariantForm />} />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <ProductForm />
+                  </RoleRoute>
+                } />
+                <Route path=":productId/variante/nouvelle" element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <VariantForm />
+                  </RoleRoute>
+                } />
+                <Route path=":productId/variante/:variantId/modifier" element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <VariantForm />
+                  </RoleRoute>
+                } />
               </Route>
+
+              {/* === FOURNISSEURS - Admin uniquement === */}
               <Route path="fournisseurs">
-                <Route index element={<SuppliersList />} />
-                <Route path="nouveau" element={<SupplierForm />} />
-                <Route path=":id" element={<SupplierDetails />} />
-                <Route path=":id/modifier" element={<SupplierForm />} />
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <SuppliersList />
+                  </RoleRoute>
+                } />
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <SupplierForm />
+                  </RoleRoute>
+                } />
+                <Route path=":id" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <SupplierDetails />
+                  </RoleRoute>
+                } />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <SupplierForm />
+                  </RoleRoute>
+                } />
               </Route>
 
+              {/* === TRANSITAIRES - Admin uniquement === */}
               <Route path="transitaires">
-                <Route index element={<FreightForwardersList />} />
-                <Route path="nouveau" element={<FreightForwarderForm />} />
-                <Route path=":id" element={<FreightForwarderDetails />} />
-                <Route path=":id/modifier" element={<FreightForwarderForm />} />
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <FreightForwardersList />
+                  </RoleRoute>
+                } />
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <FreightForwarderForm />
+                  </RoleRoute>
+                } />
+                <Route path=":id" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <FreightForwarderDetails />
+                  </RoleRoute>
+                } />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <FreightForwarderForm />
+                  </RoleRoute>
+                } />
               </Route>
 
+              {/* === RÉAPPROVISIONNEMENTS - Admin + Vendeur === */}
               <Route path="reapprovisionnements">
-                <Route index element={<StockReceiptList/>}/>
-                <Route path='nouveau' element={<StockReceiptForm />} />
-                <Route path=':id' element={<StockReceiptDetails/>}/>
-                <Route path=':id/evaluation' element={<StockReceiptRating/>}/>
-                <Route path=':id/paiements' element={<StockReceiptPayment/>}/>
-                <Route path=':id/cout-repartition' element={<CostAllocation/>}/>
-                <Route path=':id/cout-repartition/detail' element={<CostAllocationView/>}/>
-
+                <Route index element={<RoleRoute allowedRoles={['admin']}><StockReceiptList/></RoleRoute>}/>
+                <Route path='nouveau' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <StockReceiptForm />
+                  </RoleRoute>
+                } />
+                <Route path=':id' element={<RoleRoute allowedRoles={['admin']}>
+                  <StockReceiptDetails/>
+                </RoleRoute>}/>
+                <Route path=':id/evaluation' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <StockReceiptRating/>
+                  </RoleRoute>
+                }/>
+                <Route path=':id/paiements' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <StockReceiptPayment/>
+                  </RoleRoute>
+                }/>
+                <Route path=':id/cout-repartition' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <CostAllocation/>
+                  </RoleRoute>
+                }/>
+                <Route path=':id/cout-repartition/detail' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <CostAllocationView/>
+                  </RoleRoute>
+                }/>
               </Route>
+
+              {/* === LOCALISATIONS VARIANTES - Admin + Vendeur === */}
               <Route path="localisations-variantes">
                 <Route index element={<ProductVariantLocationsList />} />
-                <Route path="nouvelle" element={<ProductVariantLocationForm />} />
-                <Route path=":id/modifier" element={<ProductVariantLocationForm />} />
+                <Route path="nouvelle" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <ProductVariantLocationForm />
+                  </RoleRoute>
+                } />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <ProductVariantLocationForm />
+                  </RoleRoute>
+                } />
               </Route>
               
-
-              {/* === VUE PAR LOCATION === */}
+              {/* === VUE PAR LOCATION - Admin + Vendeur === */}
               <Route path="locations/:locationId/variantes" element={<LocationVariantsView />} />
 
-              {/* === MOUVEMENTS DE STOCK === */}
+              {/* === MOUVEMENTS DE STOCK - Admin + Vendeur === */}
               <Route path="mouvements-stock">
-                <Route index element={<StockMovementList />} />
-                <Route path="transfert" element={<StockTransferForm />} />
-                {/* <Route path="ajustement" element={<StockAdjustmentForm />} /> */}
-                <Route path="perte" element={<StockLossForm />} />
-                <Route path="reconciliation" element={<InventoryReconciliationForm />} />
+                <Route index element={<RoleRoute allowedRoles={['admin']}><StockMovementList /></RoleRoute>} />
+                <Route path="transfert" element={<RoleRoute allowedRoles={['admin']}><StockTransferForm /></RoleRoute>} />
+                <Route path="perte" element={<RoleRoute allowedRoles={['admin']}><StockLossForm /></RoleRoute>} />
+                <Route path="reconciliation" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <InventoryReconciliationForm />
+                  </RoleRoute>
+                } />
               </Route>
 
-              {/* === LOCATIONS (Emplacements de stockage) === */}
+              {/* === LOCATIONS - Admin + Vendeur === */}
               <Route path="locations">
                 <Route index element={<LocationsList />} />
-                <Route path="nouveau" element={<LocationForm />} />
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <LocationForm />
+                  </RoleRoute>
+                } />
                 <Route path=":id" element={<LocationDetail />} />
-                <Route path=":id/modifier" element={<LocationForm />} />
-              </Route>
-              <Route path="clients">
-                <Route index element={<CustomerList/>} />
-                <Route path=":id" element={<CustomerDetails/>} />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <LocationForm />
+                  </RoleRoute>
+                } />
               </Route>
 
-              {/* === VENTES === */}
+              {/* === CLIENTS - Admin uniquement === */}
+              <Route path="clients">
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <CustomerList/>
+                  </RoleRoute>
+                } />
+                <Route path=":id" element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <CustomerDetails/>
+                  </RoleRoute>
+                } />
+              </Route>
+
+              {/* === VENTES - Admin + Vendeur === */}
               <Route path="ventes">
                 <Route path="rapide" element={<QuickSalePage />} />
                 <Route path="immediates">
@@ -231,53 +340,139 @@ function App() {
                   <Route path=':id' element={<ReservationDetailPage/>} />
                 </Route>
               </Route>
+
+              {/* === TRÉSORERIE - Admin uniquement === */}
               <Route path='comptes'>
-                <Route index element={<AccountsList/>}/>
-                <Route path="nouveau" element={<AccountForm />} />
-                <Route path=":id" element={<AccountDetail />} />
-                <Route path=":id/modifier" element={<AccountForm />} />
-                <Route path="transfert" element={<AccountTransfer />} />
-                <Route path='conversion' element={<CurrencyRates/>}/>
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AccountsList/>
+                  </RoleRoute>
+                }/>
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AccountForm />
+                  </RoleRoute>
+                } />
+                <Route path=":id" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AccountDetail />
+                  </RoleRoute>
+                } />
+                <Route path=":id/modifier" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AccountForm />
+                  </RoleRoute>
+                } />
+                <Route path="transfert" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AccountTransfer />
+                  </RoleRoute>
+                } />
+                <Route path='conversion' element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <CurrencyRates/>
+                  </RoleRoute>
+                }/>
               </Route>
+
+              {/* === DÉPENSES - Admin uniquement === */}
               <Route path="depenses">
-                <Route index element={<ExpenseList/>}/>
-                <Route path="nouveau" element={<ExpenseCreate/>}/>
-                <Route path="planifie/nouveau" element={<PlannedExpenseCreate/>}/>
-                <Route path="planifie/modifier/:id" element={<PlannedExpenseCreate/>}/>
-                <Route path="planifie" element={<PlannedExpensesList/>}/>
-                <Route path="planifie/:id" element={<PlannedExpenseDetail/>}/>
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <ExpenseList/>
+                  </RoleRoute>
+                }/>
+                <Route path="nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <ExpenseCreate/>
+                  </RoleRoute>
+                }/>
+                <Route path="planifie/nouveau" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <PlannedExpenseCreate/>
+                  </RoleRoute>
+                }/>
+                <Route path="planifie/modifier/:id" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <PlannedExpenseCreate/>
+                  </RoleRoute>
+                }/>
+                <Route path="planifie" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <PlannedExpensesList/>
+                  </RoleRoute>
+                }/>
+                <Route path="planifie/:id" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <PlannedExpenseDetail/>
+                  </RoleRoute>
+                }/>
               </Route>
+
+              {/* === TRANSACTIONS - Admin + Vendeur === */}
               <Route path='transactions'>
                 <Route path=':id' element={<TransactionDetail />} />
               </Route>
+
+              {/* === STATISTIQUES - Admin uniquement === */}
               <Route path="statistiques">
-                <Route index element={<SalesStatistics/>} />
-                <Route path="financieres" element={<FinancialStatistics/>} />
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <SalesStatistics/>
+                  </RoleRoute>
+                } />
+                <Route path="financieres" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <FinancialStatistics/>
+                  </RoleRoute>
+                } />
               </Route>
+
+              {/* === UTILISATEURS - Admin uniquement === */}
               <Route path="utilisateurs">
-                <Route index element={<UsersPage/>} />
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <UsersPage/>
+                  </RoleRoute>
+                } />
               </Route>
+
+              {/* === COMPTAGES - Admin + Vendeur === */}
               <Route path='comptages'>
                 <Route index element={<CashCountList/>} />
                 <Route path='nouveau' element={<CashCountForm />} />
                 <Route path=':id' element={<CashCountDetail/>} />
                 <Route path=':id/modifier' element={<CashCountForm />} />
               </Route>
+
+              {/* === PARAMÈTRES - Admin uniquement === */}
               <Route path='parametres'>
-                <Route index element={<CompanyConfiguration/>} />
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin','vendeur']}>
+                    <CompanyConfiguration/>
+                  </RoleRoute>
+                } />
               </Route>
-              
+
+              {/* === JOURNAUX D'ACTIVITÉ - Admin uniquement === */}
+              <Route path='journaux-activite'>
+                <Route index element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <ActivityLogs/>
+                  </RoleRoute>
+                } />
+              </Route>
 
               {/* Route 404 pour les pages protégées */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
+
             {/* Route 404 globale */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-     
-    </ThemeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
 

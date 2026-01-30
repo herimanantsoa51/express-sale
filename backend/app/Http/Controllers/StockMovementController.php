@@ -235,9 +235,8 @@ class StockMovementController extends Controller
                 [
                     "model_type"=>StockMovement::class,
                     "model_id"=>$movement->id,
-                    "metadata"=>$movement
                 ],
-                "/movements-stock"
+                "movements-stock"
             );
             return response()->json($movement, 201);
 
@@ -246,9 +245,7 @@ class StockMovementController extends Controller
                 ActivityAction::STOCK_TRANSFERRED,
                 "transfert échoué",
                 $e,
-                [
-                    "metadata"=>$request
-                ]
+               
             );
             DB::rollBack();
             return response()->json([
@@ -344,16 +341,19 @@ class StockMovementController extends Controller
                 'toLocation',
                 'performedBy'
             ])->whereIn('id', $movementIds)->get();
+            $firstMovement = $loadedMovements->first();
             ActivityLogger::success(
                 ActivityAction::STOCK_TRANSFERRED,
-                " a transféré des produits de {$loadedMovements->fromLocation->name} vers {$loadedMovements->toLocation->name}",
+                " a transféré ".$loadedMovements->count()." produit(s) de {$firstMovement->fromLocation->name} vers {$firstMovement->toLocation->name}",
                 [
-                    "model_type"=>StockMovement::class,
-                    "model_id"=>$loadedMovements->id,
-                    "metadata"=>$loadedMovements
+                    "model_type" => StockMovement::class,
+                    "total_items" => $loadedMovements->count(),
+                    "total_quantity" => $loadedMovements->sum('quantity'),
+                    "batch_id" => $batchId
                 ],
-                "/movements-stock"
+                "movements-stock"
             );
+
             return response()->json([
                 'message' => count($movements) . ' transfert(s) effectué(s)',
                 'batch_id' => $batchId,
@@ -715,7 +715,7 @@ class StockMovementController extends Controller
                     "model_id"=>$movement->id,
                     "metadata"=>$movement
                 ],
-                "/movements-stock"
+                "movements-stock"
             );
             return response()->json([
                 'message' => 'Perte déclarée avec succès',

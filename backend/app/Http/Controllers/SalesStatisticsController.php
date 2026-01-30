@@ -1225,12 +1225,12 @@ class SalesStatisticsController extends Controller
     /**
      * Calcule les dépenses opérationnelles (HORS approvisionnements)
      */
-    private function calculateExpenses(array $period): array
+    private function calculateExpenses(array $period): array 
     {
         // ✅ DÉPENSES RÉELLES : EXCLURE les approvisionnements (stock_receipt_id)
         $actualExpenses = AccountTransaction::whereNotNull('expense_category_id')
             ->notCancelled()
-            ->whereNull('stock_receipt_id')  // ✅ EXCLUSION DES APPROVISIONNEMENTS
+            ->whereNull('stock_receipt_id')
             ->whereBetween('transaction_date', [$period['start'], $period['end']])
             ->selectRaw('
                 expense_category_id,
@@ -1248,18 +1248,30 @@ class SalesStatisticsController extends Controller
             ];
         });
 
-        // Dépenses planifiées (converties en équivalent de période)
+        // ✅ DÉPENSES PLANIFIÉES : Calculer le nombre de mois COMPLETS
         $plannedExpenses = PlannedExpense::active()->get();
-        $periodDays = $period['start']->diffInDays($period['end']) + 1;
+        
+        // Nombre de mois complets dans la période
+        $startMonth = $period['start']->copy()->startOfMonth();
+        $endMonth = $period['end']->copy()->startOfMonth();
+        $numberOfMonths = $startMonth->diffInMonths($endMonth) + 1;
 
-        $plannedTotal = $plannedExpenses->sum(function ($planned) use ($periodDays) {
-            return $this->convertToEquivalent($planned->estimated_amount, $planned->frequency, $periodDays);
+        $plannedTotal = $plannedExpenses->sum(function ($planned) use ($numberOfMonths) {
+            // ✅ Multiplier par le nombre de mois sans division
+            if ($planned->frequency === 'monthly') {
+                return $planned->estimated_amount * $numberOfMonths;
+            }
+            // Pour les autres fréquences, ajuster selon besoin
+            return $planned->estimated_amount * $numberOfMonths; // ou votre logique
         });
 
-        $plannedByCategory = $plannedExpenses->groupBy('expense_category_id')->map(function ($group, $categoryId) use ($periodDays) {
+        $plannedByCategory = $plannedExpenses->groupBy('expense_category_id')->map(function ($group, $categoryId) use ($numberOfMonths) {
             $category = $group->first()->expenseCategory;
-            $total = $group->sum(function ($planned) use ($periodDays) {
-                return $this->convertToEquivalent($planned->estimated_amount, $planned->frequency, $periodDays);
+            $total = $group->sum(function ($planned) use ($numberOfMonths) {
+                if ($planned->frequency === 'monthly') {
+                    return $planned->estimated_amount * $numberOfMonths;
+                }
+                return $planned->estimated_amount * $numberOfMonths;
             });
 
             return [

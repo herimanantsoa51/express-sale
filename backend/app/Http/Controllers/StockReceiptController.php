@@ -117,7 +117,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=> $receipt->id,
-                    "metadata"=>$receipt->toArray(),
+                    "metadata"=>$receipt,
                     
                 ],
                 "reapprovisionnements/{$receipt->id}"
@@ -133,7 +133,7 @@ class StockReceiptController extends Controller
                 "Erreur de création du réapprovisionnement",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
             );
             return response()->json([
@@ -230,7 +230,7 @@ class StockReceiptController extends Controller
                 "mise à jour non réussi",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
             );
             return response()->json([
@@ -262,7 +262,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -277,7 +277,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
                 );
             return response()->json([
@@ -309,7 +309,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -324,7 +324,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
                 );
             return response()->json([
@@ -356,7 +356,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -376,7 +376,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
                 );
             return response()->json([
@@ -401,7 +401,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -420,7 +420,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$request->validated()->toArray()
+                    "metadata"=>$request->validated()
                 ]
                 );
             return response()->json([
@@ -444,7 +444,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -458,7 +458,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ]
                 );
             return response()->json([
@@ -482,7 +482,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -498,7 +498,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ]
                 );
             return response()->json([
@@ -563,7 +563,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -578,7 +578,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ]
                 );
             return response()->json([
@@ -689,7 +689,7 @@ class StockReceiptController extends Controller
             [
                 "model_type"=>AccountTransaction::class,
                 "model_id"=>$transaction->id,
-                "metadata"=>$transaction->toArray()
+                "metadata"=>$transaction
             ],
             "transactions/{$transaction->id}"
         );
@@ -705,7 +705,7 @@ class StockReceiptController extends Controller
             "Réapprovisionnement non payé",
             $e,
             [
-                "metadata"=>$stockReceipt->toArray()
+                "metadata"=>$stockReceipt
             ]
             );
            return response()->json([
@@ -1062,7 +1062,7 @@ class StockReceiptController extends Controller
                 [
                     "model_type"=>StockReceipt::class,
                     "model_id"=>$stockReceipt->id,
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ],
                 "reapprovisionnements/{$stockReceipt->id}"
             );
@@ -1078,7 +1078,7 @@ class StockReceiptController extends Controller
                 "Réapprovisionnement non marqué à jour",
                 $e,
                 [
-                    "metadata"=>$stockReceipt->toArray()
+                    "metadata"=>$stockReceipt
                 ]
                 );
             // Ajouter un log détaillé

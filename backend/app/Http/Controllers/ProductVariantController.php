@@ -10,7 +10,6 @@ use App\Models\ProductVariant;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\VariantAttributeValue;
 use App\Models\AttributeValue;
@@ -142,7 +141,7 @@ class ProductVariantController extends Controller
                         'sku' => $variant->sku,
                     ]
                 ],
-                "/produits/{$product->id}"
+                "produits/{$product->id}"
             );
             return response()->json($variant, 201);
         } catch (\ErrorException $e) {
@@ -246,7 +245,7 @@ class ProductVariantController extends Controller
                         'sku' => $variant->sku,
                     ]
                 ],
-                "/produits/{$product->id}"
+                "produits/{$product->id}"
             );
             return response()->json($variant->load('attributeValues.attributeType'));
         } catch (\Exception $e) {
@@ -301,7 +300,7 @@ class ProductVariantController extends Controller
                         'product_id' => $productId,
                         'sku' => $variant->sku,
                     ]
-                ],                "/produits/{$productId}"
+                ],                "produits/{$productId}"
 
             );
             return response()->json(['message' => 'Variante supprimée'], 200);
@@ -448,7 +447,7 @@ class ProductVariantController extends Controller
                         'image_url' => $imageUrl,
                     ],
                 ],
-                '/produits/'
+                'produits/'
             );
             
         } catch (\Exception $e) {

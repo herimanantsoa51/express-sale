@@ -517,7 +517,6 @@ class ActivityLogController extends Controller
                 ActivityAction::ACCOUNT_CREATED,
                 ActivityAction::ACCOUNT_ACTIVATED,
                 ActivityAction::ACCOUNT_DEACTIVATED,
-                ActivityAction::ACCOUNT_TRANSFER,
                 ActivityAction::EXPENSE_CREATED,
                 ActivityAction::TRANSACTION_CANCELLED,
             ],

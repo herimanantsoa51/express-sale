@@ -416,9 +416,9 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Suppression (réservée aux admins)
         Route::middleware(['role:admin'])->group(function () {
-            Route::delete('/delete-between-dates', [ActivityLogController::class, 'deleteBetweenDates']);
-            Route::delete('/delete-older-than', [ActivityLogController::class, 'deleteOlderThan']);
-            Route::delete('/delete-by-status', [ActivityLogController::class, 'deleteByStatus']);
+            Route::post('/delete-between-dates', [ActivityLogController::class, 'deleteBetweenDates']);  // ✅ POST
+            Route::post('/delete-older-than', [ActivityLogController::class, 'deleteOlderThan']);        // ✅ POST
+            Route::post('/delete-by-status', [ActivityLogController::class, 'deleteByStatus']);          // ✅ POST
             Route::post('/auto-cleanup', [ActivityLogController::class, 'autoCleanup']);
         });
     });

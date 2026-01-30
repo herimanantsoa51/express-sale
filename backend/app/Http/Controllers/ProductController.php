@@ -164,7 +164,7 @@ public function index(Request $request)
                         'attributes_count' => count($attributes),
                     ]
                 ],
-                "/produits/{$product->id}"
+                "produits/{$product->id}"
             );
             $product->load('category', 'subcategory', 'attributeTypes.values');
             return response()->json([
@@ -652,7 +652,7 @@ public function index(Request $request)
                         'attributes_updated' => $request->has('attributes'),
                     ]
                 ],
-                "/produits/{$product->id}"
+                "produits/{$product->id}"
             );
             $product->load('category', 'subcategory', 'attributeTypes.values');
             return response()->json([
@@ -717,7 +717,7 @@ public function index(Request $request)
                     'deleted_data' => $productData,
                 ]
             ],
-            '/produits'
+            'produits'
         );
         return response()->json(['message' => 'Produit supprimé'], 200);
     }
@@ -1027,7 +1027,7 @@ public function index(Request $request)
             DB::commit();
             ActivityLogger::success(
                 ActivityAction::PRODUCT_PRICES_UPDATED,
-                "a mis à jour les prix de base de {count($priceChanges)} produit(s)",
+                "a mis à jour les prix de base de". count($priceChanges) ." produit(s)",
                 [
                     'metadata' => [
                         'products_count' => count($request->products),
@@ -1035,7 +1035,7 @@ public function index(Request $request)
                         'price_changes' => $priceChanges,
                     ]
                 ],
-                '/products'
+                'products'
             );
             return response()->json(['message' => 'Prix de base mis à jour avec succès']);
 

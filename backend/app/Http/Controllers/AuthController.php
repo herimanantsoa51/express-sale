@@ -3,18 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Log;
-use App\Helpers\ActivityLogger;
-use App\Helpers\FrontendRoutes;
 use App\Enums\ActivityAction;
 
 class AuthController extends Controller
 {
     /**
-     * Création d'un utilisateur (optionnel pour admin / setup)
+     * Création d'un utilisateur
      */
     public function register(Request $request)
     {
@@ -34,27 +32,25 @@ class AuthController extends Controller
             'is_active' => $request->is_active ?? true,
         ]);
 
-        // ✅ Log la création de l'utilisateur
-        ActivityLogger::success(
-            ActivityAction::USER_CREATED,
-            "a créé l'utilisateur {$user->name} ({$user->username}) avec le rôle {$user->role}",
-            [
+        // ✅ Log la création (l'utilisateur courant crée un autre utilisateur)
+        if ($currentUser = $request->user()) {
+            ActivityLog::create([
+                'user_id' => $currentUser->id,
+                'action' => ActivityAction::USER_CREATED,
+                'status' => 'success',
                 'model_type' => 'App\Models\User',
                 'model_id' => $user->id,
+                'description' => "a créé l'utilisateur {$user->name} ({$user->username}) avec le rôle {$user->role}",
                 'metadata' => [
                     'username' => $user->username,
                     'role' => $user->role,
                     'is_active' => $user->is_active,
-                ]
-            ],
-            FrontendRoutes::user($user->id),
-            [
-                'all_users' => [
-                    'label' => 'Tous les utilisateurs',
-                    'path' => '/users',
                 ],
-            ]
-        );
+                'frontend_path' => "users/{$user->id}",
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Utilisateur créé',
@@ -77,16 +73,19 @@ class AuthController extends Controller
         // Vérifier si l'utilisateur existe
         if (!$user) {
             // ⚠️ Log tentative de connexion avec username inexistant
-            ActivityLogger::failed(
-                'login_failed',
-                "a tenté de se connecter avec un username inexistant: {$request->username}",
-                [
-                    'metadata' => [
-                        'username' => $request->username,
-                        'reason' => 'user_not_found',
-                    ]
-                ]
-            );
+            // On ne peut pas utiliser ActivityLogger car pas d'utilisateur authentifié
+            ActivityLog::create([
+                'user_id' => null, // Pas d'utilisateur
+                'action' => ActivityAction::LOGIN_FAILED,
+                'status' => 'failed',
+                'description' => "Tentative de connexion avec username inexistant: {$request->username}",
+                'metadata' => [
+                    'username' => $request->username,
+                    'reason' => 'user_not_found',
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
             
             throw ValidationException::withMessages([
                 'username' => ['Identifiants incorrects'],
@@ -96,18 +95,20 @@ class AuthController extends Controller
         // Vérifier si le compte est actif
         if (!$user->is_active) {
             // ⚠️ Log tentative de connexion sur compte désactivé
-            ActivityLogger::failed(
-                'login_failed',
-                "a tenté de se connecter avec un compte désactivé: {$user->username}",
-                [
-                    'model_type' => 'App\Models\User',
-                    'model_id' => $user->id,
-                    'metadata' => [
-                        'username' => $user->username,
-                        'reason' => 'account_disabled',
-                    ]
-                ]
-            );
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'action' => ActivityAction::LOGIN_FAILED,
+                'status' => 'failed',
+                'model_type' => 'App\Models\User',
+                'model_id' => $user->id,
+                'description' => "{$user->name} a tenté de se connecter avec un compte désactivé",
+                'metadata' => [
+                    'username' => $user->username,
+                    'reason' => 'account_disabled',
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
             
             return response()->json([
                 'message' => 'Compte désactivé'
@@ -117,18 +118,20 @@ class AuthController extends Controller
         // Vérifier le mot de passe
         if (!Hash::check($request->password, $user->password)) {
             // ⚠️ Log tentative avec mauvais mot de passe
-            ActivityLogger::failed(
-                'login_failed',
-                "a tenté de se connecter avec un mot de passe incorrect: {$user->username}",
-                [
-                    'model_type' => 'App\Models\User',
-                    'model_id' => $user->id,
-                    'metadata' => [
-                        'username' => $user->username,
-                        'reason' => 'wrong_password',
-                    ]
-                ]
-            );
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'action' => ActivityAction::LOGIN_FAILED,
+                'status' => 'failed',
+                'model_type' => 'App\Models\User',
+                'model_id' => $user->id,
+                'description' => "{$user->name} a tenté de se connecter avec un mot de passe incorrect",
+                'metadata' => [
+                    'username' => $user->username,
+                    'reason' => 'wrong_password',
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
             
             throw ValidationException::withMessages([
                 'username' => ['Identifiants incorrects'],
@@ -141,18 +144,20 @@ class AuthController extends Controller
         $token = $user->createToken('express-sale-token')->plainTextToken;
 
         // ✅ Log connexion réussie
-        ActivityLogger::success(
-            'login_success',
-            "s'est connecté avec succès",
-            [
-                'model_type' => 'App\Models\User',
-                'model_id' => $user->id,
-                'metadata' => [
-                    'username' => $user->username,
-                    'role' => $user->role,
-                ]
-            ]
-        );
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => ActivityAction::LOGIN_SUCCESS,
+            'status' => 'success',
+            'model_type' => 'App\Models\User',
+            'model_id' => $user->id,
+            'description' => "s'est connecté avec succès",
+            'metadata' => [
+                'username' => $user->username,
+                'role' => $user->role,
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
         return response()->json([
             'token' => $token,
@@ -181,20 +186,22 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        $request->user()->currentAccessToken()->delete();
+        // ✅ Log AVANT de supprimer le token
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => ActivityAction::LOGOUT,
+            'status' => 'success',
+            'model_type' => 'App\Models\User',
+            'model_id' => $user->id,
+            'description' => "s'est déconnecté",
+            'metadata' => [
+                'username' => $user->username,
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
-        // ✅ Log déconnexion
-        ActivityLogger::success(
-            'logout',
-            "s'est déconnecté",
-            [
-                'model_type' => 'App\Models\User',
-                'model_id' => $user->id,
-                'metadata' => [
-                    'username' => $user->username,
-                ]
-            ]
-        );
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Déconnexion réussie',

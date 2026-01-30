@@ -20,7 +20,6 @@ import { useAuth } from '../../context/AuthContext';
    
    const QuickSalePage = () => {
     const navigate = useNavigate();
-    const {isAdmin,user}=useAuth()
 
     // Constantes
     const STORAGE_KEY = 'quick_sale_draft';
@@ -205,12 +204,7 @@ import { useAuth } from '../../context/AuthContext';
       selectedAccount, paymentMethod, installments, dueDate,
       expiryDate, depositAmount, productSearch, selectedCategory, selectedSubcategory
     ]);
-    useEffect(() => {
-      if (!isAdmin() && (saleMode === 'credit' || saleMode === 'reservation')) {
-        toast.warning('Seuls les administrateurs peuvent accéder à ce mode de vente');
-        setSaleMode('immediate');
-      }
-    }, [saleMode, isAdmin]);
+
     // Restaurer depuis localStorage au chargement
     useEffect(() => {
       const saved = loadFromStorage();
@@ -689,8 +683,7 @@ import { useAuth } from '../../context/AuthContext';
              >
                Vente rapide
              </button>
-             {isAdmin() && (
-              <>
+             
                 <button
                   role="tab"
                   aria-selected={saleMode === 'credit'}
@@ -707,8 +700,7 @@ import { useAuth } from '../../context/AuthContext';
                 >
                   Réservation
                 </button>
-              </>
-            )}
+              
              <div className="mode-indicator" data-mode={saleMode} />
            </div>
          </header>

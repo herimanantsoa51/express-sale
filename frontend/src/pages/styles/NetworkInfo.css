@@ -1,0 +1,211 @@
+/* ============================================
+   NETWORK INFO - Détection automatique IP + QR Code
+   ============================================ */
+
+   .network-info {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* === HEADER === */
+  
+  .network-info__header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .network-info__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius);
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .network-info__title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .network-info__subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  
+  /* === CONTENT === */
+  
+  .network-info__content {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--spacing-2xl);
+    align-items: start;
+  }
+  
+  /* === QR CODE SECTION === */
+  
+  .network-info__qr-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+  
+  .network-info__qr-container {
+    background: #ffffff;
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .network-info__qr-container canvas {
+    display: block;
+  }
+  
+  .network-info__download-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .network-info__download-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+  }
+  
+  /* === URLS SECTION === */
+  
+  .network-info__urls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .network-info__url-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .network-info__url-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+  }
+  
+  .network-info__url-box {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .network-info__url-text {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--primary);
+    word-break: break-all;
+  }
+  
+  .network-info__copy-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-sm);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-speed) var(--transition-timing);
+  }
+  
+  .network-info__copy-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  
+  /* === INFO BOX === */
+  
+  .network-info__info-box {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+  }
+  
+  .network-info__info-box p {
+    margin: 0;
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+  }
+  
+  .network-info__info-box p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .network-info__info-box strong {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+  }
+  
+  .network-info__help-text {
+    color: var(--text-secondary) !important;
+    font-size: var(--font-size-xs) !important;
+    margin-top: var(--spacing-xs) !important;
+  }
+  
+  /* === RESPONSIVE === */
+  
+  @media (max-width: 768px) {
+    .network-info__content {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-xl);
+    }
+  
+    .network-info__qr-section {
+      margin: 0 auto;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .network-info {
+      padding: var(--spacing-lg);
+    }
+  
+    .network-info__header {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
+  }

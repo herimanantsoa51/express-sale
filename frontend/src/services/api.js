@@ -1,31 +1,38 @@
 // ============================================
-// services/api.js - Configuration Axios
+// services/api.js - Configuration Axios (Simplifié)
 // ============================================
 
 import axios from 'axios';
 
-
 /**
- * const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
-
+ * Détecter l'URL de l'API basée sur l'hôte actuel
+ * Si on est sur 192.168.0.128:3000, l'API sera sur 192.168.0.128:8000
  */
+const getApiUrl = () => {
+  const currentHost = window.location.hostname;
+  const apiPort = '8000'; // Port API fixe
+  
+  // Si localhost, utiliser localhost
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return 'http://localhost:8000/api';
+  }
+  
+  // Sinon, utiliser l'IP actuelle
+  return `http://${currentHost}:${apiPort}/api`;
+};
+
 // Configuration de base
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: getApiUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
 });
-console.log('API URL:', api.defaults.baseURL);
+
+console.log('🌐 API URL:', api.defaults.baseURL);
+
 // Intercepteur requête : ajouter token
 api.interceptors.request.use(
   (config) => {
@@ -73,5 +80,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-

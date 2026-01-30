@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\ActivityLogger;
-use App\Helpers\FrontendRoutes;
 use App\Enums\ActivityAction;
 
 class UserController extends Controller
@@ -70,13 +69,7 @@ class UserController extends Controller
                         'is_active' => $user->is_active,
                     ]
                 ],
-                FrontendRoutes::user($user->id),
-                [
-                    'all_users' => [
-                        'label' => 'Tous les utilisateurs',
-                        'path' => '/users',
-                    ],
-                ]
+                
             );
 
             return response()->json([
@@ -157,13 +150,7 @@ class UserController extends Controller
                         'changes' => $changes,
                     ]
                 ],
-                FrontendRoutes::user($user->id),
-                [
-                    'all_users' => [
-                        'label' => 'Tous les utilisateurs',
-                        'path' => '/users',
-                    ],
-                ]
+               
             );
 
             return response()->json([
@@ -211,13 +198,8 @@ class UserController extends Controller
                         'action' => $newStatusText,
                     ]
                 ],
-                FrontendRoutes::user($user->id),
-                [
-                    'all_users' => [
-                        'label' => 'Tous les utilisateurs',
-                        'path' => '/users',
-                    ],
-                ]
+                'utilisateurs',
+               
             );
 
             return response()->json([

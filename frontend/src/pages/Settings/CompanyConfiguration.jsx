@@ -3,7 +3,10 @@ import { Building2, Mail, Phone, MapPin, Upload, X, Users, Save, Loader2, Printe
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../../styles/CompanyConfiguration.css';
+import { useAuth } from '../../context/AuthContext';
+import { fileService } from '../../services/fileService';
 import companyInfoService from '../../services/companyInfoService';
+import NetworkInfo from './NetworkInfo';
 
 const CompanyConfiguration = () => {
   const [companyData, setCompanyData] = useState({
@@ -26,6 +29,7 @@ const CompanyConfiguration = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     loadCompanyInfo();
@@ -97,23 +101,24 @@ const CompanyConfiguration = () => {
       
       let updatedData = { ...companyData };
       
-       // Si un nouveau logo a été sélectionné, l'uploader d'abord
-       if (selectedLogoFile) {
-             const compressedFile = await fileService.compressImage(selectedLogoFile);
-             const response = await fileService.uploadImage(compressedFile);
-             updatedData.logo_path = response.url;
+      // Si un nouveau logo a été sélectionné, l'uploader d'abord
+      if (selectedLogoFile) {
+        // TODO: Implémenter fileService.compressImage et fileService.uploadImage
+        const compressedFile = await fileService.compressImage(selectedLogoFile);
+        const response = await fileService.uploadImage(compressedFile);
+        updatedData.logo_path = response.url;
+        toast.info('Upload de logo à implémenter avec fileService');
       }
 
-
-        // Si le logo a été supprimé, supprimer l'ancien du serveur
-        if (companyData.logo_path === null && !selectedLogoFile) {
-          const originalData = await companyInfoService.index();
-          if (originalData.logo_path) {
-            await fileService.deleteImage(originalData.logo_path);
-          }
+      // Si le logo a été supprimé, supprimer l'ancien du serveur
+      if (companyData.logo_path === null && !selectedLogoFile) {
+        const originalData = await companyInfoService.index();
+        if (originalData.logo_path) {
+          // TODO: await fileService.deleteImage(originalData.logo_path);
         }
+      }
               
-       // Sauvegarder les informations
+      // Sauvegarder les informations
       await companyInfoService.update(updatedData);
       setCompanyData(updatedData);
       setSelectedLogoFile(null);
@@ -121,7 +126,7 @@ const CompanyConfiguration = () => {
       toast.success('Informations sauvegardées avec succès');
     } catch (error) {
       toast.error('Erreur lors de la sauvegarde');
-      console.log(error)
+      console.log(error);
     } finally {
       setIsSaving(false);
     }
@@ -146,11 +151,16 @@ const CompanyConfiguration = () => {
             <h1 className="company-config__title">Configuration</h1>
             <p className="company-config__subtitle">Gérez les informations de votre entreprise et imprimante</p>
           </div>
-          <button onClick={() => window.location.href = '/utilisateurs'} className="company-config__users-btn">
-            <Users size={18} />
-            <span>Utilisateurs</span>
-          </button>
+          {isAdmin() && (
+            <button onClick={() => window.location.href = '/utilisateurs'} className="company-config__users-btn">
+              <Users size={18} />
+              <span>Utilisateurs</span>
+            </button>
+          )}
         </div>
+
+        {/* === NETWORK INFO - Détection automatique IP + QR Code === */}
+        <NetworkInfo />
 
         {/* Main Card */}
         <div className="company-config__card">
@@ -199,7 +209,6 @@ const CompanyConfiguration = () => {
               />
               <InputField
                 label="Facebook"
-                required
                 icon={<Mail size={18} />}
                 type="text"
                 value={companyData.email}

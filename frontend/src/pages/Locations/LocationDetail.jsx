@@ -735,7 +735,7 @@ const LocationDetail = () => {
                       <div className="reservation-actions">
                         <button 
                           className="btn-sm btn-primary"
-                          onClick={() => navigate(`/reservations/${item.reservation.id}`)}
+                          onClick={() => navigate(`/ventes/reservations/${item.reservation.id}`)}
                         >
                           Voir réservation
                         </button>

@@ -153,7 +153,7 @@ class SaleController extends Controller
                     "model_id"=>$sale->id,
                     "metadata"=>$sale->toArray()
                 ],
-                "/ventes/rapide/{$sale->id}"
+                "ventes/immediate/{$sale->id}"
             );
             return response()->json([
                 'message' => 'Vente créée avec succès',
@@ -209,7 +209,7 @@ class SaleController extends Controller
                     "model_id"=>$sale->credit->id,
                     "metadata"=>$sale->toArray()
                 ],
-                "/ventes/credits/{$sale->credit->id}"
+                "ventes/credits/{$sale->credit->id}"
             );
             return response()->json([
                 'message' => 'Vente à crédit créée avec succès',
@@ -258,7 +258,7 @@ class SaleController extends Controller
                     "model_id"=>$sale->reservation->id,
                     "metadata"=>$sale->toArray(),
                 ],
-                "/ventes/reservations/{$sale->reservation->id}"
+                "ventes/reservations/{$sale->reservation->id}"
 
             );
             return response()->json([
@@ -784,7 +784,7 @@ class SaleController extends Controller
                     "model_id"=>$reservation->id,
                     "metadata"=>$reservation->toArray(),
                 ],
-                "/ventes/reservations/{$reservation->id}"
+                "ventes/reservations/{$reservation->id}"
             );
             return response()->json([
                 'message' => 'Réservation complétée avec succès',
@@ -832,7 +832,7 @@ class SaleController extends Controller
                     "model_id"=>$reservation->id,
                     "metadata"=>$reservation->toArray(),
                 ],
-                "/ventes/reservations/{$reservation->id}"
+                "ventes/reservations/{$reservation->id}"
             );
             return response()->json([
                 'message' => 'Réservation annulée avec succès',
@@ -1036,7 +1036,7 @@ class SaleController extends Controller
                     "model_id"=>$sale->id,
                     "metadata"=>$sale->toArray(),
                 ],
-                "/ventes/rapide/{$sale->id}"
+                "ventes/immediate/{$sale->id}"
             );
             return response()->json([
                 'message' => 'Vente immédiate annulée avec succès',
@@ -1068,7 +1068,7 @@ class SaleController extends Controller
                     "model_id"=>$credit->id,
                     "metadata"=>$credit->toArray(),
                 ],
-                "/ventes/credits/{$credit->id}"
+                "ventes/credits/{$credit->id}"
             );
             return response()->json([
                 'message' => 'Vente à crédit annulée avec succès',

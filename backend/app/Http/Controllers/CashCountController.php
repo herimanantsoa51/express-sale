@@ -161,7 +161,7 @@ class CashCountController extends Controller
                         "new"=>$request->toArray()
                     ]
                     ],
-                    "/comptages/{$cashCount->id}"
+                    "comptages/{$cashCount->id}"
             );
             $cashCount->update([
                 'total_amount' => $total,
@@ -234,7 +234,7 @@ class CashCountController extends Controller
                         "model_id"=>$cashCount->id,
                         "metadata"=>$cashCount->toArray()
                 ],
-                "/comptages/{$cashCount->id}"
+                "comptages/{$cashCount->id}"
             );
             return response()->json([
                 'message' => 'Comptage enregistré avec succès',

@@ -67,7 +67,7 @@ const PlannedExpenseCreate = () => {
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
     recipient_name: '',
-    is_active: true
+    is_active: true  // ✅ Valeur par défaut OK pour la création
   });
 
   useEffect(() => {
@@ -83,6 +83,9 @@ const PlannedExpenseCreate = () => {
       const response = await plannedExpenseService.getById(id);
       const expense = response.data;
       
+      console.log('📦 Données reçues:', expense); // ✅ DEBUG
+      console.log('🔘 is_active:', expense.is_active); // ✅ DEBUG
+      
       setFormData({
         expense_category_id: expense.expense_category.id,
         name: expense.name,
@@ -94,8 +97,13 @@ const PlannedExpenseCreate = () => {
         start_date: expense.start_date,
         end_date: expense.end_date || '',
         recipient_name: expense.recipient_name || '',
-        is_active: expense.is_active || true
+        is_active: expense.is_active ?? true  // ✅ CORRECTION ICI
       });
+      
+      console.log('✅ FormData après chargement:', {
+        is_active: expense.is_active ?? true
+      }); // ✅ DEBUG
+      
     } catch (err) {
       console.error('Erreur chargement dépense:', err);
       toast.error('Impossible de charger la dépense');
@@ -118,7 +126,14 @@ const PlannedExpenseCreate = () => {
   };
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    console.log(`🔄 handleChange appelé - Field: ${field}, Value:`, value, typeof value); // ✅ DEBUG
+    
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      console.log('📝 Nouveau formData:', newData); // ✅ DEBUG
+      return newData;
+    });
+    
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
@@ -164,10 +179,11 @@ const PlannedExpenseCreate = () => {
         start_date: formData.start_date,
         end_date: formData.end_date || null,
         recipient_name: formData.recipient_name || null,
-        is_active: formData.is_active || true
+        is_active: formData.is_active
       };
       
       if (isEditMode) {
+        console.log('Mise à jour de la charge planifiée avec le payload:', payload);
         await plannedExpenseService.update(id, payload);
         toast.success('Charge planifiée modifiée avec succès !');
       } else {

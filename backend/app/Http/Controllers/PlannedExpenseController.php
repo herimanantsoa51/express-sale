@@ -16,12 +16,10 @@ class PlannedExpenseController extends Controller
     {
         $query = PlannedExpense::with(['expenseCategory']);
 
-        // Correction: vérifier que la valeur n'est pas vide
         if ($request->filled('active_only')) {
             $query->active();
         }
 
-        // Correction: utiliser filled() au lieu de has()
         if ($request->filled('frequency')) {
             $query->byFrequency($request->frequency);
         }
@@ -53,11 +51,22 @@ class PlannedExpenseController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
             'recipient_name' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean', // ✅ AJOUTÉ
         ]);
 
         $expense = PlannedExpense::create([
-            ...$validated,
-            'next_due_date' => $request->start_date,
+            'expense_category_id' => $validated['expense_category_id'],
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'estimated_amount' => $validated['estimated_amount'],
+            'frequency' => $validated['frequency'],
+            'day_of_week' => $validated['day_of_week'] ?? null,
+            'day_of_month' => $validated['day_of_month'] ?? null,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
+            'recipient_name' => $validated['recipient_name'] ?? null,
+            'next_due_date' => $validated['start_date'],
+            'is_active' => $validated['is_active'] ?? true, // ✅ AJOUTÉ avec valeur par défaut
         ]);
 
         return response()->json([
@@ -74,31 +83,28 @@ class PlannedExpenseController extends Controller
     public function update(Request $request, PlannedExpense $plannedExpense)
     {
         $validated = $request->validate([
-            'expense_category_id' => 'exists:expense_categories,id',
-            'name' => 'string|max:255',
+            'expense_category_id' => 'sometimes|exists:expense_categories,id',
+            'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'estimated_amount' => 'numeric|min:0',
-            'frequency' => 'in:daily,weekly,monthly,yearly',
+            'estimated_amount' => 'sometimes|numeric|min:0',
+            'frequency' => 'sometimes|in:daily,weekly,monthly,yearly',
             'day_of_week' => 'nullable|integer|min:1|max:7',
             'day_of_month' => 'nullable|integer|min:1|max:31',
             'end_date' => 'nullable|date',
             'recipient_name' => 'nullable|string|max:255',
-            'is_active' => 'boolean',
+            'is_active' => 'sometimes|boolean', // ✅ DÉJÀ PRÉSENT
         ]);
 
         $plannedExpense->update($validated);
 
         return response()->json([
             'message' => 'Charge planifiée mise à jour',
-            'data' => new PlannedExpenseResource($plannedExpense->load('expenseCategory'))
+            'data' => new PlannedExpenseResource($plannedExpense->fresh()->load('expenseCategory'))
         ]);
     }
 
-    
-
     public function markPaid(PlannedExpense $plannedExpense)
     {
-        // Date du dernier paiement réel
         $lastPaymentDate = $plannedExpense->relatedTransactions()
             ->latest('created_at')
             ->value('created_at');
@@ -109,7 +115,6 @@ class PlannedExpenseController extends Controller
             ], 422);
         }
 
-        // Calculer depuis la date réelle du paiement
         $plannedExpense->next_due_date = $plannedExpense->calculateNextDueDate(
             Carbon::parse($lastPaymentDate)->startOfDay()
         );
@@ -124,16 +129,12 @@ class PlannedExpenseController extends Controller
         ]);
     }
 
-
     public function destroy(PlannedExpense $plannedExpense)
     {
         $plannedExpense->delete();
         return response()->json(['message' => 'Charge planifiée supprimée']);
     }
 
-     /**
-     * Récupère les transactions liées à une dépense planifiée
-     */
     public function transactions(Request $request, PlannedExpense $plannedExpense)
     {
         $perPage = (int) $request->get('per_page', 15);

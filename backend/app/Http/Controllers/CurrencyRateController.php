@@ -81,7 +81,7 @@ class CurrencyRateController extends Controller
                 'model_id' => $currencyRate->id,
                 'metadata' => $currencyRate->toArray(),
             ],
-            "/comptes/conversion"
+            "comptes/conversion"
         );
         return response()->json([
             'status' => 'success',
@@ -158,7 +158,7 @@ class CurrencyRateController extends Controller
                     'model_id' => $currencyRate->id,
                     'metadata' => $currencyRate->toArray(),
                 ],               
-                 "/comptes/conversion"
+                 "comptes/conversion"
             );
             return response()->json([
                 'status' => 'success',
@@ -205,7 +205,7 @@ class CurrencyRateController extends Controller
                     'model_id' => $currencyRate->id,
                     'metadata' => $currencyRate->toArray(),
                 ],
-                "/comptes/conversion"
+                "comptes/conversion"
             );
             return response()->json([
                 'status' => 'success',

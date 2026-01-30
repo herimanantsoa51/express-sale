@@ -187,7 +187,7 @@ const LocationList = () => {
       <div className="loclist-header">
         <div>
           <h1 className="loclist-title">
-            <Warehouse size={28} /> Locations
+            <Warehouse size={28} /> Dépots et Magasin
           </h1>
           <p className="loclist-subtitle">
             Gestion des emplacements de stockage
@@ -197,7 +197,7 @@ const LocationList = () => {
           className="loclist-btn-primary"
           onClick={() => navigate('/locations/nouveau')}
         >
-          <Plus size={18} /> Nouvelle location
+          <Plus size={18} /> Nouvelle emplacement
         </button>
       </div>
 

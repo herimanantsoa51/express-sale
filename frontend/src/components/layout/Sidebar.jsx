@@ -25,7 +25,8 @@ import {
   MoveDown,
   Euro,
   Menu,
-  X
+  X,
+  Logs
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -77,16 +78,16 @@ const Sidebar = () => {
       label: 'Réapprovisionnement',
       icon: PackagePlus,
       path: '/reapprovisionnements',
-      roles: ['admin', 'vendeur']
+      roles: ['admin']
     },
     {
       label: 'Mouvements de stock',
       icon: ArrowUpDown,
       path: '/mouvements-stock',
-      roles: ['admin', 'vendeur']
+      roles: ['admin']
     },
     {
-      label: 'Locations',
+      label: 'Emplacements',
       icon: Warehouse,
       path: '/locations',
       roles: ['admin', 'vendeur']
@@ -155,8 +156,14 @@ const Sidebar = () => {
       icon: Settings,
       label: 'Configuration',
       path: '/parametres',
-      roles: ['admin'],
+      roles: ['admin','vendeur'],
     },
+    {
+      icon: Logs,
+      label: "Journaux d'activité",
+      path: "/journaux-activite",
+      roles: ['admin'],
+    }
   ];
 
   // Filtrer selon rôle
