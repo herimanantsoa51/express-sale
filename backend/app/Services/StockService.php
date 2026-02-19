@@ -39,25 +39,22 @@ class StockService
             $discount,
             $status
         ) {
-            // 1️⃣ Vérifier la disponibilité à cet emplacement
+            // 1️⃣ Vérifier ProductVariantLocation
             $pvl = ProductVariantLocation::where('variant_id', $variantId)
                 ->where('location_id', $locationId)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $availableQty = $status === 'reserved'
-                ? $pvl->quantity - $pvl->reserved_quantity
-                : $pvl->quantity;
-
+    
+            $availableQty = $pvl->quantity - $pvl->reserved_quantity;
+    
             if ($availableQty < $quantityToSell) {
                 throw new \Exception(
                     "Stock insuffisant à l'emplacement {$locationId}. " .
                     "Disponible: {$availableQty}, Demandé: {$quantityToSell}"
                 );
             }
-
-            // 2️⃣ Récupérer les batches FIFO pour CE variant
-            // (indépendamment de l'emplacement, car les batches sont globaux)
+    
+            // 2️⃣ Récupérer batches FIFO avec LOCK
             $batches = StockBatch::query()
                 ->where('variant_id', $variantId)
                 ->where('remaining_quantity', '>', 0)
@@ -66,56 +63,78 @@ class StockService
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
-
+    
             $remainingToConsume = $quantityToSell;
-            $discountPerUnit = $quantityToSell > 0 
-                ? $discount / $quantityToSell 
-                : 0;
-
-            // 3️⃣ Consommer les batches en FIFO
+            $discountPerUnit = $quantityToSell > 0 ? $discount / $quantityToSell : 0;
+    
+            // 3️⃣ Consommer les batches
             foreach ($batches as $batch) {
                 if ($remainingToConsume <= 0) break;
-
-                $consumableQty = min(
-                    $batch->remaining_quantity,
-                    $remainingToConsume
-                );
-
-                // 4️⃣ Créer le lien vente ↔ batch avec location
+    
+                // ✅ CALCUL CRITIQUE : Stock disponible NON réservé
+                $batchAvailable = $batch->remaining_quantity - $batch->reserved_quantity;
+    
+                if ($batchAvailable <= 0) {
+                    Log::warning("Batch #{$batch->id} sans stock disponible", [
+                        'remaining' => $batch->remaining_quantity,
+                        'reserved' => $batch->reserved_quantity,
+                    ]);
+                    continue; // ← Passer au batch suivant
+                }
+    
+                // ✅ Prendre le minimum entre disponible et demandé
+                $consumableQty = min($batchAvailable, $remainingToConsume);
+    
+                Log::info("FIFO - Consommation batch", [
+                    'batch_id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'remaining' => $batch->remaining_quantity,
+                    'reserved' => $batch->reserved_quantity,
+                    'available' => $batchAvailable,
+                    'consuming' => $consumableQty,
+                    'status' => $status,
+                ]);
+    
+                // Créer le lien
                 SaleItemBatch::create([
                     'sale_item_id' => $saleItemId,
                     'batch_id' => $batch->id,
                     'quantity' => $consumableQty,
                     'unit_price_at_sale' => $unitPriceAtSale,
-                    'discount_at_sale' => round($discountPerUnit, 2),
-                    'location_id' => $locationId, // ✅ IMPORTANT
+                    'discount_at_sale' => round($discountPerUnit * $consumableQty, 2),
+                    'location_id' => $locationId,
                     'status' => $status,
                 ]);
-
-                // 5️⃣ Décrémenter le batch
+    
+                // ✅ Mise à jour du batch
                 if ($status === 'reserved') {
+                    // RÉSERVATION : bloquer le stock
                     $batch->increment('reserved_quantity', $consumableQty);
+                    // remaining_quantity ne change pas (le stock est toujours là)
                 } else {
+                    // VENTE DIRECTE : retirer le stock
                     $batch->decrement('remaining_quantity', $consumableQty);
                 }
-
+    
                 $remainingToConsume -= $consumableQty;
             }
-
+    
+            // 4️⃣ Vérifier qu'on a tout consommé
             if ($remainingToConsume > 0) {
                 throw new \Exception(
-                    "Batches FIFO insuffisants pour variant {$variantId}"
+                    "Stock FIFO insuffisant pour variant {$variantId}. " .
+                    "Manquant: {$remainingToConsume} unités sur {$quantityToSell} demandées"
                 );
             }
-
-            // 6️⃣ Mettre à jour ProductVariantLocation
+    
+            // 5️⃣ Mettre à jour ProductVariantLocation
             if ($status === 'reserved') {
                 $pvl->increment('reserved_quantity', $quantityToSell);
             } else {
                 $pvl->decrement('quantity', $quantityToSell);
             }
-
-            // 7️⃣ Créer le mouvement de stock (traçabilité)
+    
+            // 6️⃣ Mouvement de stock
             $saleId = \App\Models\SaleItem::find($saleItemId)?->sale_id;
             
             \App\Models\StockMovement::create([
@@ -128,14 +147,13 @@ class StockService
                 'performed_by' => Auth::id(),
                 'reason' => $status === 'reserved' ? 'reservation' : 'sale',
                 'notes' => $status === 'reserved' 
-                    ? "Réservation stock FIFO - Vente #{$saleId}"
+                    ? "Réservation FIFO - Vente #{$saleId}"
                     : "Vente FIFO - Vente #{$saleId}",
             ]);
-
-            // 8️⃣ Recalculer le stock global du variant
+    
             $pvl->variant->recalculateTotalStock();
-
-            Log::info("FIFO consommé", [
+    
+            Log::info("FIFO consommé avec succès", [
                 'variant_id' => $variantId,
                 'location_id' => $locationId,
                 'quantity' => $quantityToSell,
@@ -143,7 +161,6 @@ class StockService
             ]);
         });
     }
-
     /**
      * Libérer une réservation (annulation)
      */

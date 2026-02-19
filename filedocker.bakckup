@@ -1,9 +1,0 @@
-FROM postgres:15-alpine
-
-# Copier le dump SQL
-COPY full_dump.sql /docker-entrypoint-initdb.d/
-
-# Variables d'environnement par défaut (optionnel)
-ENV POSTGRES_DB=express_sale_db
-ENV POSTGRES_USER=express_sale_user
-ENV POSTGRES_PASSWORD=express_sale_mdp

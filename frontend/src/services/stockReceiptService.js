@@ -1,4 +1,3 @@
-import { data } from 'react-router-dom';
 import api from './api';
 
 const stockReceiptService = {
@@ -311,10 +310,6 @@ const stockReceiptService = {
   },
   applyCosts: async (id,dataCosts)=>{
     const response = await api.post(`/stock-receipts/${id}/apply-costs`,dataCosts);
-    return response.data;
-  },
-  validateCosts:async(id)=>{
-    const response = await api.post(`/stock-receipts/${id}/validate-costs`);
     return response.data;
   },
   moveReceivedVariant:async(id,data)=>{
