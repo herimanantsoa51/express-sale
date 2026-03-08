@@ -8,12 +8,15 @@ import useCompanyInfo from '../../hooks/useCompanyInfo';
 import Button from '../common/Button';
 import NotificationBell from '../notifications/NotificationBell';
 import '../../styles/Header.css';
-import { BaggageClaim, Sun, Moon } from 'lucide-react';
+import { BaggageClaim, Sun, Moon, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import QuickAiChat from '../ai/QuickAiChat';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { companyInfo, loading } = useCompanyInfo();
+  const [showQuickChat, setShowQuickChat] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -62,6 +65,15 @@ const Header = () => {
 
       <div className="header-right">
         <NotificationBell />
+
+        <button
+          className="theme-toggle"
+          onClick={() => setShowQuickChat(true)}
+          title="Chat AI rapide"
+          aria-label="Chat AI rapide"
+        >
+          <MessageSquare size={18} />
+        </button>
         
         <button 
           className="theme-toggle" 
@@ -81,6 +93,8 @@ const Header = () => {
           Déconnexion
         </Button>
       </div>
+
+      <QuickAiChat open={showQuickChat} onClose={() => setShowQuickChat(false)} />
     </header>
   );
 };

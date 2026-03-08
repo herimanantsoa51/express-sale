@@ -14,6 +14,7 @@ import './styles/customToastify.css';
 // Contexts
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AiTaskProvider } from './context/AiTaskContext';
 
 // Layout & routes protégées
 import ProtectedRoute from './components/ProtectedRoute';
@@ -107,6 +108,8 @@ import CashCountDetail from './pages/CashCount/CashCountDetail';
 
 // Paramètres
 import CompanyConfiguration from './pages/Settings/CompanyConfiguration';
+import AiProviderConfig from './pages/Settings/AiProviderConfig';
+import AiTaskHistory from './pages/Settings/AiTaskHistory';
 import InventoryReconciliationForm from './pages/StockMovement/InventoryReconciliationForm';
 import PlannedExpenseCreate from './pages/Expenses/PlannedExpenseCreate';
 import FinancialStatistics from './pages/Statistics/FinancialStatistics';
@@ -121,41 +124,42 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          {/* ToastContainer DANS les providers et le Router */}
-          <ToastContainer
-            position="top-right"
-            autoClose={4000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="auto"
-            transition={Slide}
-            limit={3}
-            closeButton
-            icon
-            style={{ zIndex: 99999 }}
-          />
-          
-          <Routes>
-            {/* Routes publiques */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
+          <AiTaskProvider>
+            {/* ToastContainer DANS les providers et le Router */}
+            <ToastContainer
+              position="top-right"
+              autoClose={4000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="auto"
+              transition={Slide}
+              limit={3}
+              closeButton
+              icon
+              style={{ zIndex: 99999 }}
+            />
+            
+            <Routes>
+              {/* Routes publiques */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
 
-            {/* Routes protégées */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              {/* Dashboard - Accessible à tous */}
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
+              {/* Routes protégées */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                {/* Dashboard - Accessible à tous */}
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
               
               {/* === PRODUITS - Admin + Vendeur === */}
               <Route path="produits">
@@ -452,6 +456,16 @@ function App() {
                     <CompanyConfiguration/>
                   </RoleRoute>
                 } />
+                <Route path="ai-providers" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AiProviderConfig/>
+                  </RoleRoute>
+                } />
+                <Route path="ai-tasks" element={
+                  <RoleRoute allowedRoles={['admin']}>
+                    <AiTaskHistory/>
+                  </RoleRoute>
+                } />
               </Route>
 
               {/* === JOURNAUX D'ACTIVITÉ - Admin uniquement === */}
@@ -470,6 +484,7 @@ function App() {
             {/* Route 404 globale */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </AiTaskProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

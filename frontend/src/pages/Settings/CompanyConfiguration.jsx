@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Mail, Phone, MapPin, Upload, X, Users, Save, Loader2, Printer, Settings, FileText } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Upload, X, Users, Save, Loader2, Printer, Settings, FileText, Brain } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../../styles/CompanyConfiguration.css';
@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { fileService } from '../../services/fileService';
 import companyInfoService from '../../services/companyInfoService';
 import NetworkInfo from './NetworkInfo';
+import { useNavigate } from 'react-router-dom';
+import { useAiTask } from '../../context/AiTaskContext';
 
 const CompanyConfiguration = () => {
   const [companyData, setCompanyData] = useState({
@@ -30,6 +32,8 @@ const CompanyConfiguration = () => {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { runAiTask, isRunning: isAiRunning } = useAiTask();
 
   useEffect(() => {
     loadCompanyInfo();
@@ -132,6 +136,31 @@ const CompanyConfiguration = () => {
     }
   };
 
+  const handleAiAssist = async () => {
+    try {
+      const result = await runAiTask({
+        intent: "Analyse la configuration de l'entreprise. Si un champ est incomplet, propose une correction. Si tu dois sauvegarder, renvoie une tâche data_action autosave avec endpoint /company-info, method PUT et data = objet complet de configuration.",
+        context: {
+          page: 'company_configuration',
+          company: companyData,
+        },
+      });
+
+      const executedAutosave = result?.results?.some((r) => {
+        return r?.task?.type === 'data_action' && (r?.task?.action === 'autosave' || r?.task?.action === 'upsert');
+      });
+
+      if (executedAutosave) {
+        await loadCompanyInfo();
+        toast.success('AI a sauvegardé une mise à jour.');
+      } else if (result?.status === 'failed') {
+        toast.error(result?.error || 'AI a échoué.');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l’assistance AI');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="company-config__loading-container">
@@ -151,12 +180,32 @@ const CompanyConfiguration = () => {
             <h1 className="company-config__title">Configuration</h1>
             <p className="company-config__subtitle">Gérez les informations de votre entreprise et imprimante</p>
           </div>
-          {isAdmin() && (
-            <button onClick={() => window.location.href = '/utilisateurs'} className="company-config__users-btn">
-              <Users size={18} />
-              <span>Utilisateurs</span>
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {isAdmin() && (
+              <button onClick={() => navigate('/parametres/ai-providers')} className="company-config__users-btn">
+                <Brain size={18} />
+                <span>AI Providers</span>
+              </button>
+            )}
+            {isAdmin() && (
+              <button onClick={() => navigate('/parametres/ai-tasks')} className="company-config__users-btn">
+                <FileText size={18} />
+                <span>Historique AI</span>
+              </button>
+            )}
+            {isAdmin() && (
+              <button onClick={() => window.location.href = '/utilisateurs'} className="company-config__users-btn">
+                <Users size={18} />
+                <span>Utilisateurs</span>
+              </button>
+            )}
+            {isAdmin() && (
+              <button onClick={handleAiAssist} disabled={isAiRunning} className="company-config__users-btn">
+                {isAiRunning ? <Loader2 size={16} className="company-config__spinner" /> : <Brain size={18} />}
+                <span>Assistant AI</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* === NETWORK INFO - Détection automatique IP + QR Code === */}

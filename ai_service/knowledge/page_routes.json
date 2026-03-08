@@ -1,0 +1,1717 @@
+{
+  "pages": [
+    {
+      "path": "/login",
+      "name": "Connexion",
+      "description": "Authentification utilisateur. Saisie identifiant/mot de passe.",
+      "highlights": [
+        "auth",
+        "session",
+        "sécurité"
+      ],
+      "actions": [
+        "se_connecter",
+        "réinitialiser_saisie"
+      ],
+      "roles": [
+        "public"
+      ],
+      "keywords": [
+        "connexion",
+        "login",
+        "authentification",
+        "se connecter",
+        "mot de passe"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/unauthorized",
+      "name": "Accès Refusé",
+      "description": "Page affichée quand un rôle n'a pas l'autorisation d'accéder à une fonctionnalité.",
+      "highlights": [
+        "contrôle d'accès",
+        "rôles"
+      ],
+      "actions": [
+        "retour_dashboard",
+        "retour_login"
+      ],
+      "roles": [
+        "public"
+      ],
+      "keywords": [
+        "accès refusé",
+        "unauthorized",
+        "permission"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/dashboard",
+      "name": "Dashboard",
+      "description": "Vue d'ensemble: indicateurs clés, synthèse ventes/stock, accès rapide aux modules.",
+      "highlights": [
+        "KPIs",
+        "synthèse",
+        "accès rapide"
+      ],
+      "actions": [
+        "consulter_indicateurs",
+        "naviguer_vers_module"
+      ],
+      "keywords": [
+        "tableau de bord",
+        "dashboard",
+        "top",
+        "resume",
+        "tatitra",
+        "famintinana"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ]
+    },
+    {
+      "path": "/produits",
+      "name": "Produits",
+      "description": "Liste des produits. Accès aux détails produit, variantes, prix et stock.",
+      "highlights": [
+        "catalogue",
+        "variantes",
+        "stock",
+        "prix"
+      ],
+      "actions": [
+        "lister_produits",
+        "ouvrir_détail_produit",
+        "rechercher_filtrer"
+      ],
+      "keywords": [
+        "produits",
+        "product",
+        "products",
+        "vokatra",
+        "entana",
+        "catalogue",
+        "stock"
+      ],
+      "aliases": [
+        "/products"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ]
+    },
+    {
+      "path": "/produits/nouveau",
+      "name": "Créer Produit",
+      "description": "Formulaire de création produit: infos, prix, options, variantes.",
+      "highlights": [
+        "création",
+        "formulaire",
+        "validation"
+      ],
+      "actions": [
+        "créer_produit",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "créer produit",
+        "nouveau produit",
+        "new product",
+        "ajouter produit",
+        "create product",
+        "vokatra vaovao"
+      ],
+      "aliases": [
+        "/produits/new",
+        "/products/nouveau"
+      ]
+    },
+    {
+      "path": "/produits/:id",
+      "name": "Détail Produit",
+      "description": "Fiche produit: informations, variantes, stock par emplacement, statistiques.",
+      "highlights": [
+        "détail",
+        "variantes",
+        "statistiques",
+        "stock"
+      ],
+      "actions": [
+        "voir_variantes",
+        "voir_statistiques",
+        "éditer_produit",
+        "gérer_variantes"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail produit",
+        "fiche produit",
+        "voir produit",
+        "product detail"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/produits/:id/modifier",
+      "name": "Modifier Produit",
+      "description": "Formulaire de modification produit. Met à jour les champs et règles associées.",
+      "highlights": [
+        "édition",
+        "validation",
+        "mise à jour"
+      ],
+      "actions": [
+        "modifier_produit",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "modifier produit",
+        "éditer produit",
+        "edit product",
+        "update produit"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/produits/:productId/variante/nouvelle",
+      "name": "Créer Variante",
+      "description": "Ajout d'une variante à un produit (taille, couleur, SKU, prix, stock).",
+      "highlights": [
+        "variantes",
+        "SKU",
+        "prix"
+      ],
+      "actions": [
+        "créer_variante",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "créer variante",
+        "nouvelle variante",
+        "ajouter variante",
+        "new variant",
+        "variante nouveau"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/produits/:productId/variante/:variantId/modifier",
+      "name": "Modifier Variante",
+      "description": "Modification d'une variante existante (attributs, prix, stock).",
+      "highlights": [
+        "variantes",
+        "édition"
+      ],
+      "actions": [
+        "modifier_variante",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "modifier variante",
+        "éditer variante",
+        "edit variant"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/fournisseurs",
+      "name": "Fournisseurs",
+      "description": "Liste et gestion des fournisseurs. Accès aux fiches et historiques associés.",
+      "highlights": [
+        "fiches",
+        "contacts",
+        "historique"
+      ],
+      "actions": [
+        "lister_fournisseurs",
+        "créer_fournisseur",
+        "ouvrir_détail"
+      ],
+      "keywords": [
+        "fournisseurs",
+        "supplier",
+        "suppliers",
+        "mpamatsy",
+        "mpanome entana"
+      ],
+      "aliases": [
+        "/suppliers"
+      ],
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/fournisseurs/nouveau",
+      "name": "Créer Fournisseur",
+      "description": "Formulaire de création fournisseur (nom, contact, infos).",
+      "highlights": [
+        "création",
+        "formulaire"
+      ],
+      "actions": [
+        "créer_fournisseur",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer fournisseur",
+        "nouveau fournisseur",
+        "new supplier",
+        "ajouter fournisseur"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/fournisseurs/:id",
+      "name": "Détail Fournisseur",
+      "description": "Fiche fournisseur avec informations et éléments liés.",
+      "highlights": [
+        "détail",
+        "liens"
+      ],
+      "actions": [
+        "modifier_fournisseur",
+        "consulter_liens"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail fournisseur",
+        "fiche fournisseur",
+        "voir fournisseur"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/fournisseurs/:id/modifier",
+      "name": "Modifier Fournisseur",
+      "description": "Formulaire de modification fournisseur.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_fournisseur",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier fournisseur",
+        "éditer fournisseur",
+        "edit supplier"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/transitaires",
+      "name": "Transitaires",
+      "description": "Gestion des transitaires (freight forwarders): liste, création, détail, modification.",
+      "highlights": [
+        "logistique",
+        "transport"
+      ],
+      "actions": [
+        "lister_transitaires",
+        "créer_transitaire",
+        "ouvrir_détail"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "transitaires",
+        "transitaire",
+        "freight forwarder",
+        "transporteur",
+        "liste transitaires"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/transitaires/nouveau",
+      "name": "Créer Transitaire",
+      "description": "Formulaire de création transitaire.",
+      "highlights": [
+        "création"
+      ],
+      "actions": [
+        "créer_transitaire",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer transitaire",
+        "nouveau transitaire",
+        "new freight forwarder",
+        "ajouter transitaire"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/transitaires/:id",
+      "name": "Détail Transitaire",
+      "description": "Fiche transitaire: informations et éléments associés.",
+      "highlights": [
+        "détail"
+      ],
+      "actions": [
+        "modifier_transitaire",
+        "consulter_liens"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail transitaire",
+        "fiche transitaire"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/transitaires/:id/modifier",
+      "name": "Modifier Transitaire",
+      "description": "Formulaire de modification transitaire.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_transitaire",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier transitaire",
+        "éditer transitaire"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/reapprovisionnements",
+      "name": "Réapprovisionnements",
+      "description": "Liste des réceptions de stock (stock receipts).",
+      "highlights": [
+        "réception",
+        "stock"
+      ],
+      "actions": [
+        "lister_receptions",
+        "créer_reception",
+        "ouvrir_détail"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "réapprovisionnements",
+        "reappro",
+        "réceptions",
+        "liste réceptions",
+        "approvisionnements",
+        "stock receipts"
+      ],
+      "aliases": [
+        "/reapprovisionnement",
+        "/approvisionnements"
+      ]
+    },
+    {
+      "path": "/reapprovisionnements/nouveau",
+      "name": "Créer Réception Stock",
+      "description": "Formulaire de création d'une réception de stock: articles, coûts, quantités.",
+      "highlights": [
+        "création",
+        "réception"
+      ],
+      "actions": [
+        "créer_reception",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "nouveau réapprovisionnement",
+        "créer réception",
+        "nouvelle réception",
+        "new reappro",
+        "réapprovisionnement",
+        "reappro",
+        "fandraisana entana vaovao"
+      ],
+      "aliases": [
+        "/reapprovisionnement/nouveau"
+      ]
+    },
+    {
+      "path": "/reapprovisionnements/:id",
+      "name": "Détail Réception Stock",
+      "description": "Détails d'une réception: items, statuts, coûts, paiements.",
+      "highlights": [
+        "détail",
+        "coûts",
+        "paiements"
+      ],
+      "actions": [
+        "voir_items",
+        "aller_evaluation",
+        "aller_paiements",
+        "aller_cout_repartition"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail réapprovisionnement",
+        "détail réception",
+        "voir réception"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/reapprovisionnements/:id/evaluation",
+      "name": "Évaluer Réception",
+      "description": "Évaluation/notation d'une réception (qualité, contrôles).",
+      "highlights": [
+        "évaluation",
+        "contrôle"
+      ],
+      "actions": [
+        "noter_reception",
+        "enregistrer_notes"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "évaluation réception",
+        "noter réception",
+        "qualité réception",
+        "evaluation reappro"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/reapprovisionnements/:id/paiements",
+      "name": "Paiements Réception",
+      "description": "Gestion des paiements liés à une réception.",
+      "highlights": [
+        "paiements",
+        "trésorerie"
+      ],
+      "actions": [
+        "payer_reception",
+        "voir_historique_paiements"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "paiements réception",
+        "payer réception",
+        "paiement reappro",
+        "payer transitaire"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/reapprovisionnements/:id/cout-repartition",
+      "name": "Répartition Coûts",
+      "description": "Répartir les coûts additionnels d'une réception (transport, frais).",
+      "highlights": [
+        "coûts",
+        "répartition"
+      ],
+      "actions": [
+        "calculer_repartition",
+        "enregistrer_repartition"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "répartition coûts",
+        "repartir coûts",
+        "coûts réception",
+        "cout repartition"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/reapprovisionnements/:id/cout-repartition/detail",
+      "name": "Détail Répartition Coûts",
+      "description": "Visualisation détaillée du calcul de répartition des coûts.",
+      "highlights": [
+        "détail",
+        "audit"
+      ],
+      "actions": [
+        "consulter_details"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail répartition",
+        "détail coûts",
+        "audit coûts"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/localisations-variantes",
+      "name": "Localisations Variantes",
+      "description": "Gestion des emplacements de variantes: lier variantes ↔ locations, quantités disponibles.",
+      "highlights": [
+        "emplacements",
+        "stock",
+        "variantes"
+      ],
+      "actions": [
+        "lister_liaisons",
+        "créer_liaison",
+        "modifier_liaison",
+        "rechercher"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "localisations variantes",
+        "emplacement variante",
+        "stock par emplacement",
+        "localisation"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/localisations-variantes/nouvelle",
+      "name": "Créer Liaison Variante/Location",
+      "description": "Associer une variante à un emplacement et définir des quantités.",
+      "highlights": [
+        "création",
+        "stock"
+      ],
+      "actions": [
+        "créer_liaison",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "nouvelle localisation",
+        "créer localisation",
+        "ajouter emplacement"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/localisations-variantes/:id/modifier",
+      "name": "Modifier Liaison Variante/Location",
+      "description": "Modifier une liaison variante/location (quantités, emplacement).",
+      "highlights": [
+        "édition",
+        "stock"
+      ],
+      "actions": [
+        "modifier_liaison",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier localisation",
+        "éditer emplacement"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/locations",
+      "name": "Locations",
+      "description": "Gestion des emplacements (rayons, dépôts): liste, détail, création.",
+      "highlights": [
+        "emplacements",
+        "organisation"
+      ],
+      "actions": [
+        "lister_locations",
+        "ouvrir_détail",
+        "créer_location"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "emplacements",
+        "locations",
+        "magasins",
+        "entrepôts",
+        "liste emplacements",
+        "warehouse"
+      ],
+      "aliases": [
+        "/emplacements"
+      ]
+    },
+    {
+      "path": "/locations/nouveau",
+      "name": "Créer Location",
+      "description": "Créer un nouvel emplacement (nom, allée, etc.).",
+      "highlights": [
+        "création"
+      ],
+      "actions": [
+        "créer_location",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer emplacement",
+        "nouveau magasin",
+        "nouvel entrepôt",
+        "new location"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/locations/:id",
+      "name": "Détail Location",
+      "description": "Fiche emplacement: informations et liens vers variantes disponibles.",
+      "highlights": [
+        "détail",
+        "stock"
+      ],
+      "actions": [
+        "voir_variantes",
+        "modifier_location"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail emplacement",
+        "fiche magasin",
+        "voir emplacement"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/locations/:id/modifier",
+      "name": "Modifier Location",
+      "description": "Modifier un emplacement.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_location",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier emplacement",
+        "éditer magasin"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/locations/:locationId/variantes",
+      "name": "Variantes par Location",
+      "description": "Vue des variantes disponibles pour un emplacement donné.",
+      "highlights": [
+        "stock",
+        "emplacement"
+      ],
+      "actions": [
+        "lister_variantes_location",
+        "supprimer_liaison"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "variantes par emplacement",
+        "stock emplacement",
+        "produits magasin"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/mouvements-stock",
+      "name": "Mouvements de Stock",
+      "description": "Liste des mouvements de stock (transferts, pertes, ajustements).",
+      "highlights": [
+        "audit stock",
+        "mouvements"
+      ],
+      "actions": [
+        "lister_mouvements",
+        "initier_transfert",
+        "déclarer_perte",
+        "réconciliation"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "mouvements stock",
+        "mouvement",
+        "historique stock",
+        "transfert stock",
+        "perte stock"
+      ],
+      "aliases": [
+        "/stock/mouvements"
+      ]
+    },
+    {
+      "path": "/mouvements-stock/transfert",
+      "name": "Transfert Stock",
+      "description": "Formulaire de transfert de stock entre emplacements.",
+      "highlights": [
+        "transfert",
+        "stock"
+      ],
+      "actions": [
+        "créer_transfert",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "transfert stock",
+        "déplacer stock",
+        "transfer stock",
+        "transférer produit"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/mouvements-stock/perte",
+      "name": "Perte Stock",
+      "description": "Déclarer une perte/écart de stock.",
+      "highlights": [
+        "perte",
+        "inventaire"
+      ],
+      "actions": [
+        "déclarer_perte",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "perte stock",
+        "déclarer perte",
+        "loss stock",
+        "casse",
+        "vol"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/mouvements-stock/reconciliation",
+      "name": "Réconciliation Inventaire",
+      "description": "Réconciliation d'inventaire: comparer comptage physique vs stock système.",
+      "highlights": [
+        "inventaire",
+        "écarts"
+      ],
+      "actions": [
+        "réconcilier_inventaire",
+        "enregistrer"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "réconciliation stock",
+        "inventaire",
+        "ajustement stock",
+        "reconciliation"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/clients",
+      "name": "Clients",
+      "description": "Liste des clients. Accès aux fiches clients et historique.",
+      "highlights": [
+        "CRM",
+        "historique"
+      ],
+      "actions": [
+        "lister_clients",
+        "ouvrir_détail_client",
+        "rechercher"
+      ],
+      "keywords": [
+        "clients",
+        "customer",
+        "customers",
+        "mpanjifa"
+      ],
+      "aliases": [
+        "/customers"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ]
+    },
+    {
+      "path": "/clients/:id",
+      "name": "Détail Client",
+      "description": "Fiche client: onglets ventes immédiates, crédits, réservations.",
+      "highlights": [
+        "détail",
+        "ventes",
+        "crédits",
+        "réservations"
+      ],
+      "actions": [
+        "consulter_ventes",
+        "consulter_crédits",
+        "consulter_réservations"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail client",
+        "fiche client",
+        "voir client",
+        "profil client"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/ventes/rapide",
+      "name": "Vente Rapide (POS)",
+      "description": "Interface de vente rapide (POS): catégories, produits, panier, paiement.",
+      "highlights": [
+        "POS",
+        "paiement",
+        "panier"
+      ],
+      "actions": [
+        "ajouter_au_panier",
+        "appliquer_remise",
+        "encaisser",
+        "imprimer"
+      ],
+      "keywords": [
+        "vente",
+        "sales",
+        "varotra",
+        "POS",
+        "caisse",
+        "encaissement"
+      ],
+      "aliases": [
+        "/sales"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ]
+    },
+    {
+      "path": "/ventes/immediates",
+      "name": "Ventes Immédiates",
+      "description": "Liste des ventes immédiates réalisées (historique).",
+      "highlights": [
+        "historique",
+        "factures"
+      ],
+      "actions": [
+        "lister_ventes",
+        "ouvrir_détail_vente"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "ventes rapides",
+        "ventes immédiates",
+        "point de vente",
+        "liste ventes",
+        "caisse",
+        "POS"
+      ],
+      "aliases": [
+        "/ventes",
+        "/pos"
+      ]
+    },
+    {
+      "path": "/ventes/immediates/:id",
+      "name": "Détail Vente Immédiate",
+      "description": "Détail d'une vente immédiate: lignes, paiements, impression.",
+      "highlights": [
+        "détail",
+        "paiements",
+        "impression"
+      ],
+      "actions": [
+        "imprimer",
+        "consulter_lignes"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail vente",
+        "facture vente",
+        "voir vente"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/ventes/credits",
+      "name": "Crédits",
+      "description": "Liste des ventes à crédit.",
+      "highlights": [
+        "crédit",
+        "échéances"
+      ],
+      "actions": [
+        "lister_crédits",
+        "ouvrir_détail_crédit"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "ventes crédit",
+        "crédits",
+        "liste crédits",
+        "vente à crédit",
+        "créances"
+      ],
+      "aliases": [
+        "/credits"
+      ]
+    },
+    {
+      "path": "/ventes/credits/:id",
+      "name": "Détail Crédit",
+      "description": "Détail crédit: échéances, paiements, statut.",
+      "highlights": [
+        "échéances",
+        "paiements"
+      ],
+      "actions": [
+        "payer_échéance",
+        "consulter_statut"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail crédit",
+        "voir crédit",
+        "fiche crédit",
+        "échéances"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/ventes/reservations",
+      "name": "Réservations",
+      "description": "Liste des réservations et suivi (expirations, paiements).",
+      "highlights": [
+        "réservation",
+        "suivi"
+      ],
+      "actions": [
+        "lister_réservations",
+        "ouvrir_détail_réservation"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "réservations",
+        "liste réservations",
+        "reservations",
+        "commandes"
+      ],
+      "aliases": [
+        "/reservations"
+      ]
+    },
+    {
+      "path": "/ventes/reservations/:id",
+      "name": "Détail Réservation",
+      "description": "Détail réservation: paiements, statut, finalisation.",
+      "highlights": [
+        "paiements",
+        "statut"
+      ],
+      "actions": [
+        "ajouter_paiement",
+        "finaliser"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail réservation",
+        "voir réservation",
+        "fiche réservation"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptes",
+      "name": "Comptes (Trésorerie)",
+      "description": "Gestion des comptes de paiement: liste, création, détail.",
+      "highlights": [
+        "trésorerie",
+        "comptes"
+      ],
+      "actions": [
+        "lister_comptes",
+        "créer_compte",
+        "transférer"
+      ],
+      "keywords": [
+        "comptes",
+        "accounts",
+        "account",
+        "kaonty",
+        "caisse",
+        "banque"
+      ],
+      "aliases": [
+        "/accounts"
+      ],
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/comptes/nouveau",
+      "name": "Créer Compte",
+      "description": "Formulaire de création compte (type, libellé, paramètres).",
+      "highlights": [
+        "création"
+      ],
+      "actions": [
+        "créer_compte",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer compte",
+        "nouveau compte",
+        "new account",
+        "ajouter compte trésorerie"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptes/:id",
+      "name": "Détail Compte",
+      "description": "Détail compte: transactions et informations.",
+      "highlights": [
+        "transactions"
+      ],
+      "actions": [
+        "consulter_transactions",
+        "modifier_compte"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail compte",
+        "voir compte",
+        "fiche compte trésorerie"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptes/:id/modifier",
+      "name": "Modifier Compte",
+      "description": "Modifier un compte.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_compte",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier compte",
+        "éditer compte"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptes/transfert",
+      "name": "Transfert entre Comptes",
+      "description": "Transférer un montant entre deux comptes.",
+      "highlights": [
+        "transfert",
+        "trésorerie"
+      ],
+      "actions": [
+        "transférer",
+        "valider"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "transfert compte",
+        "virement",
+        "transférer argent",
+        "transfer funds"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptes/conversion",
+      "name": "Taux de Change",
+      "description": "Gestion/consultation des taux de change.",
+      "highlights": [
+        "devises"
+      ],
+      "actions": [
+        "consulter_taux",
+        "mettre_à_jour_taux"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "conversion devise",
+        "taux de change",
+        "taux conversion",
+        "change devise"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/depenses",
+      "name": "Dépenses",
+      "description": "Liste des dépenses et suivi.",
+      "highlights": [
+        "sorties",
+        "catégories"
+      ],
+      "actions": [
+        "lister_depenses",
+        "créer_depense"
+      ],
+      "keywords": [
+        "depenses",
+        "expenses",
+        "expense",
+        "fandaniana"
+      ],
+      "aliases": [
+        "/expenses"
+      ],
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "path": "/depenses/nouveau",
+      "name": "Créer Dépense",
+      "description": "Création d'une dépense.",
+      "highlights": [
+        "création",
+        "validation"
+      ],
+      "actions": [
+        "créer_depense",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer dépense",
+        "nouvelle dépense",
+        "ajouter dépense",
+        "new expense"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/depenses/planifie",
+      "name": "Dépenses Planifiées",
+      "description": "Liste des dépenses planifiées et échéances.",
+      "highlights": [
+        "planning",
+        "échéances"
+      ],
+      "actions": [
+        "lister_planifiees",
+        "créer_planifiee"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "dépenses planifiées",
+        "prévisions dépenses",
+        "dépenses récurrentes",
+        "planned expenses"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/depenses/planifie/nouveau",
+      "name": "Créer Dépense Planifiée",
+      "description": "Créer une dépense planifiée (récurrence, prochaine date).",
+      "highlights": [
+        "création",
+        "récurrence"
+      ],
+      "actions": [
+        "créer_planifiee",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "créer dépense planifiée",
+        "nouvelle dépense planifiée",
+        "planifier dépense"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/depenses/planifie/modifier/:id",
+      "name": "Modifier Dépense Planifiée",
+      "description": "Modifier une dépense planifiée.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_planifiee",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "modifier dépense planifiée",
+        "éditer prévision"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/depenses/planifie/:id",
+      "name": "Détail Dépense Planifiée",
+      "description": "Détail et suivi d'une dépense planifiée.",
+      "highlights": [
+        "détail",
+        "suivi"
+      ],
+      "actions": [
+        "consulter",
+        "modifier"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "détail dépense planifiée",
+        "voir prévision"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/transactions/:id",
+      "name": "Détail Transaction",
+      "description": "Détail d'une transaction (lecture seule).",
+      "highlights": [
+        "audit"
+      ],
+      "actions": [
+        "consulter"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail transaction",
+        "voir transaction",
+        "fiche transaction",
+        "annuler transaction"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/statistiques",
+      "name": "Statistiques Ventes",
+      "description": "Tableaux et graphiques de statistiques de ventes.",
+      "highlights": [
+        "graphes",
+        "KPIs"
+      ],
+      "actions": [
+        "consulter_stats",
+        "filtrer_période"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "statistiques",
+        "stats",
+        "rapports",
+        "analytics",
+        "reporting",
+        "tatitra",
+        "famintinana"
+      ],
+      "aliases": [
+        "/stats",
+        "/rapports"
+      ]
+    },
+    {
+      "path": "/statistiques/financieres",
+      "name": "Statistiques Financières",
+      "description": "Statistiques financières: profits, dépenses, pertes, tendances.",
+      "highlights": [
+        "finance",
+        "tendances"
+      ],
+      "actions": [
+        "consulter_finance",
+        "filtrer_période"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "statistiques financières",
+        "stats finances",
+        "bilan financier",
+        "résultats financiers"
+      ],
+      "aliases": [
+        "/stats/financieres"
+      ]
+    },
+    {
+      "path": "/utilisateurs",
+      "name": "Utilisateurs",
+      "description": "Gestion des utilisateurs (liste, activation/désactivation).",
+      "highlights": [
+        "roles",
+        "sécurité"
+      ],
+      "actions": [
+        "lister_utilisateurs",
+        "activer_desactiver"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "utilisateurs",
+        "users",
+        "employés",
+        "comptes utilisateurs",
+        "gestion utilisateurs",
+        "rôles"
+      ],
+      "aliases": [
+        "/users"
+      ]
+    },
+    {
+      "path": "/comptages",
+      "name": "Comptages",
+      "description": "Liste des comptages de caisse (cash count).",
+      "highlights": [
+        "caisse",
+        "clôture"
+      ],
+      "actions": [
+        "lister_comptages",
+        "créer_comptage",
+        "ouvrir_détail"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "comptages",
+        "inventaire physique",
+        "comptage stock",
+        "counting",
+        "stock count"
+      ],
+      "aliases": [
+        "/inventaire"
+      ]
+    },
+    {
+      "path": "/comptages/nouveau",
+      "name": "Créer Comptage",
+      "description": "Créer un comptage de caisse.",
+      "highlights": [
+        "création",
+        "caisse"
+      ],
+      "actions": [
+        "créer_comptage",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "nouveau comptage",
+        "créer inventaire",
+        "démarrer comptage",
+        "new stock count"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptages/:id",
+      "name": "Détail Comptage",
+      "description": "Détail d'un comptage (montants, écarts).",
+      "highlights": [
+        "détail",
+        "écarts"
+      ],
+      "actions": [
+        "consulter",
+        "modifier"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "détail comptage",
+        "voir inventaire",
+        "résultats comptage"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/comptages/:id/modifier",
+      "name": "Modifier Comptage",
+      "description": "Modifier un comptage de caisse.",
+      "highlights": [
+        "édition"
+      ],
+      "actions": [
+        "modifier_comptage",
+        "enregistrer",
+        "annuler"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ],
+      "keywords": [
+        "modifier comptage",
+        "éditer inventaire"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/parametres",
+      "name": "Paramètres",
+      "description": "Configuration entreprise: infos société, imprimante, accès AI providers.",
+      "highlights": [
+        "société",
+        "imprimante",
+        "réseau"
+      ],
+      "actions": [
+        "modifier_infos",
+        "sauvegarder",
+        "aller_ai_providers",
+        "aller_historique_ai"
+      ],
+      "keywords": [
+        "parametres",
+        "settings",
+        "fikirana",
+        "configuration"
+      ],
+      "aliases": [
+        "/settings"
+      ],
+      "roles": [
+        "admin",
+        "vendeur"
+      ]
+    },
+    {
+      "path": "/parametres/ai-providers",
+      "name": "AI Providers",
+      "description": "Configurer clés API, modèles, tests de connexion, refresh modèles.",
+      "highlights": [
+        "providers",
+        "clés API",
+        "modèles"
+      ],
+      "actions": [
+        "ajouter_provider",
+        "modifier_provider",
+        "tester_connexion",
+        "rafraichir_modeles"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "paramètres IA",
+        "configuration IA",
+        "AI providers",
+        "clé API IA",
+        "modèle IA"
+      ],
+      "aliases": [
+        "/settings/ai"
+      ]
+    },
+    {
+      "path": "/parametres/ai-tasks",
+      "name": "Historique AI",
+      "description": "Historique des tâches AI: statuts, erreurs, actions proposées.",
+      "highlights": [
+        "audit",
+        "debug"
+      ],
+      "actions": [
+        "filtrer",
+        "consulter_statut"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "tâches IA",
+        "configuration tâches IA",
+        "AI tasks",
+        "prompts IA"
+      ],
+      "aliases": []
+    },
+    {
+      "path": "/journaux-activite",
+      "name": "Journaux d'Activité",
+      "description": "Logs d'activité: consultation, statistiques, échecs, nettoyage (admin).",
+      "highlights": [
+        "audit",
+        "traces"
+      ],
+      "actions": [
+        "consulter_logs",
+        "filtrer",
+        "supprimer_anciens"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "keywords": [
+        "journaux activité",
+        "logs",
+        "audit",
+        "historique activité",
+        "journal"
+      ],
+      "aliases": [
+        "/logs",
+        "/audit"
+      ]
+    }
+  ]
+}

@@ -36,6 +36,9 @@ use App\Http\Controllers\PrintController;
 use App\Http\Controllers\PlannedExpenseController;
 use App\Http\Controllers\AttributeValueController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AiProviderConfigController;
+use App\Http\Controllers\AiTaskController;
+use App\Models\AiProviderConfig;
 
 /*
 |==========================================================================
@@ -788,6 +791,69 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/auto-cleanup', [ActivityLogController::class, 'autoCleanup']);
         });
     });
+    // ========================================================================
+    // CONFIGURATION api key LLM (préfixe:/api/ai-providers)
+    // ========================================================================
+
+
+    // GET => index
+    //  POST => store
+    //  PUT => update
+    //  DELETE => destroy
+    Route::prefix('ai-providers')->group(function () {
+        Route::get('/', [AiProviderConfigController::class, 'index']);
+        Route::post('/', [AiProviderConfigController::class, 'store']);
+        Route::get('{id}', [AiProviderConfigController::class, 'show']);
+        Route::put('{id}', [AiProviderConfigController::class, 'update']);
+        Route::delete('{id}', [AiProviderConfigController::class, 'destroy']);
+        Route::post('{id}/test',[AiProviderConfigController::class,'testConnection']);
+        Route::post('{id}/refresh-models',[AiProviderConfigController::class,'refreshModels']);
+        Route::post('{id}/set-default',[AiProviderConfigController::class,'setDefault']);
+        Route::post('{id}/reset-usage',[AiProviderConfigController::class,'resetUsage']);
+    });
+
+    // ========================================================================
+    // AI TASKS (préfixe: /api/ai/tasks)
+    // ========================================================================
+    Route::prefix('ai')->group(function () {
+        // POST /api/ai/tasks → Créer une demande AI (exécution en queue)
+        Route::post('tasks', [AiTaskController::class, 'store']);
+        // POST /api/ai/chat-sync → Chat synchrone (sans queue)
+        Route::post('chat-sync', [AiTaskController::class, 'chatSync']);
+        // GET /api/ai/rag/status → Statut RAG (service Python)
+        Route::get('rag/status', [AiTaskController::class, 'ragStatus']);
+        // GET /api/ai/rag/manifest → Manifest pages (service Python)
+        Route::get('rag/manifest', [AiTaskController::class, 'ragManifest']);
+        // POST /api/ai/rag/refresh → Refresh RAG (service Python)
+        Route::post('rag/refresh', [AiTaskController::class, 'ragRefresh']);
+        // POST /api/ai/langgraph/query → Chat LangGraph (FAQ + PDF RAG)
+        Route::post('langgraph/query', [AiTaskController::class, 'langgraphQuery']);
+        // POST /api/ai/langgraph/rag/faqs → Ingestion FAQ FR/MG vers LangGraph
+        Route::post('langgraph/rag/faqs', [AiTaskController::class, 'langgraphIngestFaqs']);
+        // POST /api/ai/langgraph/rag/faqs/pairs → Ingestion FAQ paires FR/MG
+        Route::post('langgraph/rag/faqs/pairs', [AiTaskController::class, 'langgraphIngestFaqPairs']);
+        // POST /api/ai/langgraph/rag/pdfs → Ingestion PDF vers LangGraph
+        Route::post('langgraph/rag/pdfs', [AiTaskController::class, 'langgraphIngestPdfs']);
+        // POST /api/ai/langgraph/rag/page-routes → Ingestion page_routes.json vers LangGraph
+        Route::post('langgraph/rag/page-routes', [AiTaskController::class, 'langgraphIngestPageRoutes']);
+        // GET /api/ai/langgraph/rag/status → Statut RAG LangGraph
+        Route::get('langgraph/rag/status', [AiTaskController::class, 'langgraphRagStatus']);
+        // GET /api/ai/langgraph/conversations → Historique conversations LangGraph
+        Route::get('langgraph/conversations', [AiTaskController::class, 'langgraphConversations']);
+        // GET /api/ai/langgraph/messages → Messages user/assistant d'une session
+        Route::get('langgraph/messages', [AiTaskController::class, 'langgraphMessages']);
+        // GET /api/ai/tasks → Liste des tâches AI (filtres + pagination)
+        Route::get('tasks', [AiTaskController::class, 'index']);
+        // GET /api/ai/tasks/{id} → Détail d'une tâche AI
+        Route::get('tasks/{id}', [AiTaskController::class, 'show']);
+        // PATCH /api/ai/tasks/{id}/executed → Marquer exécutée côté frontend
+        Route::patch('tasks/{id}/executed', [AiTaskController::class, 'markExecuted']);
+    });
+   
+
+    // teste de connexion vers un api
+
+
 });
 
 // ============================================================================

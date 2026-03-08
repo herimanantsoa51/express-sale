@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'ai_service' => [
+        'url' => env('AI_SERVICE_URL', 'http://localhost:9000'),
+    ],
+
+    'langgraph_service' => [
+        'url' => env('LANGGRAPH_SERVICE_URL', 'http://localhost:8001'),
+    ],
+
 ];
