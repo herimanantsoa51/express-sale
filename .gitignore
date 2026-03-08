@@ -16,3 +16,25 @@ frontend/dist/
 *.log
 .idea/
 .vscode/
+
+# --- AI Service (Python/ChromaDB) ---
+ai_service/__pycache__/
+ai_service/.venv/
+ai_service/venv/
+ai_service/.env
+ai_service/chroma/
+
+# --- LangGraph Service (Python/LangChain) ---
+langgraph_service/__pycache__/
+langgraph_service/.venv/
+langgraph_service/venv/
+langgraph_service/.env
+langgraph_service/app/__pycache__/
+langgraph_service/data/
+langgraph_service/**/__pycache__/
+
+# --- Python général ---
+*.pyc
+__pycache__/
+*.egg-info/
+.env
